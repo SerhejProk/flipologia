@@ -1,0 +1,15 @@
+{
+  "name": "Флипология",
+  "short_name": "Флипология",
+  "description": "Калькулятор сделки, смета ремонта и учёт сделок для флиперов",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#14283A",
+  "theme_color": "#14283A",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

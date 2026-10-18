@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14283A">
+<meta name="description" content="Флипология — калькулятор сделки, смета ремонта и учёт сделок для флиперов недвижимости">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Флипология">
+<title>Флипология</title>
+<style>
+:root{
+  --bg:#F4F1EA; --card:#FFFDF8; --ink:#16252E; --muted:#56656B; --line:#DED6C6;
+  --dark:#14283A; --dark-ink:#F4F1EA; --gold:#F2B630; --gold-ink:#8A5A00;
+  --good:#1F7A4D; --good-bg:#E3F2E9; --warn:#8A5A00; --warn-bg:#FBF0D2; --bad:#A3321C; --bad-bg:#F8E1DA;
+  --input:#FFFFFF; --shadow:0 1px 2px rgba(20,40,58,.06),0 4px 14px rgba(20,40,58,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0E1C27; --card:#162A38; --ink:#EAF0F2; --muted:#A6B7BE; --line:#2A4352;
+    --dark:#0A1620; --dark-ink:#EAF0F2; --gold:#F2B630; --gold-ink:#F5C55A;
+    --good:#7FD3A4; --good-bg:#183A2B; --warn:#F5C55A; --warn-bg:#3A3018; --bad:#F29A85; --bad-bg:#3D2019;
+    --input:#0F2230; --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-tap-highlight-color:transparent;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+.top{position:sticky;top:0;z-index:5;background:var(--dark);color:var(--dark-ink);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px}
+.top img{width:34px;height:34px;border-radius:8px}
+.brand{font-weight:800;letter-spacing:2px;font-size:15px}
+.sub{font-size:13px;opacity:.75}
+main{max-width:720px;margin:0 auto;padding:16px}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+.tabs button svg{width:24px;height:24px}
+.tabs button.on{color:var(--ink);font-weight:600}
+.tabs button.on svg{color:var(--gold-ink)}
+h2{font-size:22px;margin:4px 0 12px}
+h3{font-size:16px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+@media (max-width:380px){.grid2{grid-template-columns:1fr}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.inwrap{position:relative;display:flex;align-items:center}
+.inwrap span{position:absolute;right:10px;font-size:14px;color:var(--muted);pointer-events:none}
+input[type=text],input[type=date],input[type=url],select,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--input);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px}
+.inwrap input{padding-right:40px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);outline-offset:0;border-color:transparent}
+textarea{min-height:90px;resize:vertical}
+.seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;font:inherit;font-size:14px;color:var(--muted);padding:8px 6px;border-radius:8px;min-height:38px;cursor:pointer}
+.seg button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:15px;font-weight:600;border-radius:10px;padding:10px 16px;min-height:44px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-decoration:none}
+.btn.pri{background:var(--gold);border-color:var(--gold);color:#1B1400}
+.btn.danger{color:var(--bad)}
+.btn.block{width:100%}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:15px;cursor:pointer}
+.chk input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:#C88A00}
+.verdict{border-radius:14px;padding:16px;margin-bottom:14px;border:1px solid transparent}
+.verdict .v{font-size:26px;font-weight:800;line-height:1.15}
+.verdict.good{background:var(--good-bg);color:var(--good)}
+.verdict.warn{background:var(--warn-bg);color:var(--warn)}
+.verdict.bad{background:var(--bad-bg);color:var(--bad)}
+.verdict p{margin:6px 0 0;color:var(--ink);font-size:14px}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+.kpi{background:var(--card);border-radius:10px;padding:10px 12px}
+.kpi b{display:block;font-size:19px;color:var(--ink)}
+.kpi span{font-size:12px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+td.n,th.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+tr.total td{font-weight:700;border-bottom:0}
+.neg{color:var(--bad)} .pos{color:var(--good)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.pill.st{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.deal{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.deal .t{font-weight:700;font-size:16px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font:inherit;font-size:13px;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer;min-height:36px}
+.chips button.on{background:var(--dark);color:var(--dark-ink);border-color:var(--dark)}
+details{border-bottom:1px solid var(--line);padding:4px 0}
+details:last-child{border-bottom:0}
+summary{cursor:pointer;font-weight:600;padding:10px 0;list-style-position:outside}
+details ul{margin:0 0 10px;padding-left:20px}
+details li{margin:4px 0}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:var(--dark-ink);padding:10px 16px;border-radius:10px;font-size:14px;z-index:10;max-width:calc(100% - 32px);opacity:0;transition:opacity .2s}
+.toast.show{opacity:1}
+.back{background:none;border:0;font:inherit;color:var(--gold-ink);font-weight:600;padding:6px 0 10px;cursor:pointer}
+.empty{text-align:center;padding:28px 12px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <img src="icon-192.png" alt="">
+  <div><div class="brand">ФЛИПОЛОГИЯ</div><div class="sub" id="sub">Калькулятор сделки</div></div>
+</header>
+<main id="view"></main>
+<nav class="tabs" id="tabs">
+  <button data-tab="calc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg>Расчёт</button>
+  <button data-tab="smeta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Смета</button>
+  <button data-tab="deals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Сделки</button>
+  <button data-tab="ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h6M8 12h6"/></svg>Справка</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ===== Настройки и данные по умолчанию ===== */
+const LS_KEY = 'flipologia-v1';
+const DEFAULT_CALC = {
+  price: 5000000, buyCosts: 60000, cadastral: 0,
+  repair: 800000, furniture: 100000,
+  months: 6, utilities: 7000,
+  sale: 7000000, commission: 2,
+  fin: 'own', down: 30, rate: 20, term: 20,
+  tax: 'ndfl', repairDed: false,
+  target: 30
+};
+const LEVELS = ['Косметика', 'Стандарт', 'Под ключ'];
+// Ориентировочные цены «работа + материалы», ₽. Пользователь правит под свой регион.
+const SMETA_ITEMS = [
+  {k:'demo',    name:'Демонтаж',                     unit:'м²', qty:'area',  p:[400, 700, 900]},
+  {k:'elec',    name:'Электрика',                    unit:'м²', qty:'area',  p:[300, 1500, 2500]},
+  {k:'walls',   name:'Стены: подготовка и отделка',  unit:'м²', qty:'area',  p:[1200, 2500, 4000]},
+  {k:'floor',   name:'Полы: стяжка и покрытие',      unit:'м²', qty:'area',  p:[1200, 2800, 4500]},
+  {k:'ceil',    name:'Потолки',                      unit:'м²', qty:'area',  p:[400, 1200, 2000]},
+  {k:'bath',    name:'Санузел: плитка и сантехника', unit:'шт', qty:'baths', p:[50000, 130000, 220000]},
+  {k:'doors',   name:'Межкомнатные двери',           unit:'шт', qty:'doors', p:[8000, 15000, 25000]},
+  {k:'kitchen', name:'Кухонный гарнитур',            unit:'шт', qty:'one',   p:[0, 120000, 250000]},
+  {k:'clean',   name:'Вывоз мусора и уборка',        unit:'шт', qty:'one',   p:[15000, 25000, 35000]}
+];
+const DEFAULT_SMETA = {area: 45, rooms: 2, baths: 1, level: 1, contingency: 10, custom: {}};
+const STAGES = ['Поиск', 'Проверка', 'Покупка', 'Ремонт', 'Продажа', 'Закрыта'];
+const EXP_CATS = ['Ремонт', 'Материалы', 'Мебель и техника', 'Оформление сделки', 'Коммуналка', 'Ипотека', 'Налоги', 'Прочее'];
+const CHECKLIST = [
+  ['egrn', 'Свежая выписка ЕГРН: собственник, обременения, арест'],
+  ['history', 'История перехода прав: как часто перепродавали'],
+  ['registered', 'Кто прописан, нет ли «отказников» и детей'],
+  ['kids', 'Несовершеннолетние собственники — нужно разрешение опеки'],
+  ['matcap', 'Покупалась с маткапиталом — выделены ли доли детям'],
+  ['spouse', 'Нотариальное согласие супруга продавца'],
+  ['inherit', 'Получена по наследству — нет ли других наследников'],
+  ['bankrupt', 'Продавец не в банкротстве (ЕФРСБ, картотека судов)'],
+  ['fssp', 'Нет долгов у приставов (ФССП)'],
+  ['debts', 'Нет долгов за ЖКУ и капремонт'],
+  ['replan', 'Перепланировка узаконена или её нет'],
+  ['view', 'Осмотр: стояки, проводка, окна, соседи сверху']
+];
+
+/* ===== Хранилище ===== */
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LS_KEY)); } catch (e) {}
+  if (!s || typeof s !== 'object') s = {};
+  return {
+    deals: Array.isArray(s.deals) ? s.deals : [],
+    calc: Object.assign({}, DEFAULT_CALC, s.calc || {}),
+    calcDeal: s.calcDeal || null,
+    smeta: Object.assign({}, DEFAULT_SMETA, s.smeta || {}),
+    tab: s.tab || 'calc'
+  };
+}
+let S = load();
+let openDeal = null; // id сделки, открытой в разделе «Сделки»
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(S)); }
+  catch (e) { toast('Не получилось сохранить: память браузера недоступна'); }
+}
+
+/* ===== Утилиты ===== */
+const $ = (sel, root = document) => root.querySelector(sel);
+const fmtN = new Intl.NumberFormat('ru-RU', {maximumFractionDigits: 0});
+const rub = v => (v < 0 ? '−' : '') + fmtN.format(Math.abs(Math.round(v))) + ' ₽';
+const num = v => fmtN.format(Math.round(v));
+const pct = v => (v < 0 ? '−' : '') + Math.abs(v).toFixed(1).replace('.', ',') + '%';
+function parseNum(s) {
+  const v = Number(String(s).replace(/[\s ₽%]/g, '').replace(',', '.'));
+  return isFinite(v) ? v : 0;
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+let toastT;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
+}
+function round10k(v) { return Math.floor(v / 10000) * 10000; }
+
+/* ===== Расчёт сделки ===== */
+function calcTax(c, x) {
+  if (c.tax === 'none') return 0;
+  if (c.tax === 'usn6') return c.sale * 0.06;
+  if (c.tax === 'usn15') {
+    const base = c.sale - (c.price + c.buyCosts + c.repair + c.furniture + x.util + x.interest + x.comm);
+    return Math.max(base * 0.15, c.sale * 0.01);
+  }
+  // НДФЛ физлица: доход не ниже 70% кадастровой; вычет — расходы на покупку или 1 млн
+  const income = Math.max(c.sale, c.cadastral > 0 ? c.cadastral * 0.7 : 0);
+  const exp = c.price + c.buyCosts + (c.repairDed ? c.repair : 0);
+  const base = Math.max(0, income - Math.max(exp, 1000000));
+  return base <= 2400000 ? base * 0.13 : 2400000 * 0.13 + (base - 2400000) * 0.15;
+}
+function compute(c) {
+  const m = Math.max(1, Math.round(c.months));
+  const loan = c.fin === 'mortgage' ? Math.max(0, c.price * (1 - c.down / 100)) : 0;
+  let bal = loan, interest = 0, pmt = 0;
+  if (loan > 0) {
+    const r = c.rate / 1200, n = Math.max(1, c.term * 12);
+    pmt = r > 0 ? loan * r / (1 - Math.pow(1 + r, -n)) : loan / n;
+    for (let i = 0; i < m; i++) { const it = bal * r; interest += it; bal -= (pmt - it); }
+    if (bal < 0) bal = 0;
+  }
+  const comm = c.sale * c.commission / 100;
+  const util = c.utilities * m;
+  const ownCash = (c.price - loan) + c.buyCosts + c.repair + c.furniture + util + pmt * m;
+  const costs = c.price + c.buyCosts + c.repair + c.furniture + util + interest + comm;
+  const pbt = c.sale - costs;
+  const tax = calcTax(c, {interest, comm, util});
+  const net = pbt - tax;
+  const roi = ownCash > 0 ? net / ownCash * 100 : 0;
+  const annual = roi * 12 / m;
+  return {m, loan, pmt, interest, bal, comm, util, ownCash, costs, pbt, tax, net, roi, annual};
+}
+// Поиск значения методом деления пополам (функция монотонна)
+function solve(fn, lo, hi, target) {
+  let flo = fn(lo) - target; const fhi = fn(hi) - target;
+  if (flo === 0) return lo;
+  if (flo * fhi > 0) return null;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2, fm = fn(mid) - target;
+    if ((fm > 0) === (flo > 0)) { lo = mid; flo = fm; } else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+function analyse(c) {
+  const base = compute(c);
+  const scen = [
+    ['Базовый', {}],
+    ['Продажа −10%', {sale: c.sale * 0.9}],
+    ['Срок +3 мес.', {months: c.months + 3}],
+    ['Ремонт +20%', {repair: c.repair * 1.2}],
+    ['Всё сразу', {sale: c.sale * 0.9, months: c.months + 3, repair: c.repair * 1.2}]
+  ].map(([name, d]) => ({name, r: compute(Object.assign({}, c, d))}));
+  const worst = scen[scen.length - 1].r;
+  const breakeven = solve(s => compute(Object.assign({}, c, {sale: s})).net, 0, c.sale * 3 + 1e6, 0);
+  const maxBuy = c.sale > 0 ? solve(p => compute(Object.assign({}, c, {price: p})).annual, 1, c.sale, c.target) : null;
+  let verdict, cls, why;
+  if (c.price <= 0 || c.sale <= 0) {
+    verdict = 'Заполните цены'; cls = 'warn'; why = 'Нужны цена покупки и ожидаемая цена продажи.';
+  } else if (base.annual >= c.target && worst.net >= 0) {
+    verdict = 'Брать'; cls = 'good';
+    why = 'Доходность ' + pct(base.annual) + ' годовых не ниже цели ' + pct(c.target) + ', и даже в плохом сценарии сделка без убытка.';
+  } else if (maxBuy && maxBuy > 0 && maxBuy < c.price) {
+    verdict = 'Торговаться до ' + rub(round10k(maxBuy)); cls = 'warn';
+    why = base.annual < c.target
+      ? 'При текущей цене доходность ' + pct(base.annual) + ' годовых — ниже цели ' + pct(c.target) + '. Цель достигается при покупке не дороже ' + rub(round10k(maxBuy)) + '.'
+      : 'Цель по доходности выполнена, но в плохом сценарии сделка уходит в минус. Безопаснее сбить цену до ' + rub(round10k(maxBuy)) + ' или ниже.';
+  } else if (base.net > 0 && worst.net < 0) {
+    verdict = 'Рискованно'; cls = 'warn';
+    why = 'Сделка в плюсе, но в плохом сценарии (продажа −10%, срок +3 мес., ремонт +20%) уходит в минус.';
+  } else {
+    verdict = 'Не брать'; cls = 'bad';
+    why = base.net <= 0 ? 'Сделка убыточна при текущих цифрах.' : 'Доходность ниже цели даже при сильном торге.';
+  }
+  return {base, scen, breakeven, maxBuy, verdict, cls, why};
+}
+
+/* ===== Раздел «Расчёт» ===== */
+const CALC_GROUPS = [
+  ['Покупка', [
+    ['price', 'Цена покупки', '₽'], ['buyCosts', 'Расходы на сделку', '₽', 'Нотариус, госпошлина, риелтор, проверка'],
+    ['cadastral', 'Кадастровая стоимость', '₽', 'Для правила 70%. Если не знаете — 0']]],
+  ['Ремонт и подготовка', [
+    ['repair', 'Ремонт', '₽'], ['furniture', 'Мебель, техника, стейджинг', '₽']]],
+  ['Срок и содержание', [
+    ['months', 'Срок проекта, месяцев', 'мес'], ['utilities', 'Коммуналка в месяц', '₽']]],
+  ['Продажа', [
+    ['sale', 'Цена продажи', '₽'], ['commission', 'Комиссия риелтору', '%']]]
+];
+function field(k, label, suf, hint, val) {
+  return '<label class="f">' + esc(label) +
+    '<div class="inwrap"><input type="text" inputmode="decimal" data-k="' + k + '" value="' + esc(suf === '%' || suf === 'мес' ? String(val).replace('.', ',') : num(val)) + '"><span>' + esc(suf) + '</span></div>' +
+    (hint ? '<span class="small">' + esc(hint) + '</span>' : '') + '</label>';
+}
+function renderCalc() {
+  const c = S.calc;
+  const deal = S.calcDeal && S.deals.find(d => d.id === S.calcDeal);
+  if (S.calcDeal && !deal) S.calcDeal = null;
+  let h = '';
+  h += deal
+    ? '<div class="card row" style="justify-content:space-between"><div><span class="muted small">Расчёт сделки</span><br><b>' + esc(deal.name) + '</b></div><button class="btn" data-a="calc-detach">Новый расчёт</button></div>'
+    : '';
+  h += '<div id="calcRes"></div>';
+  CALC_GROUPS.forEach(([title, fields]) => {
+    h += '<div class="card"><h3>' + title + '</h3><div class="grid2">';
+    fields.forEach(([k, l, s, hint]) => { h += field(k, l, s, hint, c[k]); });
+    h += '</div>';
+    if (title === 'Ремонт и подготовка') h += '<div class="row" style="margin-top:10px"><button class="btn" data-a="repair-from-smeta">Взять из сметы</button><span class="small muted" id="smetaHint"></span></div>';
+    h += '</div>';
+  });
+  h += '<div class="card"><h3>Деньги на покупку</h3>' +
+    '<div class="seg" data-seg="fin"><button data-v="own" class="' + (c.fin === 'own' ? 'on' : '') + '">Свои деньги</button><button data-v="mortgage" class="' + (c.fin === 'mortgage' ? 'on' : '') + '">Ипотека</button></div>' +
+    '<div class="grid2' + (c.fin === 'mortgage' ? '' : ' hide') + '" id="mortBox" style="margin-top:12px">' +
+    field('down', 'Первый взнос', '%', '', c.down) + field('rate', 'Ставка', '%', '', c.rate) + field('term', 'Срок кредита, лет', 'лет', '', c.term) +
+    '</div></div>';
+  h += '<div class="card"><h3>Налог при продаже</h3>' +
+    '<select data-k="tax">' +
+    [['ndfl', 'Физлицо: НДФЛ 13/15%'], ['usn6', 'ИП: УСН 6% с дохода'], ['usn15', 'ИП: УСН 15% доходы − расходы'], ['none', 'Без налога (владение дольше срока)']]
+      .map(([v, l]) => '<option value="' + v + '"' + (c.tax === v ? ' selected' : '') + '>' + l + '</option>').join('') +
+    '</select>' +
+    '<label class="chk' + (c.tax === 'ndfl' ? '' : ' hide') + '" id="repDedBox"><input type="checkbox" data-k="repairDed"' + (c.repairDed ? ' checked' : '') + '><span>Учесть ремонт в расходах <span class="small muted">(только если купили без отделки по договору и есть чеки)</span></span></label>' +
+    '</div>';
+  h += '<div class="card"><h3>Цель</h3><div class="grid2">' + field('target', 'Желаемая доходность, годовых', '%', 'На свои вложенные деньги', c.target) + '</div></div>';
+  h += '<div class="card"><h3>Сохранить</h3>' + (deal
+    ? '<button class="btn pri block" data-a="calc-save-deal">Сохранить в сделку «' + esc(deal.name) + '»</button>'
+    : '<div class="row"><input type="text" id="newDealName" placeholder="Название, например «Однушка на Ленина 5»" style="flex:1;min-width:200px"><button class="btn pri" data-a="calc-new-deal">Создать сделку</button></div>') +
+    '</div>';
+  $('#view').innerHTML = h;
+  updateCalcResults();
+  updateSmetaHint();
+}
+function updateSmetaHint() {
+  const el = $('#smetaHint'); if (el) el.textContent = 'Смета сейчас: ' + rub(smetaTotal().total);
+}
+function updateCalcResults() {
+  const c = S.calc, a = analyse(c), b = a.base;
+  let h = '<div class="verdict ' + a.cls + '"><div class="small" style="font-weight:600;opacity:.85">ВЕРДИКТ</div><div class="v">' + esc(a.verdict) + '</div><p>' + esc(a.why) + '</p>' +
+    '<div class="kpis">' +
+    '<div class="kpi"><b class="' + (b.net < 0 ? 'neg' : '') + '">' + rub(b.net) + '</b><span>чистая прибыль</span></div>' +
+    '<div class="kpi"><b>' + pct(b.annual) + '</b><span>годовых на свои деньги</span></div>' +
+    '<div class="kpi"><b>' + rub(b.ownCash) + '</b><span>нужно своих денег</span></div>' +
+    '<div class="kpi"><b>' + (a.breakeven != null ? rub(a.breakeven) : '—') + '</b><span>продажа в ноль</span></div>' +
+    '</div></div>';
+  h += '<div class="card"><h3>Из чего складывается</h3><table>' +
+    '<tr><td>Цена продажи</td><td class="n">' + rub(c.sale) + '</td></tr>' +
+    '<tr><td>Покупка</td><td class="n neg">' + rub(-c.price) + '</td></tr>' +
+    '<tr><td>Расходы на сделку</td><td class="n neg">' + rub(-c.buyCosts) + '</td></tr>' +
+    '<tr><td>Ремонт</td><td class="n neg">' + rub(-c.repair) + '</td></tr>' +
+    '<tr><td>Мебель, стейджинг</td><td class="n neg">' + rub(-c.furniture) + '</td></tr>' +
+    '<tr><td>Коммуналка за ' + b.m + ' мес.</td><td class="n neg">' + rub(-b.util) + '</td></tr>' +
+    (b.loan > 0 ? '<tr><td>Проценты по ипотеке</td><td class="n neg">' + rub(-b.interest) + '</td></tr>' : '') +
+    '<tr><td>Комиссия риелтору</td><td class="n neg">' + rub(-b.comm) + '</td></tr>' +
+    '<tr><td>Прибыль до налога</td><td class="n">' + rub(b.pbt) + '</td></tr>' +
+    '<tr><td>Налог</td><td class="n neg">' + rub(-b.tax) + '</td></tr>' +
+    '<tr class="total"><td>Чистая прибыль</td><td class="n ' + (b.net < 0 ? 'neg' : 'pos') + '">' + rub(b.net) + '</td></tr>' +
+    '</table>' +
+    (b.loan > 0 ? '<p class="note">Кредит ' + rub(b.loan) + ', платёж ' + rub(b.pmt) + ' в месяц, остаток долга при продаже ' + rub(b.bal) + '.</p>' : '') +
+    '<p class="note">Доходность на свои деньги: ' + pct(b.roi) + ' за ' + b.m + ' мес.</p></div>';
+  h += '<div class="card"><h3>Стресс-тест</h3><table><tr><th>Сценарий</th><th class="n">Прибыль</th><th class="n">Годовых</th></tr>' +
+    a.scen.map(s => '<tr><td>' + s.name + '</td><td class="n ' + (s.r.net < 0 ? 'neg' : '') + '">' + rub(s.r.net) + '</td><td class="n">' + pct(s.r.annual) + '</td></tr>').join('') +
+    '</table><p class="note">Минус в сценарии — значит, при таком повороте сделка убыточна.</p></div>';
+  $('#calcRes').innerHTML = h;
+}
+
+/* ===== Раздел «Смета» ===== */
+function smetaQty(item, sm) {
+  if (item.qty === 'area') return sm.area;
+  if (item.qty === 'baths') return sm.baths;
+  if (item.qty === 'doors') return sm.rooms + sm.baths;
+  return 1;
+}
+function smetaPrice(item, sm) {
+  const key = item.k + '_' + sm.level;
+  return sm.custom[key] != null ? sm.custom[key] : item.p[sm.level];
+}
+function smetaTotal() {
+  const sm = S.smeta;
+  const lines = SMETA_ITEMS.map(it => { const q = smetaQty(it, sm), p = smetaPrice(it, sm); return {it, q, p, sum: q * p}; });
+  const sub = lines.reduce((s, l) => s + l.sum, 0);
+  const extra = sub * sm.contingency / 100;
+  return {lines, sub, extra, total: sub + extra};
+}
+function renderSmeta() {
+  const sm = S.smeta;
+  let h = '<div class="card"><h3>Квартира</h3><div class="grid2">' +
+    smField('area', 'Площадь', 'м²', sm.area) + smField('rooms', 'Комнат', 'шт', sm.rooms) +
+    smField('baths', 'Санузлов', 'шт', sm.baths) + smField('contingency', 'Непредвиденные', '%', sm.contingency) +
+    '</div><h3 style="margin-top:14px">Уровень ремонта</h3><div class="seg" data-seg="level">' +
+    LEVELS.map((l, i) => '<button data-v="' + i + '" class="' + (sm.level === i ? 'on' : '') + '">' + l + '</button>').join('') +
+    '</div></div><div class="card" id="smetaTable"></div>';
+  $('#view').innerHTML = h;
+  updateSmetaTable();
+}
+function smField(k, label, suf, val) {
+  return '<label class="f">' + label + '<div class="inwrap"><input type="text" inputmode="decimal" data-sm="' + k + '" value="' + esc(String(val).replace('.', ',')) + '"><span>' + suf + '</span></div></label>';
+}
+function updateSmetaTable() {
+  const t = smetaTotal(), sm = S.smeta;
+  let h = '<h3>Смета: ' + LEVELS[sm.level].toLowerCase() + '</h3><table><tr><th>Работа</th><th class="n">Цена за ед.</th><th class="n">Сумма</th></tr>';
+  t.lines.forEach(l => {
+    h += '<tr><td>' + esc(l.it.name) + '<br><span class="small muted">' + num(l.q) + ' ' + l.it.unit + '</span></td>' +
+      '<td class="n"><input type="text" inputmode="numeric" data-price="' + l.it.k + '" value="' + num(l.p) + '" style="width:104px;text-align:right;padding:6px 8px;min-height:36px"></td>' +
+      '<td class="n">' + rub(l.sum) + '</td></tr>';
+  });
+  h += '<tr><td>Непредвиденные ' + sm.contingency + '%</td><td></td><td class="n">' + rub(t.extra) + '</td></tr>' +
+    '<tr class="total"><td>Итого</td><td></td><td class="n">' + rub(t.total) + '</td></tr></table>' +
+    '<p class="note">Цены ориентировочные: работа плюс материалы. Поправьте их под свой регион и бригаду, приложение запомнит.</p>' +
+    '<p class="note">За м²: ' + rub(sm.area > 0 ? t.total / sm.area : 0) + '</p>' +
+    '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="smeta-to-calc">Перенести в расчёт</button><button class="btn" data-a="smeta-reset">Сбросить цены</button></div>';
+  $('#smetaTable').innerHTML = h;
+}
+
+/* ===== Раздел «Сделки» ===== */
+function dealPlan(d) { return d.calc ? compute(Object.assign({}, DEFAULT_CALC, d.calc)) : null; }
+function renderDeals() {
+  if (openDeal && S.deals.some(d => d.id === openDeal)) return renderDeal(S.deals.find(d => d.id === openDeal));
+  openDeal = null;
+  let h = '<div class="row" style="justify-content:space-between;margin-bottom:12px"><h2 style="margin:0">Мои сделки</h2><button class="btn pri" data-a="deal-new">+ Сделка</button></div>';
+  if (!S.deals.length) {
+    h += '<div class="card empty"><p><b>Сделок пока нет</b></p><p class="muted">Посчитайте объект в разделе «Расчёт» и нажмите «Создать сделку», или добавьте сделку кнопкой выше.</p></div>';
+  } else {
+    S.deals.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).forEach(d => {
+      const p = dealPlan(d), spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
+      h += '<button class="card deal" data-a="deal-open" data-id="' + d.id + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + esc(d.stage) + '</span></div>' +
+        (d.address ? '<div class="small muted">' + esc(d.address) + '</div>' : '') +
+        '<div class="small" style="margin-top:6px">План: ' + (p ? '<b>' + rub(p.net) + '</b> · ' + pct(p.annual) + ' годовых' : 'нет расчёта') + ' · Потрачено: ' + rub(spent) + '</div></button>';
+    });
+  }
+  h += '<div class="card"><h3>Резервная копия</h3><p class="small muted" style="margin-top:0">Данные хранятся только в этом телефоне. Время от времени скачивайте копию.</p>' +
+    '<div class="row"><button class="btn" data-a="backup-save">Скачать копию</button><label class="btn">Загрузить копию<input type="file" accept="application/json,.json" id="backupFile" class="hide"></label></div></div>';
+  $('#view').innerHTML = h;
+}
+function renderDeal(d) {
+  const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
+  const exp = d.expenses || [];
+  const spent = exp.reduce((s, e) => s + e.sum, 0);
+  const byCat = {};
+  exp.forEach(e => { byCat[e.cat] = (byCat[e.cat] || 0) + e.sum; });
+  const repairFact = (byCat['Ремонт'] || 0) + (byCat['Материалы'] || 0);
+  const checks = d.checks || {};
+  const done = CHECKLIST.filter(([k]) => checks[k]).length;
+  let h = '<button class="back" data-a="deal-close">← Все сделки</button>';
+  h += '<div class="card"><label class="f">Название<input type="text" data-d="name" value="' + esc(d.name) + '"></label>' +
+    '<div style="height:10px"></div><label class="f">Адрес<input type="text" data-d="address" value="' + esc(d.address || '') + '"></label>' +
+    '<div style="height:10px"></div><label class="f">Ссылка на объявление или лот<input type="url" data-d="link" value="' + esc(d.link || '') + '" placeholder="https://"></label>' +
+    (d.link && /^https?:\/\//i.test(d.link) ? '<p class="note"><a href="' + esc(d.link) + '" target="_blank" rel="noopener" style="color:var(--gold-ink)">Открыть объявление</a></p>' : '') +
+    '<h3 style="margin-top:14px">Этап</h3><div class="chips">' +
+    STAGES.map(s => '<button data-a="deal-stage" data-v="' + s + '" class="' + (d.stage === s ? 'on' : '') + '">' + s + '</button>').join('') + '</div></div>';
+  h += '<div class="card"><h3>План по расчёту</h3>' + (p
+    ? '<table><tr><td>Покупка</td><td class="n">' + rub(c.price) + '</td></tr><tr><td>Ремонт по плану</td><td class="n">' + rub(c.repair) + '</td></tr><tr><td>Продажа по плану</td><td class="n">' + rub(c.sale) + '</td></tr><tr class="total"><td>Чистая прибыль</td><td class="n">' + rub(p.net) + ' · ' + pct(p.annual) + '</td></tr></table>'
+    : '<p class="muted">Расчёта ещё нет.</p>') +
+    '<button class="btn block" style="margin-top:10px" data-a="deal-to-calc">' + (p ? 'Открыть в калькуляторе' : 'Посчитать сделку') + '</button></div>';
+  h += '<div class="card"><h3>Расходы</h3>' +
+    '<div class="grid2"><label class="f">Статья<select id="expCat">' + EXP_CATS.map(c2 => '<option>' + c2 + '</option>').join('') + '</select></label>' +
+    '<label class="f">Сумма<div class="inwrap"><input type="text" inputmode="decimal" id="expSum"><span>₽</span></div></label>' +
+    '<label class="f">Дата<input type="date" id="expDate" value="' + today() + '"></label>' +
+    '<label class="f">Комментарий<input type="text" id="expNote" placeholder="например, плитка"></label></div>' +
+    '<button class="btn pri block" style="margin-top:10px" data-a="exp-add">Добавить расход</button>';
+  if (exp.length) {
+    h += '<table style="margin-top:12px">' + exp.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(e =>
+      '<tr><td>' + esc(e.cat) + (e.note ? '<br><span class="small muted">' + esc(e.note) + '</span>' : '') + '<br><span class="small muted">' + esc((e.date || '').split('-').reverse().join('.')) + '</span></td>' +
+      '<td class="n">' + rub(e.sum) + '<br><button class="back small" style="padding:4px 0;color:var(--bad)" data-a="exp-del" data-id="' + e.id + '">удалить</button></td></tr>').join('') +
+      '<tr class="total"><td>Всего потрачено</td><td class="n">' + rub(spent) + '</td></tr></table>';
+    if (p) {
+      const diff = repairFact - c.repair;
+      h += '<p class="note">Ремонт и материалы: ' + rub(repairFact) + ' из плана ' + rub(c.repair) + (diff > 0 ? ' — <b class="neg">перерасход ' + rub(diff) + '</b>' : ' — в пределах плана') + '.</p>';
+    }
+  }
+  h += '</div>';
+  const saleFact = d.saleFact || 0;
+  const factProfit = saleFact > 0 ? saleFact - saleFact * c.commission / 100 - c.price - spent : null;
+  h += '<div class="card"><h3>Факт после продажи</h3><div class="grid2"><label class="f">Продали за<div class="inwrap"><input type="text" inputmode="decimal" data-d="saleFact" value="' + (saleFact ? num(saleFact) : '') + '"><span>₽</span></div></label></div>' +
+    (factProfit != null ? '<table style="margin-top:10px"><tr><td>Продажа</td><td class="n">' + rub(saleFact) + '</td></tr><tr><td>Комиссия ' + c.commission + '%</td><td class="n neg">' + rub(-saleFact * c.commission / 100) + '</td></tr><tr><td>Покупка</td><td class="n neg">' + rub(-c.price) + '</td></tr><tr><td>Все расходы</td><td class="n neg">' + rub(-spent) + '</td></tr><tr class="total"><td>Прибыль до налога</td><td class="n ' + (factProfit < 0 ? 'neg' : 'pos') + '">' + rub(factProfit) + '</td></tr></table>' +
+      (p ? '<p class="note">План до налога был ' + rub(p.pbt) + '.</p>' : '') : '<p class="note">Впишите цену продажи, чтобы увидеть фактическую прибыль. Расходы на сделку при покупке вносите в «Расходы» со статьёй «Оформление сделки».</p>') + '</div>';
+  h += '<div class="card"><h3>Проверка объекта · ' + done + ' из ' + CHECKLIST.length + '</h3>' +
+    CHECKLIST.map(([k, l]) => '<label class="chk"><input type="checkbox" data-check="' + k + '"' + (checks[k] ? ' checked' : '') + '><span>' + esc(l) + '</span></label>').join('') + '</div>';
+  h += '<div class="card"><h3>Заметки</h3><textarea data-d="notes" placeholder="Контакты продавца, прораба, договорённости">' + esc(d.notes || '') + '</textarea></div>';
+  h += '<button class="btn danger block" data-a="deal-del">Удалить сделку</button>';
+  $('#view').innerHTML = h;
+}
+function newDeal(name, calc) {
+  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], checks: {}, notes: '', saleFact: 0, created: Date.now(), updated: Date.now()};
+  S.deals.push(d); save(); return d;
+}
+
+/* ===== Раздел «Справка» ===== */
+function renderRef() {
+  $('#view').innerHTML = '<h2>Справочник флипера</h2><div class="card">' +
+    '<details open><summary>Налог при продаже квартиры (физлицо)</summary><ul>' +
+    '<li>Налога нет, если владели дольше минимального срока: <b>3 года</b> — наследство, дарение от близкого родственника, приватизация, рента, единственное жильё; в остальных случаях — <b>5 лет</b>. Для семей с двумя и более детьми есть отдельная льгота — проверьте условия.</li>' +
+    '<li>Иначе НДФЛ: <b>13%</b> с базы до 2,4 млн ₽ за год и <b>15%</b> с превышения.</li>' +
+    '<li>Доход уменьшают либо на подтверждённые расходы на покупку, либо на фиксированный вычет <b>1 млн ₽</b> — что выгоднее.</li>' +
+    '<li>Если цена продажи ниже <b>70% кадастровой стоимости</b>, доходом считают 70% кадастровой.</li>' +
+    '<li>Расходы на ремонт обычно учитывают, только если по договору квартира куплена без отделки и есть чеки.</li>' +
+    '<li>Декларация 3-НДФЛ — до 30 апреля следующего года, налог — до 15 июля.</li></ul></details>' +
+    '<details><summary>Если флиппинг — это бизнес</summary><ul>' +
+    '<li>Регулярные перепродажи налоговая может признать предпринимательством и доначислить налоги.</li>' +
+    '<li>ИП на УСН 6% платит с полной суммы продажи; на УСН 15% — с разницы доходов и расходов, но не меньше 1% от дохода. Плюс страховые взносы ИП.</li>' +
+    '<li>Самозанятость для продажи недвижимости не подходит.</li>' +
+    '<li>Выбор режима обсудите с бухгалтером до первой сделки.</li></ul></details>' +
+    '<details><summary>Проверка объекта перед покупкой</summary><ul>' +
+    CHECKLIST.map(([, l]) => '<li>' + esc(l) + '</li>').join('') + '</ul></details>' +
+    '<details><summary>Подготовка к продаже</summary><ul>' +
+    '<li>Чистота, свет во всех комнатах, нейтральный запах.</li>' +
+    '<li>Убрать личные вещи, оставить минимум мебели и пару акцентов: текстиль, растения.</li>' +
+    '<li>Фото при дневном свете, широкий угол, ровный горизонт; первое фото — самая выигрышная комната.</li>' +
+    '<li>Документы под рукой: выписка ЕГРН, справка об отсутствии долгов, техпаспорт.</li>' +
+    '<li>Цена: чуть ниже прямых конкурентов в доме и районе даёт быстрые звонки и запас для торга.</li></ul></details>' +
+    '<details><summary>Как читать вердикт калькулятора</summary><ul>' +
+    '<li><b>Брать</b> — доходность не ниже вашей цели, и даже в плохом сценарии без убытка.</li>' +
+    '<li><b>Торговаться до X</b> — при цене X или ниже сделка выходит на вашу цель.</li>' +
+    '<li><b>Рискованно</b> — в плюсе, но плохой сценарий уводит в минус.</li>' +
+    '<li><b>Не брать</b> — убыток или доходность ниже цели даже при сильном торге.</li>' +
+    '<li>Плохой сценарий: продажа на 10% дешевле, срок на 3 месяца дольше, ремонт на 20% дороже.</li></ul></details>' +
+    '</div><p class="note">Расчёты и справка — ориентир, а не гарантия прибыли и не юридическая консультация. Перед сделкой сверьтесь с юристом и бухгалтером.</p>' +
+    '<p class="note">Флипология · прототип v0.1</p>';
+}
+
+/* ===== Навигация ===== */
+const TITLES = {calc: 'Калькулятор сделки', smeta: 'Смета ремонта', deals: 'Мои сделки', ref: 'Справочник'};
+function go(tab) {
+  S.tab = tab; save();
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $('#sub').textContent = TITLES[tab];
+  ({calc: renderCalc, smeta: renderSmeta, deals: renderDeals, ref: renderRef})[tab]();
+  window.scrollTo(0, 0);
+}
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { if (b.dataset.tab === 'deals') openDeal = null; go(b.dataset.tab); } });
+
+/* ===== Ввод данных ===== */
+const view = $('#view');
+const INT_KEYS = ['months', 'term'];
+view.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.k && t.type !== 'checkbox' && t.tagName !== 'SELECT') {
+    let v = parseNum(t.value); if (INT_KEYS.includes(t.dataset.k)) v = Math.max(1, Math.round(v) || 1);
+    S.calc[t.dataset.k] = v; save(); updateCalcResults();
+  } else if (t.dataset.sm) {
+    let v = parseNum(t.value); if (t.dataset.sm !== 'area' && t.dataset.sm !== 'contingency') v = Math.max(0, Math.round(v));
+    S.smeta[t.dataset.sm] = v; save(); updateSmetaTableKeepFocus();
+  } else if (t.dataset.price) {
+    S.smeta.custom[t.dataset.price + '_' + S.smeta.level] = parseNum(t.value); save(); updateSmetaTableKeepFocus(t.dataset.price);
+  } else if (t.dataset.d) {
+    const d = S.deals.find(x => x.id === openDeal); if (!d) return;
+    d[t.dataset.d] = t.dataset.d === 'saleFact' ? parseNum(t.value) : t.value; d.updated = Date.now(); save();
+  }
+});
+// Пересчёт таблицы сметы без потери курсора в поле цены
+function updateSmetaTableKeepFocus(priceKey) {
+  if (!priceKey) return updateSmetaTable();
+  const pos = document.activeElement && document.activeElement.selectionStart;
+  updateSmetaTable();
+  const inp = view.querySelector('[data-price="' + priceKey + '"]');
+  if (inp) { inp.value = num(S.smeta.custom[priceKey + '_' + S.smeta.level]); inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (e) {} }
+}
+view.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.k === 'tax') { S.calc.tax = t.value; save(); $('#repDedBox').classList.toggle('hide', t.value !== 'ndfl'); updateCalcResults(); }
+  else if (t.dataset.k === 'repairDed') { S.calc.repairDed = t.checked; save(); updateCalcResults(); }
+  else if (t.dataset.check) {
+    const d = S.deals.find(x => x.id === openDeal); if (!d) return;
+    d.checks = d.checks || {}; d.checks[t.dataset.check] = t.checked; d.updated = Date.now(); save(); renderDeal(d);
+  } else if (t.dataset.d === 'saleFact' || t.dataset.d === 'link' || t.dataset.d === 'name') {
+    const d = S.deals.find(x => x.id === openDeal); if (d) renderDeal(d);
+  } else if (t.id === 'backupFile' && t.files[0]) {
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const data = JSON.parse(r.result);
+        if (!data || !Array.isArray(data.deals)) throw new Error('bad');
+        if (!confirm('Заменить текущие данные копией? Сделок в копии: ' + data.deals.length)) return;
+        localStorage.setItem(LS_KEY, JSON.stringify(data)); S = load(); toast('Копия загружена'); go('deals');
+      } catch (err) { toast('Это не файл копии Флипологии'); }
+    };
+    r.readAsText(t.files[0]);
+  }
+});
+// Красивое форматирование чисел после ввода
+view.addEventListener('focusout', e => {
+  const t = e.target;
+  if (t.dataset.k && t.type === 'text') {
+    const v = S.calc[t.dataset.k]; const pctLike = ['commission', 'down', 'rate', 'target', 'months', 'term'].includes(t.dataset.k);
+    t.value = pctLike ? String(v).replace('.', ',') : num(v);
+  }
+  if (t.dataset.price) t.value = num(parseNum(t.value));
+  if (t.id === 'expSum' && t.value) t.value = num(parseNum(t.value));
+});
+
+/* ===== Кнопки ===== */
+view.addEventListener('click', e => {
+  const segBtn = e.target.closest('.seg button');
+  if (segBtn) {
+    const seg = segBtn.parentElement.dataset.seg;
+    if (seg === 'fin') { S.calc.fin = segBtn.dataset.v; $('#mortBox').classList.toggle('hide', S.calc.fin !== 'mortgage'); updateCalcResults(); }
+    if (seg === 'level') { S.smeta.level = Number(segBtn.dataset.v); updateSmetaTable(); }
+    segBtn.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === segBtn));
+    save(); return;
+  }
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const a = b.dataset.a;
+  const d = S.deals.find(x => x.id === openDeal);
+  switch (a) {
+    case 'repair-from-smeta': {
+      S.calc.repair = Math.round(smetaTotal().total); save(); renderCalc(); toast('Ремонт взят из сметы'); break;
+    }
+    case 'calc-detach': S.calcDeal = null; save(); renderCalc(); break;
+    case 'calc-new-deal': {
+      const name = ($('#newDealName').value || '').trim();
+      if (!name) { toast('Впишите название сделки'); $('#newDealName').focus(); break; }
+      const nd = newDeal(name, S.calc); S.calcDeal = nd.id; save(); renderCalc(); toast('Сделка создана — она в разделе «Сделки»'); break;
+    }
+    case 'calc-save-deal': {
+      const cd = S.deals.find(x => x.id === S.calcDeal);
+      if (cd) { cd.calc = Object.assign({}, S.calc); cd.updated = Date.now(); save(); toast('Расчёт сохранён в сделку'); }
+      break;
+    }
+    case 'smeta-to-calc': S.calc.repair = Math.round(smetaTotal().total); save(); go('calc'); toast('Ремонт перенесён в расчёт'); break;
+    case 'smeta-reset':
+      if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
+      break;
+    case 'deal-new': { const nd = newDeal('Новая сделка', null); openDeal = nd.id; renderDeals(); break; }
+    case 'deal-open': openDeal = b.dataset.id; renderDeals(); window.scrollTo(0, 0); break;
+    case 'deal-close': openDeal = null; renderDeals(); window.scrollTo(0, 0); break;
+    case 'deal-stage': if (d) { d.stage = b.dataset.v; d.updated = Date.now(); save(); renderDeal(d); } break;
+    case 'deal-to-calc':
+      if (d) { S.calc = Object.assign({}, DEFAULT_CALC, d.calc || {}); S.calcDeal = d.id; save(); go('calc'); }
+      break;
+    case 'exp-add': {
+      if (!d) break;
+      const sum = parseNum($('#expSum').value);
+      if (sum <= 0) { toast('Впишите сумму расхода'); $('#expSum').focus(); break; }
+      d.expenses = d.expenses || [];
+      d.expenses.push({id: uid(), cat: $('#expCat').value, sum, date: $('#expDate').value || today(), note: $('#expNote').value.trim()});
+      d.updated = Date.now(); save(); renderDeal(d); toast('Расход добавлен'); break;
+    }
+    case 'exp-del':
+      if (d && confirm('Удалить этот расход?')) { d.expenses = d.expenses.filter(x => x.id !== b.dataset.id); save(); renderDeal(d); }
+      break;
+    case 'deal-del':
+      if (d && confirm('Удалить сделку «' + d.name + '» со всеми расходами?')) {
+        S.deals = S.deals.filter(x => x.id !== d.id); if (S.calcDeal === d.id) S.calcDeal = null; openDeal = null; save(); renderDeals();
+      }
+      break;
+    case 'backup-save': {
+      const blob = new Blob([JSON.stringify(S, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob), link = document.createElement('a');
+      link.href = url; link.download = 'flipologia-kopiya-' + today() + '.json';
+      document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      break;
+    }
+  }
+});
+
+go(S.tab);
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
