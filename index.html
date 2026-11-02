@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14283A">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="description" content="Флипология — калькулятор сделки, смета ремонта и учёт сделок для флиперов недвижимости">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -47,7 +48,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
 .brand{font-weight:800;letter-spacing:2px;font-size:15px}
 .sub{font-size:13px;opacity:.75}
 main{max-width:720px;margin:0 auto;padding:16px}
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
 .tabs button{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
 .tabs button svg{width:24px;height:24px}
 .tabs button.on{color:var(--ink);font-weight:600}
@@ -120,6 +121,7 @@ details li{margin:4px 0}
 <nav class="tabs" id="tabs">
   <button data-tab="calc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg>Расчёт</button>
   <button data-tab="smeta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Смета</button>
+  <button data-tab="torgi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 12.5l-8 8a2.1 2.1 0 1 1-3-3l8-8"/><path d="M16 16l6-6"/><path d="M8 8l6-6"/><path d="M9 7l8 8"/><path d="M21 11l-8-8"/></svg>Торги</button>
   <button data-tab="deals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Сделки</button>
   <button data-tab="ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h6M8 12h6"/></svg>Справка</button>
 </nav>
@@ -136,7 +138,8 @@ const DEFAULT_CALC = {
   sale: 7000000, commission: 2,
   fin: 'own', down: 30, rate: 20, term: 20,
   tax: 'ndfl', repairDed: false,
-  target: 30
+  target: 30,
+  torgiExtra: 0, torgiDelay: 0  // сколько расходов и месяцев торгов уже вошло в buyCosts и months
 };
 const LEVELS = ['Косметика', 'Стандарт', 'Под ключ'];
 // Ориентировочные цены «работа + материалы», ₽. Пользователь правит под свой регион.
@@ -168,18 +171,76 @@ const CHECKLIST = [
   ['replan', 'Перепланировка узаконена или её нет'],
   ['view', 'Осмотр: стояки, проводка, окна, соседи сверху']
 ];
+// Торги: аукцион (цена растёт шагами) или публичное предложение (цена снижается по этапам)
+const DEFAULT_TORGI = {kind: 'auction', start: 4000000, deposit: 20, step: 5, drop: 10, periods: 8, extra: 50000, delay: 2};
+const TORGI_LINKS = [
+  ['https://fedresurs.ru/biddings', 'Федресурс', 'торги по банкротству: все сообщения о торгах'],
+  ['https://torgi.gov.ru/new/public', 'ГИС Торги', 'арестованное, государственное и муниципальное имущество'],
+  ['https://m-ets.ru', 'МЭТС', 'электронная площадка, много лотов банкротства'],
+  ['https://www.fabrikant.ru', 'Фабрикант', 'электронная площадка'],
+  ['https://lot-online.ru', 'Российский аукционный дом', 'электронная площадка'],
+  ['https://kad.arbitr.ru', 'Картотека арбитражных дел', 'дело о банкротстве продавца: споры и жалобы'],
+  ['https://t.me/flipologia', 'Канал «Флипология»', 'лоты недели с дисконтом и разборы']
+];
+const TORGI_RISKS = [
+  'Прочитайте сообщение о торгах на Федресурсе: порядок, сроки, размер задатка. Задаток платите только по реквизитам из сообщения',
+  'Кто прописан и живёт в квартире: выселение через суд занимает месяцы — заложите их в «Дольше срок»',
+  'Долг по взносам на капремонт переходит к новому собственнику (ч. 3 ст. 158 ЖК РФ) — запросите справку',
+  'Обременения в ЕГРН: в банкротстве залог при продаже прекращается, при продаже арестованного имущества — уточните в документации',
+  'Дело о банкротстве на kad.arbitr.ru: жалобы на торги и споры, из-за которых сделку могут оспорить',
+  'Осмотр квартиры до торгов: договоритесь с организатором или управляющим',
+  'После победы — договор и оплата, обычно за 30 дней. Деньги нужны сразу, ипотека на торгах доступна не всегда',
+  'Доля в квартире продаётся с большим дисконтом не случайно: жить с другими собственниками и перепродать долю сложно',
+  'Нужна электронная подпись и регистрация на площадке; услуги площадки иногда оплачивает победитель'
+];
 
 /* ===== Хранилище ===== */
 function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(LS_KEY)); } catch (e) {}
   if (!s || typeof s !== 'object') s = {};
+  const smeta = clean(DEFAULT_SMETA, s.smeta, {level: [0, 1, 2]});
+  smeta.custom = {};
+  if (s.smeta && s.smeta.custom && typeof s.smeta.custom === 'object') {
+    Object.keys(s.smeta.custom).forEach(k => { const v = Number(s.smeta.custom[k]); if (/^[a-z]+_[0-2]$/.test(k) && isFinite(v)) smeta.custom[k] = v; });
+  }
+  const torgi = clean(DEFAULT_TORGI, s.torgi, {kind: ['auction', 'offer']});
+  torgi.periods = Math.min(30, Math.max(1, Math.round(torgi.periods)));
   return {
-    deals: Array.isArray(s.deals) ? s.deals : [],
-    calc: Object.assign({}, DEFAULT_CALC, s.calc || {}),
-    calcDeal: s.calcDeal || null,
-    smeta: Object.assign({}, DEFAULT_SMETA, s.smeta || {}),
-    tab: s.tab || 'calc'
+    deals: Array.isArray(s.deals) ? s.deals.map(cleanDeal).filter(Boolean) : [],
+    calc: clean(DEFAULT_CALC, s.calc, CALC_ENUMS),
+    calcDeal: typeof s.calcDeal === 'string' ? s.calcDeal : null,
+    smeta, torgi,
+    sellM2: Math.max(0, Number(s.sellM2) || 0),
+    tab: ['calc', 'smeta', 'torgi', 'deals', 'ref'].includes(s.tab) ? s.tab : 'calc'
+  };
+}
+// Приводит сохранённые данные к ожидаемым типам: числа — к числам, варианты — к допустимым.
+// Защищает от испорченной или подделанной резервной копии.
+const CALC_ENUMS = {fin: ['own', 'mortgage'], tax: ['ndfl', 'usn6', 'usn15', 'none']};
+function clean(def, src, enums) {
+  const o = Object.assign({}, def);
+  if (!src || typeof src !== 'object') return o;
+  Object.keys(def).forEach(k => {
+    const v = src[k], d = def[k];
+    if (enums && enums[k]) o[k] = enums[k].includes(v) ? v : d;
+    else if (typeof d === 'number') { const n = Number(v); o[k] = v != null && isFinite(n) ? n : d; }
+    else if (typeof d === 'boolean') o[k] = !!v;
+  });
+  return o;
+}
+function cleanDeal(d) {
+  if (!d || typeof d !== 'object') return null;
+  const str = v => v == null ? '' : String(v);
+  return {
+    id: str(d.id) || uid(), name: str(d.name), address: str(d.address), link: str(d.link),
+    stage: STAGES.includes(d.stage) ? d.stage : STAGES[0],
+    calc: d.calc ? clean(DEFAULT_CALC, d.calc, CALC_ENUMS) : null,
+    expenses: Array.isArray(d.expenses) ? d.expenses.filter(e => e && typeof e === 'object').map(e =>
+      ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note)})) : [],
+    checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
+    notes: str(d.notes), saleFact: Number(d.saleFact) || 0,
+    created: Number(d.created) || Date.now(), updated: Number(d.updated) || Date.now()
   };
 }
 let S = load();
@@ -315,6 +376,11 @@ function renderCalc() {
   h += deal
     ? '<div class="card row" style="justify-content:space-between"><div><span class="muted small">Расчёт сделки</span><br><b>' + esc(deal.name) + '</b></div><button class="btn" data-a="calc-detach">Новый расчёт</button></div>'
     : '';
+  h += '<div class="card"><details id="parseBox"' + (parseDraft ? ' open' : '') + '><summary>Вставить объявление с Авито или ЦИАН</summary>' +
+    '<p class="small muted" style="margin-top:0">Откройте объявление, выделите заголовок, цену, параметры и адрес, скопируйте и вставьте сюда. Приложение найдёт цену, площадь, комнаты, этаж и адрес.</p>' +
+    '<textarea id="parseText" placeholder="2-к. квартира, 54,3 м², 5/9 эт.&#10;12 500 000 ₽&#10;Москва, Кузьминская ул., 11">' + esc(parseDraft) + '</textarea>' +
+    '<div class="grid2" style="margin-top:10px"><label class="f">Продажа после ремонта, за м²<div class="inwrap"><input type="text" inputmode="decimal" id="sellM2" value="' + (S.sellM2 ? num(S.sellM2) : '') + '"><span>₽</span></div><span class="small">Необязательно: цена м² отремонтированных квартир рядом</span></label></div>' +
+    '<button class="btn pri block" style="margin-top:10px" data-a="parse">Разобрать</button><div id="parseRes"></div></details></div>';
   h += '<div id="calcRes"></div>';
   CALC_GROUPS.forEach(([title, fields]) => {
     h += '<div class="card"><h3>' + title + '</h3><div class="grid2">';
@@ -377,6 +443,98 @@ function updateCalcResults() {
   $('#calcRes').innerHTML = h;
 }
 
+/* ===== Разбор текста объявления ===== */
+let parseDraft = '';   // текст в поле «Вставить объявление», пока приложение открыто
+let lastParse = null;  // что нашли в последний раз
+const ROOM_WORDS = {одно: 1, двух: 2, трёх: 3, трех: 3, четырёх: 4, четырех: 4, пяти: 5};
+function parseListing(text) {
+  const t = String(text).replace(/[\t\u00a0\u2009\u202f]/g, ' ');
+  const r = {};
+  let m;
+  // Цена: сумма от 300 тыс. ₽. Подписанная «Цена» важнее; пропускаем цену за м²,
+  // платежи, скидки, взносы и старую цену («было … стало …»)
+  const priceRe = /(?<![\d.,])(?:(\d{1,3}(?: \d{3})+|\d{4,})(?:[.,]\d+)? ?(?:₽|руб|р\.)|(\d{1,3}(?: \d{3})*(?:[.,]\d+)?) ?(млн|тыс))/gi;
+  const prices = [];
+  while ((m = priceRe.exec(t))) {
+    const end = m.index + m[0].length;
+    const before = t.slice(Math.max(0, m.index - 30), m.index), after = t.slice(end, end + 14);
+    if (/^\.?\s*(?:за|\/|в)\s*(?:1\s*)?(?:м|кв|мес)/i.test(after)) continue;
+    if (/(скидк|плат[её]ж|было|взнос|залог|доход|комисси|аренд|кэшб[эе]к)[^\n\d]{0,20}$/i.test(before) || /(?<![а-яё])от\s*$/i.test(before)) continue;
+    const v = m[1] ? parseNum(m[1]) : parseNum(m[2]) * (/млн/i.test(m[3]) ? 1e6 : 1e3);
+    if (v >= 300000) prices.push({v, label: /цена[^\n\d]{0,12}$/i.test(before)});
+  }
+  const pr = prices.find(p => p.label) || prices[0];
+  if (pr) r.price = pr.v;
+  // Площадь: из заголовка («2-к. квартира, 54,3 м²»), иначе подписанная «Общая», иначе первая,
+  // кроме кухни, жилой и цены за м². Подпись бывает до значения и после него — смотрим, как в тексте.
+  const valueFirst = /\d ?(?:м²|м2)\s*общая/i.test(t);
+  const areaRe = /(\d+(?:[.,]\d+)?) ?(?:м²|м2|кв\.? ?м)/gi;
+  const areas = [];
+  while ((m = areaRe.exec(t))) {
+    const before = t.slice(Math.max(0, m.index - 25), m.index), after = t.slice(m.index + m[0].length, m.index + m[0].length + 20);
+    if (/(?:за|\/)\s*$/i.test(before)) continue;
+    const v = parseNum(m[1]); if (v < 8 || v > 1000) continue;
+    const other = /(кухн|жил|комнат[ыа]?\s|балкон|лодж)[^\d\n]{0,20}$/i.test(before) || (valueFirst && /^\.?\s*(жил|кухн|площадь кухни)/i.test(after));
+    const total = !other && (valueFirst ? /^\.?\s*общая/i.test(after) : /общая[^\d]{0,20}$/i.test(before));
+    const title = !other && /(квартир|студи|\d-?\s?комн|апартамент)[^\n]{0,25}$/i.test(before);
+    areas.push({v, title, total, other});
+  }
+  const ar = areas.find(a => a.title) || areas.find(a => a.total) || areas.find(a => !a.other);
+  if (ar) r.area = ar.v;
+  // Комнаты: «2-к.», «2-комн.», «2к кв», «Количество комнат: 2». Корпус дома («5к1», «5 к. 1») — не комнаты.
+  if ((m = t.match(/количество комнат[^\d\n]{0,5}(\d)/i))) r.rooms = Number(m[1]);
+  else if ((m = t.match(/(?<![\d.,])(\d)(?:\s*-\s*к\.?(?![а-яё\d])|\s*-?\s*комн|\s?к\.?\s+кв)/i))) r.rooms = Number(m[1]);
+  else if ((m = t.match(/(одно|двух|тр[её]х|четыр[её]х|пяти)комнатн/i))) r.rooms = ROOM_WORDS[m[1].toLowerCase()];
+  else if (/(?:^|\n)\s*студи|квартира-студи|комнат[^\n]{0,5}студи|студия,\s*\d/i.test(t)) { r.rooms = 1; r.studio = true; }
+  m = t.match(/(\d{1,2}) ?\/ ?(\d{1,3}) ?эт/i) || t.match(/этаж\D{0,3}(\d{1,2})\D{1,5}(\d{1,3})/i);
+  if (m) { r.floor = Number(m[1]); r.floors = Number(m[2]); }
+  // Адрес: строка с улицей или городом; с номером дома или «Москва» — важнее
+  const lines = t.split(/\n/).map(s => s.trim()).filter(Boolean);
+  const addrRe = /(?<![а-яё])(москва|московская обл|ул\.|улица|проспект|пр-т|пр\.|шоссе|переулок|пер\.|бульвар|б-р|набережная|наб\.|проезд|мкр)/i;
+  const addrs = lines.filter(s => s.length <= 140 && !/₽/.test(s) && addrRe.test(s));
+  r.address = addrs.find(s => /\d|москв/i.test(s)) || addrs[0] || '';
+  const metroRe = /(?:^|[\s,])(?<!кв\.?\s?)(?:м\.|метро)\s?([А-ЯЁ][а-яё]+(?:[ -][А-ЯЁа-яё][а-яё]+)?)/g;
+  while ((m = metroRe.exec(t))) {
+    if (!/^(пешком|транспорт|минут|рядом|близко)/i.test(m[1])) { r.metro = m[1]; break; }
+  }
+  m = t.match(/https?:\/\/[^\s<>"]+/);
+  if (m) r.link = m[0].replace(/[).,;:!?»"'\]]+$/, '');
+  return r;
+}
+function parseTitle(r) {
+  const parts = [];
+  if (r.rooms) parts.push(r.studio ? 'Студия' : r.rooms + '-к');
+  if (r.area) parts.push(String(r.area).replace('.', ',') + ' м²');
+  if (r.address) parts.push(r.address.length > 50 ? r.address.slice(0, 50) + '…' : r.address);
+  return parts.join(', ') || 'Объект из объявления';
+}
+function renderParseRes() {
+  const r = lastParse, miss = '<span class="muted">не нашёл</span>';
+  if (!r.price && !r.area) {
+    $('#parseRes').innerHTML = '<p class="note">Не нашёл ни цены, ни площади. Скопируйте из объявления заголовок и цену.</p>'; return;
+  }
+  $('#parseRes').innerHTML = '<table style="margin-top:12px">' +
+    '<tr><td>Цена</td><td class="n">' + (r.price ? rub(r.price) : miss) + '</td></tr>' +
+    '<tr><td>Площадь</td><td class="n">' + (r.area ? String(r.area).replace('.', ',') + ' м²' : miss) + '</td></tr>' +
+    (r.price && r.area ? '<tr><td>Цена за м²</td><td class="n">' + rub(r.price / r.area) + '</td></tr>' : '') +
+    '<tr><td>Комнат</td><td class="n">' + (r.rooms ? (r.studio ? 'студия' : r.rooms) : miss) + '</td></tr>' +
+    '<tr><td>Этаж</td><td class="n">' + (r.floor ? r.floor + ' из ' + r.floors : miss) + '</td></tr>' +
+    '<tr><td>Адрес</td><td class="n" style="white-space:normal">' + (r.address ? esc(r.address) : miss) + '</td></tr>' +
+    (r.metro ? '<tr><td>Метро</td><td class="n">' + esc(r.metro) + '</td></tr>' : '') +
+    '</table>' +
+    (S.sellM2 > 0 && r.area ? '<p class="note">Продажа после ремонта: ' + rub(S.sellM2 * r.area) + ' (' + rub(S.sellM2) + ' × ' + String(r.area).replace('.', ',') + ' м²).</p>' : '') +
+    '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="parse-fill">Заполнить расчёт</button><button class="btn" data-a="parse-deal">Создать сделку</button></div>';
+}
+// Переносит найденное в калькулятор и смету; ремонт пересчитывается по площади
+function applyParse(r) {
+  if (r.price) S.calc.price = r.price;
+  if (r.area) S.smeta.area = r.area;
+  if (r.rooms) S.smeta.rooms = r.rooms;
+  if (r.area) S.calc.repair = Math.round(smetaTotal().total);
+  if (r.area && S.sellM2 > 0) S.calc.sale = Math.round(S.sellM2 * r.area / 10000) * 10000;
+  S.calcDeal = null; parseDraft = '';
+}
+
 /* ===== Раздел «Смета» ===== */
 function smetaQty(item, sm) {
   if (item.qty === 'area') return sm.area;
@@ -425,6 +583,112 @@ function updateSmetaTable() {
   $('#smetaTable').innerHTML = h;
 }
 
+/* ===== Раздел «Торги» ===== */
+// Предел ставки: максимальная цена покупки, при которой сделка выходит на цель по доходности.
+// Торги добавляют расходы (extra) и удлиняют проект (delay); остальное берётся из «Расчёта».
+// Если расчёт открыт из сделки по лоту, расходы торгов в нём уже есть (torgiExtra/torgiDelay) —
+// их вычитаем, чтобы не учесть дважды. Предел округляется вниз до 10 тыс. и служит порогом везде.
+function torgiBase(c0) {
+  return {buyCosts: Math.max(0, c0.buyCosts - (c0.torgiExtra || 0)), months: Math.max(1, c0.months - (c0.torgiDelay || 0))};
+}
+function torgiPlan(c0, t) {
+  const b = torgiBase(c0);
+  const c = Object.assign({}, c0, {buyCosts: b.buyCosts + t.extra, months: b.months + t.delay, torgiExtra: t.extra, torgiDelay: t.delay});
+  const at = p => compute(Object.assign({}, c, {price: p}));
+  const maxBid = c.sale > 0 ? solve(p => at(p).annual, 1, c.sale, c.target) : null;
+  const zeroBid = c.sale > 0 ? solve(p => at(p).net, 1, c.sale * 2, 0) : null;
+  const limit = maxBid > 0 ? round10k(maxBid) : 0;
+  const stages = [];
+  if (t.kind === 'offer') {
+    for (let i = 0; i <= t.periods; i++) {
+      const p = t.start * (1 - t.drop * i / 100);
+      if (p <= 0) break;
+      stages.push({i, p, r: at(p)});
+    }
+  }
+  const entry = limit > 0 ? stages.find(s => s.p <= limit) : null;
+  const stepSum = t.start * t.step / 100;
+  const steps = t.kind === 'auction' && limit > t.start && stepSum > 0 ? Math.floor((limit - t.start) / stepSum) : 0;
+  let verdict, cls, why;
+  if (c.sale <= 0) {
+    verdict = 'Заполните расчёт'; cls = 'warn'; why = 'Нужна цена продажи в разделе «Расчёт».';
+  } else if (t.start <= 0) {
+    verdict = 'Впишите начальную цену'; cls = 'warn'; why = 'Начальная цена лота есть в сообщении о торгах.';
+  } else if (!(maxBid > 0)) {
+    verdict = 'Не участвовать'; cls = 'bad'; why = 'Даже почти даром сделка не выходит на цель ' + pct(c.target) + ' годовых.';
+  } else if (t.kind === 'auction') {
+    if (t.start <= limit) {
+      verdict = 'Ставка до ' + rub(limit); cls = 'good';
+      why = 'Начальная цена ниже предела' + (stepSum > 0 ? ': запас примерно ' + steps + ' шаг. аукциона по ' + rub(stepSum) : '') +
+        '. Дороже ' + rub(limit) + ' доходность ниже цели ' + pct(c.target) + '.';
+    } else if (t.start <= maxBid) {
+      verdict = 'Только по начальной цене'; cls = 'warn';
+      why = 'Начальная цена ' + rub(t.start) + ' почти на пределе: доходность ' + pct(at(t.start).annual) + ' годовых — ровно цель. Поднимать ставку нельзя.';
+    } else {
+      verdict = 'Не участвовать'; cls = 'bad';
+      why = 'Начальная цена ' + rub(t.start) + ' уже выше предела ' + rub(limit) + ': доходность ' + pct(at(t.start).annual) + ' годовых — ниже цели ' + pct(c.target) + '.';
+    }
+  } else if (entry) {
+    verdict = 'Заявка на этапе ' + (entry.i + 1); cls = 'good';
+    why = 'На этапе ' + (entry.i + 1) + ' цена ' + rub(entry.p) + ' — не выше предела ' + rub(limit) + '. Предложить можно и больше цены этапа, но не дороже ' + rub(limit) + ': другие участники тоже ждут снижения.';
+  } else {
+    verdict = 'Не участвовать'; cls = 'bad';
+    why = 'Даже на последнем этапе цена ' + rub(stages.length ? stages[stages.length - 1].p : t.start) + ' выше предела ' + rub(limit) + '.';
+  }
+  const deposit = (entry ? entry.p : t.start) * t.deposit / 100;
+  return {c, at, maxBid, zeroBid, limit, stages, entry, stepSum, steps, verdict, cls, why, deposit};
+}
+function tField(k, label, suf, hint, val) {
+  return '<label class="f">' + esc(label) +
+    '<div class="inwrap"><input type="text" inputmode="decimal" data-t="' + k + '" value="' + esc(suf === '₽' ? num(val) : String(val).replace('.', ',')) + '"><span>' + esc(suf) + '</span></div>' +
+    (hint ? '<span class="small">' + esc(hint) + '</span>' : '') + '</label>';
+}
+function renderTorgi() {
+  const t = S.torgi, c = S.calc, off = t.kind === 'offer';
+  let h = '<div id="torgiRes"></div>';
+  h += '<div class="card"><h3>Лот</h3><div class="seg" data-seg="tkind"><button data-v="auction" class="' + (off ? '' : 'on') + '">Аукцион</button><button data-v="offer" class="' + (off ? 'on' : '') + '">Публичное предложение</button></div>' +
+    '<div class="grid2" style="margin-top:12px">' + tField('start', 'Начальная цена', '₽', '', t.start) + tField('deposit', 'Задаток', '%', '', t.deposit) +
+    (off ? tField('drop', 'Снижение за этап', '%', 'От начальной цены', t.drop) + tField('periods', 'Этапов снижения', 'шт', '', t.periods)
+      : tField('step', 'Шаг аукциона', '%', 'От начальной цены', t.step)) +
+    tField('extra', 'Доп. расходы торгов', '₽', 'ЭЦП, площадка, выселение, долг за капремонт', t.extra) +
+    tField('delay', 'Дольше срок', 'мес', 'Оформление и освобождение квартиры', t.delay) + '</div>' +
+    '<p class="note">Остальное — из раздела «Расчёт»: продажа ' + rub(c.sale) + ', ремонт ' + rub(c.repair) + ', срок ' + torgiBase(c).months + ' мес.' + (c.torgiExtra || c.torgiDelay ? ' (расходы и срок торгов из сделки не задваиваются)' : '') + ', цель ' + pct(c.target) + ' годовых.</p>' +
+    '<button class="btn block" style="margin-top:10px" data-a="go-calc">Изменить в расчёте</button></div>';
+  h += '<div class="card"><h3>Сохранить</h3><label class="f">Ссылка на лот<input type="url" id="lotLink" placeholder="https://"></label><div style="height:10px"></div>' +
+    '<div class="row"><input type="text" id="lotName" placeholder="Название, например «Двушка на торгах, Перово»" style="flex:1;min-width:200px"><button class="btn pri" data-a="torgi-deal">Создать сделку</button></div>' +
+    '<p class="note">В сделку попадут цена покупки по пределу ставки, доп. расходы и срок торгов.</p></div>';
+  h += '<div class="card"><h3>Где искать лоты</h3>' + TORGI_LINKS.map(([u, n, d]) =>
+    '<p style="margin:8px 0"><a href="' + esc(u) + '" target="_blank" rel="noopener" style="color:var(--gold-ink);font-weight:600">' + esc(n) + '</a><br><span class="small muted">' + esc(d) + '</span></p>').join('') + '</div>';
+  h += '<div class="card"><details><summary>Риски лота: что проверить до заявки</summary><ul>' + TORGI_RISKS.map(r => '<li>' + esc(r) + '</li>').join('') + '</ul></details></div>' +
+    '<p class="note">Расчёт — ориентир. Перед участием в торгах прочитайте документацию лота и посоветуйтесь с юристом.</p>';
+  $('#view').innerHTML = h;
+  updateTorgiResults();
+}
+function updateTorgiResults() {
+  const t = S.torgi, a = torgiPlan(S.calc, t), s0 = a.at(t.start);
+  let h = '<div class="verdict ' + a.cls + '"><div class="small" style="font-weight:600;opacity:.85">ВЕРДИКТ ПО ЛОТУ</div><div class="v">' + esc(a.verdict) + '</div><p>' + esc(a.why) + '</p>' +
+    '<div class="kpis">' +
+    '<div class="kpi"><b>' + (a.maxBid > 0 ? rub(a.limit) : '—') + '</b><span>предел ставки под цель</span></div>' +
+    '<div class="kpi"><b>' + (a.zeroBid > 0 ? rub(round10k(a.zeroBid)) : '—') + '</b><span>ставка без убытка</span></div>' +
+    '<div class="kpi"><b>' + rub(a.deposit) + '</b><span>задаток</span></div>' +
+    '<div class="kpi"><b class="' + (s0.net < 0 ? 'neg' : '') + '">' + rub(s0.net) + '</b><span>прибыль по начальной цене</span></div>' +
+    '</div></div>';
+  const row = (label, p, r) => '<tr><td>' + label + '</td><td class="n' + (a.limit > 0 && p <= a.limit ? ' pos' : '') + '">' + rub(p) + '</td><td class="n' + (r.net < 0 ? ' neg' : '') + '">' + rub(r.net) + '</td><td class="n">' + pct(r.annual) + '</td></tr>';
+  if (t.kind === 'offer' && a.stages.length) {
+    h += '<div class="card"><h3>Этапы снижения цены</h3><table><tr><th>Этап</th><th class="n">Цена</th><th class="n">Прибыль</th><th class="n">Годовых</th></tr>' +
+      a.stages.map(s => row(String(s.i + 1), s.p, s.r)).join('') +
+      '</table><p class="note">Зелёным — цены не выше предела ставки.</p></div>';
+  } else if (t.kind === 'auction' && a.stepSum > 0 && a.limit > t.start) {
+    const n = a.steps + 1, stride = Math.max(1, Math.ceil(n / 8)), ks = [];
+    for (let k = 0; k <= n; k += stride) ks.push(k);
+    if (ks[ks.length - 1] !== n) ks.push(n);
+    h += '<div class="card"><h3>Ставки по шагам</h3><table><tr><th>Шагов</th><th class="n">Ставка</th><th class="n">Прибыль</th><th class="n">Годовых</th></tr>' +
+      ks.map(k => { const p = t.start + k * a.stepSum; return row(String(k), p, a.at(p)); }).join('') +
+      '</table><p class="note">Зелёным — ставки не выше предела.</p></div>';
+  }
+  $('#torgiRes').innerHTML = h;
+}
+
 /* ===== Раздел «Сделки» ===== */
 function dealPlan(d) { return d.calc ? compute(Object.assign({}, DEFAULT_CALC, d.calc)) : null; }
 function renderDeals() {
@@ -436,7 +700,7 @@ function renderDeals() {
   } else {
     S.deals.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).forEach(d => {
       const p = dealPlan(d), spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
-      h += '<button class="card deal" data-a="deal-open" data-id="' + d.id + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + esc(d.stage) + '</span></div>' +
+      h += '<button class="card deal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + esc(d.stage) + '</span></div>' +
         (d.address ? '<div class="small muted">' + esc(d.address) + '</div>' : '') +
         '<div class="small" style="margin-top:6px">План: ' + (p ? '<b>' + rub(p.net) + '</b> · ' + pct(p.annual) + ' годовых' : 'нет расчёта') + ' · Потрачено: ' + rub(spent) + '</div></button>';
     });
@@ -474,7 +738,7 @@ function renderDeal(d) {
   if (exp.length) {
     h += '<table style="margin-top:12px">' + exp.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(e =>
       '<tr><td>' + esc(e.cat) + (e.note ? '<br><span class="small muted">' + esc(e.note) + '</span>' : '') + '<br><span class="small muted">' + esc((e.date || '').split('-').reverse().join('.')) + '</span></td>' +
-      '<td class="n">' + rub(e.sum) + '<br><button class="back small" style="padding:4px 0;color:var(--bad)" data-a="exp-del" data-id="' + e.id + '">удалить</button></td></tr>').join('') +
+      '<td class="n">' + rub(e.sum) + '<br><button class="back small" style="padding:4px 0;color:var(--bad)" data-a="exp-del" data-id="' + esc(e.id) + '">удалить</button></td></tr>').join('') +
       '<tr class="total"><td>Всего потрачено</td><td class="n">' + rub(spent) + '</td></tr></table>';
     if (p) {
       const diff = repairFact - c.repair;
@@ -500,7 +764,9 @@ function newDeal(name, calc) {
 
 /* ===== Раздел «Справка» ===== */
 function renderRef() {
-  $('#view').innerHTML = '<h2>Справочник флипера</h2><div class="card">' +
+  $('#view').innerHTML = '<h2>Справочник флипера</h2>' +
+    '<a class="card deal" href="https://t.me/flipologia" target="_blank" rel="noopener" style="text-decoration:none"><span class="t">Новости и лоты недели</span><br><span class="small muted">Свежие новости рынка, цены м² и лоты с дисконтом — в Telegram-канале «Флипология»</span></a>' +
+    '<div class="card">' +
     '<details open><summary>Налог при продаже квартиры (физлицо)</summary><ul>' +
     '<li>Налога нет, если владели дольше минимального срока: <b>3 года</b> — наследство, дарение от близкого родственника, приватизация, рента, единственное жильё; в остальных случаях — <b>5 лет</b>. Для семей с двумя и более детьми есть отдельная льгота — проверьте условия.</li>' +
     '<li>Иначе НДФЛ: <b>13%</b> с базы до 2,4 млн ₽ за год и <b>15%</b> с превышения.</li>' +
@@ -528,16 +794,16 @@ function renderRef() {
     '<li><b>Не брать</b> — убыток или доходность ниже цели даже при сильном торге.</li>' +
     '<li>Плохой сценарий: продажа на 10% дешевле, срок на 3 месяца дольше, ремонт на 20% дороже.</li></ul></details>' +
     '</div><p class="note">Расчёты и справка — ориентир, а не гарантия прибыли и не юридическая консультация. Перед сделкой сверьтесь с юристом и бухгалтером.</p>' +
-    '<p class="note">Флипология · прототип v0.1</p>';
+    '<p class="note">Флипология · прототип v0.2</p>';
 }
 
 /* ===== Навигация ===== */
-const TITLES = {calc: 'Калькулятор сделки', smeta: 'Смета ремонта', deals: 'Мои сделки', ref: 'Справочник'};
+const TITLES = {calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник'};
 function go(tab) {
   S.tab = tab; save();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   $('#sub').textContent = TITLES[tab];
-  ({calc: renderCalc, smeta: renderSmeta, deals: renderDeals, ref: renderRef})[tab]();
+  ({calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef})[tab]();
   window.scrollTo(0, 0);
 }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { if (b.dataset.tab === 'deals') openDeal = null; go(b.dataset.tab); } });
@@ -558,6 +824,13 @@ view.addEventListener('input', e => {
   } else if (t.dataset.d) {
     const d = S.deals.find(x => x.id === openDeal); if (!d) return;
     d[t.dataset.d] = t.dataset.d === 'saleFact' ? parseNum(t.value) : t.value; d.updated = Date.now(); save();
+  } else if (t.dataset.t) {
+    let v = Math.max(0, parseNum(t.value)); if (t.dataset.t === 'periods') v = Math.min(30, Math.max(1, Math.round(v) || 1));
+    S.torgi[t.dataset.t] = v; save(); updateTorgiResults();
+  } else if (t.id === 'parseText') {
+    parseDraft = t.value;
+  } else if (t.id === 'sellM2') {
+    S.sellM2 = Math.max(0, parseNum(t.value)); save();
   }
 });
 // Пересчёт таблицы сметы без потери курсора в поле цены
@@ -599,6 +872,8 @@ view.addEventListener('focusout', e => {
   }
   if (t.dataset.price) t.value = num(parseNum(t.value));
   if (t.id === 'expSum' && t.value) t.value = num(parseNum(t.value));
+  if (t.dataset.t && t.type === 'text') { const v = S.torgi[t.dataset.t]; t.value = ['start', 'extra'].includes(t.dataset.t) ? num(v) : String(v).replace('.', ','); }
+  if (t.id === 'sellM2' && t.value) t.value = num(S.sellM2);
 });
 
 /* ===== Кнопки ===== */
@@ -608,6 +883,7 @@ view.addEventListener('click', e => {
     const seg = segBtn.parentElement.dataset.seg;
     if (seg === 'fin') { S.calc.fin = segBtn.dataset.v; $('#mortBox').classList.toggle('hide', S.calc.fin !== 'mortgage'); updateCalcResults(); }
     if (seg === 'level') { S.smeta.level = Number(segBtn.dataset.v); updateSmetaTable(); }
+    if (seg === 'tkind') { S.torgi.kind = segBtn.dataset.v; save(); renderTorgi(); return; }
     segBtn.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === segBtn));
     save(); return;
   }
@@ -628,6 +904,34 @@ view.addEventListener('click', e => {
       const cd = S.deals.find(x => x.id === S.calcDeal);
       if (cd) { cd.calc = Object.assign({}, S.calc); cd.updated = Date.now(); save(); toast('Расчёт сохранён в сделку'); }
       break;
+    }
+    case 'parse': {
+      parseDraft = $('#parseText').value;
+      if (!parseDraft.trim()) { toast('Вставьте текст объявления'); $('#parseText').focus(); break; }
+      lastParse = parseListing(parseDraft); renderParseRes(); break;
+    }
+    case 'parse-fill':
+      if (lastParse) { applyParse(lastParse); save(); renderCalc(); toast(lastParse.area ? 'Расчёт заполнен, ремонт посчитан по смете' : 'Цена перенесена в расчёт'); }
+      break;
+    case 'parse-deal': {
+      if (!lastParse) break;
+      const r = lastParse;
+      applyParse(r);
+      const nd = newDeal(parseTitle(r), S.calc);
+      nd.address = r.address || ''; if (r.link) nd.link = r.link;
+      nd.notes = 'Из объявления: ' + [r.price ? rub(r.price) : '', r.floor ? 'этаж ' + r.floor + ' из ' + r.floors : '', r.metro ? 'м. ' + r.metro : ''].filter(Boolean).join(', ');
+      S.calcDeal = nd.id; save(); renderCalc(); toast('Сделка создана — она в разделе «Сделки»'); break;
+    }
+    case 'go-calc': go('calc'); break;
+    case 'torgi-deal': {
+      const name = ($('#lotName').value || '').trim();
+      if (!name) { toast('Впишите название сделки'); $('#lotName').focus(); break; }
+      const t = S.torgi, tp = torgiPlan(S.calc, t);
+      const nd = newDeal(name, Object.assign({}, tp.c, {price: tp.cls === 'good' ? tp.limit : t.start}));
+      const link = $('#lotLink').value.trim(); if (/^https?:\/\//i.test(link)) nd.link = link;
+      nd.notes = 'Торги: ' + (t.kind === 'offer' ? 'публичное предложение' : 'аукцион') + ', начальная цена ' + rub(t.start) +
+        ', предел ставки ' + (tp.maxBid > 0 ? rub(tp.limit) : '—') + ', задаток ' + rub(tp.deposit) + '.';
+      save(); openDeal = nd.id; go('deals'); toast('Сделка по лоту создана'); break;
     }
     case 'smeta-to-calc': S.calc.repair = Math.round(smetaTotal().total); save(); go('calc'); toast('Ремонт перенесён в расчёт'); break;
     case 'smeta-reset':
