@@ -196,6 +196,15 @@ vm.runInContext(`
   check('копия: id экранируется при выводе', !/<img/.test(esc(s.deals[0].id)));
 }
 
+/* --- Карточка сделки: точечные блоки --- */
+{
+  check('ссылка javascript: не становится ссылкой', dealLinkHtml({link: 'javascript:alert(1)'}) === '');
+  check('ссылка экранируется', !/"><img/.test(dealLinkHtml({link: 'https://a.ru/"><img src=x>'})));
+  const d = {calc: Object.assign({}, DEFAULT_CALC, {price: 5000000, commission: 2}), expenses: [{sum: 1000000}], saleFact: 7000000};
+  check('факт: прибыль до налога 7 000 000 − 2% − 5 000 000 − 1 000 000', /860 000/.test(dealFactHtml(d).replace(/\\u00a0/g, ' ')), dealFactHtml(d));
+  check('факт без цены продажи — подсказка', /Впишите цену продажи/.test(dealFactHtml({calc: null, expenses: [], saleFact: 0})));
+}
+
 /* --- Старые сохранённые данные без торгов --- */
 {
   localStorage.setItem(LS_KEY, JSON.stringify({deals: [], calc: {price: 1}, tab: 'calc'}));

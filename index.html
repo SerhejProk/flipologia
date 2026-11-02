@@ -8,7 +8,20 @@
 <meta name="description" content="Флипология — калькулятор сделки, смета ремонта и учёт сделок для флиперов недвижимости">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<!-- Заставки при запуске с экрана «Домой» на iPhone: своя под каждый размер экрана -->
+<link rel="apple-touch-startup-image" href="splash/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1260x2736.png" media="(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -22,6 +35,8 @@
   --input:#FFFFFF; --shadow:0 1px 2px rgba(20,40,58,.06),0 4px 14px rgba(20,40,58,.06);
   /* фон: мягкий градиент на бумажном тоне + едва заметная сетка-чертёж */
   --bg-grid:rgba(20,40,58,.035); --bg-glow1:rgba(242,182,48,.16); --bg-glow2:rgba(20,40,58,.07);
+  /* полупрозрачные шапка и нижнее меню с размытием, как в приложениях iOS */
+  --bar:rgba(255,253,248,.78); --bar-line:rgba(20,40,58,.12); --top-bg:rgba(20,40,58,.86);
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -30,11 +45,12 @@
     --good:#7FD3A4; --good-bg:#183A2B; --warn:#F5C55A; --warn-bg:#3A3018; --bad:#F29A85; --bad-bg:#3D2019;
     --input:#0F2230; --shadow:none;
     --bg-grid:rgba(242,182,48,.06); --bg-glow1:rgba(242,182,48,.10); --bg-glow2:rgba(64,140,170,.12);
+    --bar:rgba(22,42,56,.78); --bar-line:rgba(234,240,242,.10); --top-bg:rgba(10,22,32,.82);
   }
 }
 *{box-sizing:border-box}
-html,body{margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-tap-highlight-color:transparent;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+html,body{margin:0;padding:0;overscroll-behavior:none}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
 body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:
     radial-gradient(60vmax 45vmax at 100% 0%,var(--bg-glow1),transparent 70%),
@@ -43,14 +59,22 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
     linear-gradient(90deg,var(--bg-grid) 1px,transparent 1px) 0 0/24px 24px,
     linear-gradient(var(--bg-grid) 1px,transparent 1px) 0 0/120px 120px,
     linear-gradient(90deg,var(--bg-grid) 1px,transparent 1px) 0 0/120px 120px}
-.top{position:sticky;top:0;z-index:5;background:var(--dark);color:var(--dark-ink);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px}
-.top img{width:34px;height:34px;border-radius:8px}
-.brand{font-weight:800;letter-spacing:2px;font-size:15px}
-.sub{font-size:13px;opacity:.75}
-main{max-width:720px;margin:0 auto;padding:16px}
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
+.top{position:sticky;top:0;z-index:5;background:var(--top-bg);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--dark-ink);height:calc(50px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 16px 0;display:flex;align-items:center;gap:10px}
+.top img{width:30px;height:30px;border-radius:7px}
+.brand{font-weight:800;letter-spacing:2px;font-size:14px;transition:opacity .2s}
+.sub{position:absolute;left:64px;right:64px;bottom:0;height:50px;line-height:50px;text-align:center;font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .2s;pointer-events:none}
+.top.scrolled .brand{opacity:0}
+.top.scrolled .sub{opacity:1}
+main{max-width:720px;margin:0 auto;padding:12px 16px 16px;overflow-x:hidden;overflow-x:clip}
+body.has-install{padding-bottom:calc(190px + env(safe-area-inset-bottom))}
+/* крупный заголовок раздела (Large Title) */
+.lt{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:6px 0 14px}
+.lt h1{font-size:32px;line-height:1.12;font-weight:800;letter-spacing:-.4px;margin:0;overflow-wrap:anywhere}
+.lt .btn{flex:none}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--bar-line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
 .tabs button{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
-.tabs button svg{width:24px;height:24px}
+.tabs button svg{width:24px;height:24px;transition:transform .12s}
+.tabs button:active svg{transform:scale(.88)}
 .tabs button.on{color:var(--ink);font-weight:600}
 .tabs button.on svg{color:var(--gold-ink)}
 h2{font-size:22px;margin:4px 0 12px}
@@ -105,19 +129,39 @@ summary{cursor:pointer;font-weight:600;padding:10px 0;list-style-position:outsid
 details ul{margin:0 0 10px;padding-left:20px}
 details li{margin:4px 0}
 .note{font-size:13px;color:var(--muted);margin:8px 0 0}
-.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:var(--dark-ink);padding:10px 16px;border-radius:10px;font-size:14px;z-index:10;max-width:calc(100% - 32px);opacity:0;transition:opacity .2s}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:var(--dark-ink);padding:10px 16px;border-radius:10px;font-size:14px;z-index:10;max-width:calc(100% - 32px);opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .back{background:none;border:0;font:inherit;color:var(--gold-ink);font-weight:600;padding:6px 0 10px;cursor:pointer}
+.lt .back{display:block;font-size:17px;font-weight:500;padding:0 0 4px}
 .empty{text-align:center;padding:28px 12px}
 .hide{display:none!important}
+/* ощущение нативного приложения: без выделения текста на кнопках, отклик на нажатие, переходы экранов */
+button,summary,.tabs,.top,.chips,.seg,.lt{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.btn,.deal,.chips button,.seg button{transition:transform .12s,opacity .12s}
+.btn:active,.deal:active,.chips button:active{transform:scale(.97);opacity:.85}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes inRight{from{opacity:.3;transform:translateX(48px)}to{opacity:1;transform:none}}
+@keyframes inLeft{from{opacity:.3;transform:translateX(-48px)}to{opacity:1;transform:none}}
+.anim-up{animation:fadeUp .24s ease-out}
+.anim-right{animation:inRight .26s cubic-bezier(.2,.8,.2,1)}
+.anim-left{animation:inLeft .26s cubic-bezier(.2,.8,.2,1)}
+@media (prefers-reduced-motion: reduce){.anim-up,.anim-right,.anim-left{animation:none}.btn,.deal,.brand,.sub{transition:none}}
+/* подсказка «Установить на экран Домой» */
+.install{position:fixed;left:12px;right:12px;bottom:calc(70px + env(safe-area-inset-bottom));z-index:6;max-width:520px;margin:0 auto;background:var(--dark);color:var(--dark-ink);border-radius:14px;padding:12px 44px 12px 14px;font-size:14px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:fadeUp .3s ease-out}
+.install b{color:var(--gold)}
+.install svg{width:16px;height:16px;vertical-align:-3px;color:var(--gold)}
+.install .x{position:absolute;top:6px;right:6px;width:36px;height:36px;border:0;background:none;color:var(--dark-ink);font-size:22px;line-height:1;cursor:pointer;opacity:.7}
+.install .btn{margin-top:8px;min-height:38px;padding:6px 14px}
 </style>
 </head>
 <body>
-<header class="top">
+<header class="top" id="top">
   <img src="icon-192.png" alt="">
-  <div><div class="brand">ФЛИПОЛОГИЯ</div><div class="sub" id="sub">Калькулятор сделки</div></div>
+  <div class="brand">ФЛИПОЛОГИЯ</div>
+  <div class="sub" id="sub"></div>
 </header>
-<main id="view"></main>
+<main><div class="lt"><div><button class="back hide" id="ltBack" data-a="deal-close">‹ Сделки</button><h1 id="lt"></h1></div><span id="ltAct"></span></div><div id="view"></div></main>
+<div class="install hide" id="install"></div>
 <nav class="tabs" id="tabs">
   <button data-tab="calc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg>Расчёт</button>
   <button data-tab="smeta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Смета</button>
@@ -212,6 +256,7 @@ function load() {
     calcDeal: typeof s.calcDeal === 'string' ? s.calcDeal : null,
     smeta, torgi,
     sellM2: Math.max(0, Number(s.sellM2) || 0),
+    lastBackup: Number(s.lastBackup) || 0,
     tab: ['calc', 'smeta', 'torgi', 'deals', 'ref'].includes(s.tab) ? s.tab : 'calc'
   };
 }
@@ -694,7 +739,8 @@ function dealPlan(d) { return d.calc ? compute(Object.assign({}, DEFAULT_CALC, d
 function renderDeals() {
   if (openDeal && S.deals.some(d => d.id === openDeal)) return renderDeal(S.deals.find(d => d.id === openDeal));
   openDeal = null;
-  let h = '<div class="row" style="justify-content:space-between;margin-bottom:12px"><h2 style="margin:0">Мои сделки</h2><button class="btn pri" data-a="deal-new">+ Сделка</button></div>';
+  setTitle('Мои сделки', '<button class="btn pri" data-a="deal-new">+ Сделка</button>');
+  let h = '';
   if (!S.deals.length) {
     h += '<div class="card empty"><p><b>Сделок пока нет</b></p><p class="muted">Посчитайте объект в разделе «Расчёт» и нажмите «Создать сделку», или добавьте сделку кнопкой выше.</p></div>';
   } else {
@@ -705,7 +751,10 @@ function renderDeals() {
         '<div class="small" style="margin-top:6px">План: ' + (p ? '<b>' + rub(p.net) + '</b> · ' + pct(p.annual) + ' годовых' : 'нет расчёта') + ' · Потрачено: ' + rub(spent) + '</div></button>';
     });
   }
-  h += '<div class="card"><h3>Резервная копия</h3><p class="small muted" style="margin-top:0">Данные хранятся только в этом телефоне. Время от времени скачивайте копию.</p>' +
+  const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
+  const stale = S.deals.length && (days < 0 || days > 14);
+  h += '<div class="card"><h3>Резервная копия</h3><p class="small ' + (stale ? '' : 'muted') + '" style="margin-top:0">Данные хранятся только в этом телефоне. ' +
+    (days < 0 ? 'Копию ещё не делали.' : 'Последняя копия — ' + (days === 0 ? 'сегодня' : days + ' дн. назад') + '.') + (stale ? (days < 0 ? ' <b>Скачайте копию.</b>' : ' <b>Скачайте свежую копию.</b>') : '') + '</p>' +
     '<div class="row"><button class="btn" data-a="backup-save">Скачать копию</button><label class="btn">Загрузить копию<input type="file" accept="application/json,.json" id="backupFile" class="hide"></label></div></div>';
   $('#view').innerHTML = h;
 }
@@ -718,11 +767,12 @@ function renderDeal(d) {
   const repairFact = (byCat['Ремонт'] || 0) + (byCat['Материалы'] || 0);
   const checks = d.checks || {};
   const done = CHECKLIST.filter(([k]) => checks[k]).length;
-  let h = '<button class="back" data-a="deal-close">← Все сделки</button>';
+  setTitle(d.name || 'Сделка', '', true);
+  let h = '';
   h += '<div class="card"><label class="f">Название<input type="text" data-d="name" value="' + esc(d.name) + '"></label>' +
     '<div style="height:10px"></div><label class="f">Адрес<input type="text" data-d="address" value="' + esc(d.address || '') + '"></label>' +
     '<div style="height:10px"></div><label class="f">Ссылка на объявление или лот<input type="url" data-d="link" value="' + esc(d.link || '') + '" placeholder="https://"></label>' +
-    (d.link && /^https?:\/\//i.test(d.link) ? '<p class="note"><a href="' + esc(d.link) + '" target="_blank" rel="noopener" style="color:var(--gold-ink)">Открыть объявление</a></p>' : '') +
+    '<p class="note" id="dealLink">' + dealLinkHtml(d) + '</p>' +
     '<h3 style="margin-top:14px">Этап</h3><div class="chips">' +
     STAGES.map(s => '<button data-a="deal-stage" data-v="' + s + '" class="' + (d.stage === s ? 'on' : '') + '">' + s + '</button>').join('') + '</div></div>';
   h += '<div class="card"><h3>План по расчёту</h3>' + (p
@@ -746,16 +796,38 @@ function renderDeal(d) {
     }
   }
   h += '</div>';
-  const saleFact = d.saleFact || 0;
-  const factProfit = saleFact > 0 ? saleFact - saleFact * c.commission / 100 - c.price - spent : null;
-  h += '<div class="card"><h3>Факт после продажи</h3><div class="grid2"><label class="f">Продали за<div class="inwrap"><input type="text" inputmode="decimal" data-d="saleFact" value="' + (saleFact ? num(saleFact) : '') + '"><span>₽</span></div></label></div>' +
-    (factProfit != null ? '<table style="margin-top:10px"><tr><td>Продажа</td><td class="n">' + rub(saleFact) + '</td></tr><tr><td>Комиссия ' + c.commission + '%</td><td class="n neg">' + rub(-saleFact * c.commission / 100) + '</td></tr><tr><td>Покупка</td><td class="n neg">' + rub(-c.price) + '</td></tr><tr><td>Все расходы</td><td class="n neg">' + rub(-spent) + '</td></tr><tr class="total"><td>Прибыль до налога</td><td class="n ' + (factProfit < 0 ? 'neg' : 'pos') + '">' + rub(factProfit) + '</td></tr></table>' +
-      (p ? '<p class="note">План до налога был ' + rub(p.pbt) + '.</p>' : '') : '<p class="note">Впишите цену продажи, чтобы увидеть фактическую прибыль. Расходы на сделку при покупке вносите в «Расходы» со статьёй «Оформление сделки».</p>') + '</div>';
+  h += '<div class="card"><h3>Факт после продажи</h3><div class="grid2"><label class="f">Продали за<div class="inwrap"><input type="text" inputmode="decimal" data-d="saleFact" value="' + (d.saleFact ? num(d.saleFact) : '') + '"><span>₽</span></div></label></div>' +
+    '<div id="dealFact">' + dealFactHtml(d) + '</div></div>';
   h += '<div class="card"><h3>Проверка объекта · ' + done + ' из ' + CHECKLIST.length + '</h3>' +
     CHECKLIST.map(([k, l]) => '<label class="chk"><input type="checkbox" data-check="' + k + '"' + (checks[k] ? ' checked' : '') + '><span>' + esc(l) + '</span></label>').join('') + '</div>';
   h += '<div class="card"><h3>Заметки</h3><textarea data-d="notes" placeholder="Контакты продавца, прораба, договорённости">' + esc(d.notes || '') + '</textarea></div>';
+  h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-share">Поделиться сделкой</button>';
   h += '<button class="btn danger block" data-a="deal-del">Удалить сделку</button>';
   $('#view').innerHTML = h;
+}
+// Системное меню «Поделиться» (iPhone, Android); где его нет — копируем текст
+function shareDeal(d) {
+  const p = dealPlan(d), spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
+  const text = [d.name, d.address, 'Этап: ' + d.stage, p ? 'План: прибыль ' + rub(p.net) + ', ' + pct(p.annual) + ' годовых' : '', 'Потрачено: ' + rub(spent)].filter(Boolean).join('\n');
+  const data = {title: d.name, text};
+  if (/^https?:\/\//i.test(d.link || '')) data.url = d.link;
+  const all = text + (data.url ? '\n' + data.url : '');
+  const copy = () => navigator.clipboard
+    ? navigator.clipboard.writeText(all).then(() => toast('Скопировано — вставьте в мессенджер'), () => toast('Не получилось скопировать'))
+    : toast('Поделиться здесь не получится');
+  if (navigator.share) navigator.share(data).catch(err => { if (!err || err.name !== 'AbortError') copy(); });
+  else copy();
+}
+function dealLinkHtml(d) {
+  return d.link && /^https?:\/\//i.test(d.link) ? '<a href="' + esc(d.link) + '" target="_blank" rel="noopener" style="color:var(--gold-ink)">Открыть объявление</a>' : '';
+}
+function dealFactHtml(d) {
+  const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
+  const spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
+  const saleFact = d.saleFact || 0;
+  const factProfit = saleFact > 0 ? saleFact - saleFact * c.commission / 100 - c.price - spent : null;
+  return factProfit != null ? '<table style="margin-top:10px"><tr><td>Продажа</td><td class="n">' + rub(saleFact) + '</td></tr><tr><td>Комиссия ' + c.commission + '%</td><td class="n neg">' + rub(-saleFact * c.commission / 100) + '</td></tr><tr><td>Покупка</td><td class="n neg">' + rub(-c.price) + '</td></tr><tr><td>Все расходы</td><td class="n neg">' + rub(-spent) + '</td></tr><tr class="total"><td>Прибыль до налога</td><td class="n ' + (factProfit < 0 ? 'neg' : 'pos') + '">' + rub(factProfit) + '</td></tr></table>' +
+      (p ? '<p class="note">План до налога был ' + rub(p.pbt) + '.</p>' : '') : '<p class="note">Впишите цену продажи, чтобы увидеть фактическую прибыль. Расходы на сделку при покупке вносите в «Расходы» со статьёй «Оформление сделки».</p>';
 }
 function newDeal(name, calc) {
   const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], checks: {}, notes: '', saleFact: 0, created: Date.now(), updated: Date.now()};
@@ -764,7 +836,7 @@ function newDeal(name, calc) {
 
 /* ===== Раздел «Справка» ===== */
 function renderRef() {
-  $('#view').innerHTML = '<h2>Справочник флипера</h2>' +
+  $('#view').innerHTML = '' +
     '<a class="card deal" href="https://t.me/flipologia" target="_blank" rel="noopener" style="text-decoration:none"><span class="t">Новости и лоты недели</span><br><span class="small muted">Свежие новости рынка, цены м² и лоты с дисконтом — в Telegram-канале «Флипология»</span></a>' +
     '<div class="card">' +
     '<details open><summary>Налог при продаже квартиры (физлицо)</summary><ul>' +
@@ -794,22 +866,49 @@ function renderRef() {
     '<li><b>Не брать</b> — убыток или доходность ниже цели даже при сильном торге.</li>' +
     '<li>Плохой сценарий: продажа на 10% дешевле, срок на 3 месяца дольше, ремонт на 20% дороже.</li></ul></details>' +
     '</div><p class="note">Расчёты и справка — ориентир, а не гарантия прибыли и не юридическая консультация. Перед сделкой сверьтесь с юристом и бухгалтером.</p>' +
-    '<p class="note">Флипология · прототип v0.2</p>';
+    '<p class="note">Флипология · прототип v0.3</p>';
 }
 
 /* ===== Навигация ===== */
 const TITLES = {calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник'};
+// Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
+function setTitle(text, action, back) {
+  $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
+  $('#ltBack').classList.toggle('hide', !back);
+}
+function onScroll() {
+  $('#top').classList.toggle('scrolled', $('#lt').getBoundingClientRect().bottom < $('#top').getBoundingClientRect().bottom);
+}
+window.addEventListener('scroll', onScroll, {passive: true});
+// Переход экрана: anim-up — смена вкладки, anim-right — вглубь, anim-left — назад
+function animate(cls) {
+  const v = $('#view'); v.classList.remove('anim-up', 'anim-right', 'anim-left'); void v.offsetWidth; v.classList.add(cls);
+}
 function go(tab) {
   S.tab = tab; save();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  $('#sub').textContent = TITLES[tab];
+  setTitle(TITLES[tab]);
   ({calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef})[tab]();
-  window.scrollTo(0, 0);
+  window.scrollTo(0, 0); animate('anim-up'); onScroll();
 }
+function openDealView(id) { openDeal = id; renderDeals(); window.scrollTo(0, 0); animate('anim-right'); onScroll(); }
+function closeDeal() { openDeal = null; renderDeals(); window.scrollTo(0, 0); animate('anim-left'); onScroll(); }
+// Свайп от левого края в карточке сделки — назад к списку, как в iOS
+let swipe = null;
+document.addEventListener('touchstart', e => {
+  const p = e.touches[0];
+  swipe = standalone && S.tab === 'deals' && openDeal && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+}, {passive: true});
+document.addEventListener('touchend', e => {
+  if (!swipe) return;
+  const p = e.changedTouches[0], dx = p.clientX - swipe.x, dy = Math.abs(p.clientY - swipe.y);
+  swipe = null;
+  if (dx > 70 && dy < 60) closeDeal();
+}, {passive: true});
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { if (b.dataset.tab === 'deals') openDeal = null; go(b.dataset.tab); } });
 
 /* ===== Ввод данных ===== */
-const view = $('#view');
+const view = $('main');  // события ловим на всём main: и в разделе, и у кнопки рядом с крупным заголовком
 const INT_KEYS = ['months', 'term'];
 view.addEventListener('input', e => {
   const t = e.target;
@@ -824,6 +923,10 @@ view.addEventListener('input', e => {
   } else if (t.dataset.d) {
     const d = S.deals.find(x => x.id === openDeal); if (!d) return;
     d[t.dataset.d] = t.dataset.d === 'saleFact' ? parseNum(t.value) : t.value; d.updated = Date.now(); save();
+    // точечное обновление: перерисовка всей карточки съедала первое нажатие на кнопку ниже
+    if (t.dataset.d === 'name') setTitle(d.name || 'Сделка', '', true);
+    if (t.dataset.d === 'link') $('#dealLink').innerHTML = dealLinkHtml(d);
+    if (t.dataset.d === 'saleFact') $('#dealFact').innerHTML = dealFactHtml(d);
   } else if (t.dataset.t) {
     let v = Math.max(0, parseNum(t.value)); if (t.dataset.t === 'periods') v = Math.min(30, Math.max(1, Math.round(v) || 1));
     S.torgi[t.dataset.t] = v; save(); updateTorgiResults();
@@ -848,8 +951,6 @@ view.addEventListener('change', e => {
   else if (t.dataset.check) {
     const d = S.deals.find(x => x.id === openDeal); if (!d) return;
     d.checks = d.checks || {}; d.checks[t.dataset.check] = t.checked; d.updated = Date.now(); save(); renderDeal(d);
-  } else if (t.dataset.d === 'saleFact' || t.dataset.d === 'link' || t.dataset.d === 'name') {
-    const d = S.deals.find(x => x.id === openDeal); if (d) renderDeal(d);
   } else if (t.id === 'backupFile' && t.files[0]) {
     const r = new FileReader();
     r.onload = () => {
@@ -937,9 +1038,10 @@ view.addEventListener('click', e => {
     case 'smeta-reset':
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
       break;
-    case 'deal-new': { const nd = newDeal('Новая сделка', null); openDeal = nd.id; renderDeals(); break; }
-    case 'deal-open': openDeal = b.dataset.id; renderDeals(); window.scrollTo(0, 0); break;
-    case 'deal-close': openDeal = null; renderDeals(); window.scrollTo(0, 0); break;
+    case 'deal-new': { const nd = newDeal('Новая сделка', null); openDealView(nd.id); break; }
+    case 'deal-open': openDealView(b.dataset.id); break;
+    case 'deal-close': closeDeal(); break;
+    case 'deal-share': if (d) shareDeal(d); break;
     case 'deal-stage': if (d) { d.stage = b.dataset.v; d.updated = Date.now(); save(); renderDeal(d); } break;
     case 'deal-to-calc':
       if (d) { S.calc = Object.assign({}, DEFAULT_CALC, d.calc || {}); S.calcDeal = d.id; save(); go('calc'); }
@@ -961,14 +1063,45 @@ view.addEventListener('click', e => {
       }
       break;
     case 'backup-save': {
+      S.lastBackup = Date.now(); save();
       const blob = new Blob([JSON.stringify(S, null, 2)], {type: 'application/json'});
       const url = URL.createObjectURL(blob), link = document.createElement('a');
       link.href = url; link.download = 'flipologia-kopiya-' + today() + '.json';
       document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      renderDeals();
       break;
     }
   }
 });
+
+/* ===== Подсказка «Установить на экран Домой» ===== */
+let installEvt = null;  // предложение установки от Chrome/Android
+const UA = navigator.userAgent || '';
+const isIOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);  // iPadOS выдаёт себя за Mac
+const inApp = !!window.TelegramWebviewProxy || /Telegram|FBAN|FBAV|Instagram/i.test(UA);  // встроенные браузеры: «На экран Домой» там нет
+const HIDE_KEY = 'flipologia-hide-install';
+function installHidden() { try { return localStorage.getItem(HIDE_KEY) === '1'; } catch (e) { return false; } }
+const standalone = navigator.standalone === true || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+const SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+function showInstall() {
+  if (standalone || installHidden()) return;
+  let h;
+  if (isIOS && inApp) h = 'Чтобы установить Флипологию как приложение, откройте эту страницу в <b>Safari</b> (меню ⋯ → «Открыть в Safari»), затем ' + SHARE_ICON + ' <b>«Поделиться»</b> → <b>«На экран Домой»</b>.';
+  else if (isIOS) h = 'Установите Флипологию как приложение: нажмите ' + SHARE_ICON + ' <b>«Поделиться»</b>, затем <b>«На экран Домой»</b>.';
+  else if (installEvt) h = 'Установите Флипологию на телефон — будет открываться как приложение, без браузера.<br><button class="btn pri" data-i="install">Установить</button>';
+  else return;
+  const el = $('#install');
+  el.innerHTML = h + '<button class="x" data-i="close" aria-label="Закрыть">×</button>';
+  el.classList.remove('hide'); document.body.classList.add('has-install');
+}
+$('#install').addEventListener('click', e => {
+  const b = e.target.closest('[data-i]'); if (!b) return;
+  if (b.dataset.i === 'install' && installEvt) { installEvt.prompt(); installEvt = null; }
+  try { localStorage.setItem(HIDE_KEY, '1'); } catch (err) {}
+  $('#install').classList.add('hide'); document.body.classList.remove('has-install');
+});
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; showInstall(); });
+setTimeout(showInstall, 1500);
 
 go(S.tab);
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
