@@ -144,6 +144,38 @@ tr.total td{font-weight:700;border-bottom:0}
 @keyframes splashBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes splashOut{to{opacity:0;visibility:hidden;pointer-events:none}}
 @media (prefers-reduced-motion:reduce){#splash img,#splash .nm,#splash .tg,#splash .bar i{animation:none}}
+#report{display:none;position:fixed;inset:0;z-index:90;background:#fff;color:#14171C;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+#report.on{display:block}
+.rep-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;background:#fff;border-bottom:1px solid #E9ECF1}
+.rep-bar .small{flex:1;color:#6B7280;font-size:12px;line-height:1.3}
+.sheet{max-width:760px;margin:0 auto;padding:18px 16px 48px;font-size:14px;line-height:1.45;font-family:var(--font)}
+.sheet h1{font-size:24px;margin:0 0 2px;font-weight:700}
+.sheet .meta{color:#6B7280;font-size:13px}
+.sheet h2{font-size:16px;margin:22px 0 8px;padding-bottom:4px;border-bottom:1px solid #E9ECF1;font-weight:600}
+.sheet table{width:100%;border-collapse:collapse}
+.sheet td,.sheet th{padding:6px 0;border-bottom:1px solid #F0F2F6;text-align:left;vertical-align:top;font-weight:400}
+.sheet th{color:#6B7280;font-size:12px}
+.sheet .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sheet .tot td{font-weight:700;border-bottom:0}
+.sheet .bad{color:#D6343B}.sheet .good{color:#12875A}.sheet .mut{color:#6B7280}
+.sheet .rbar{height:12px;border-radius:6px;background:#EEF1F6;overflow:hidden;display:flex;margin:4px 0 2px}
+.sheet .rbar i{display:block;height:100%}
+.sheet .rl{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:13px}
+.sheet .legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px;font-size:12px;color:#6B7280}
+.sheet .legend u{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;text-decoration:none}
+.sheet .disc{margin-top:22px;padding:10px 12px;border-radius:10px;background:#F6F7FA;color:#6B7280;font-size:12px}
+@media print{
+  @page{margin:14mm}
+  body.rep-on>*:not(#report){display:none!important}
+  body.rep-on{padding:0!important}
+  html:has(body.rep-on),body.rep-on{background:#fff!important}
+  #report.on{position:static;overflow:visible;display:block}
+  .rep-bar{display:none}
+  .sheet{max-width:none;padding:0}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sheet tr{break-inside:avoid}
+  .sheet h2,.sheet .rl{break-after:avoid}
+}
 .hh{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:18px 4px 8px}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 12px}
 .tile{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:16px;text-align:left;border:0;font:inherit;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:112px}
@@ -170,7 +202,7 @@ b,strong,.deal .t,.place .t{font-weight:600}
 details ul{margin:0 0 10px;padding-left:20px}
 details li{margin:4px 0}
 .note{font-size:13px;color:var(--muted);margin:8px 0 0}
-.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:var(--dark-ink);padding:10px 18px;border-radius:999px;font-size:14px;z-index:10;max-width:calc(100% - 32px);opacity:0;transition:opacity .2s;pointer-events:none}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:var(--dark-ink);padding:10px 18px;border-radius:999px;font-size:14px;z-index:95;max-width:calc(100% - 32px);opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .back{background:none;border:0;font:inherit;color:var(--gold-ink);font-weight:600;padding:6px 0 10px;cursor:pointer}
 .lt .back{display:block;font-size:17px;font-weight:500;padding:0 0 4px}
@@ -229,6 +261,7 @@ try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splas
 </nav>
 <div class="toast" id="toast"></div>
 
+<div id="report" role="dialog" aria-modal="true" aria-label="Отчёт инвестору"></div>
 <script src="rayony-data.js"></script>
 <script>
 'use strict';
@@ -1000,6 +1033,7 @@ function renderDeal(d) {
   h += '<div class="card"><h3>Проверка объекта · ' + done + ' из ' + CHECKLIST.length + '</h3>' +
     CHECKLIST.map(([k, l]) => '<label class="chk"><input type="checkbox" data-check="' + k + '"' + (checks[k] ? ' checked' : '') + '><span>' + esc(l) + '</span></label>').join('') + '</div>';
   h += '<div class="card"><h3>Заметки</h3><textarea data-d="notes" placeholder="Контакты продавца, прораба, договорённости">' + esc(d.notes || '') + '</textarea></div>';
+  h += '<button class="btn pri block" style="margin-bottom:10px" data-a="deal-report">Отчёт инвестору</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-share">Поделиться сделкой</button>';
   h += '<button class="btn danger block" data-a="deal-del">Удалить сделку</button>';
   $('#view').innerHTML = h;
@@ -1064,6 +1098,79 @@ function planFactCardHtml(d, p, c) {
     '<p class="note">Прогноз приблизительный: перерасход считается по статьям, где факт уже выше плана. ' + (pf.skipped > 0 ? 'Платежи по ипотеке и налоги (' + rub(pf.skipped) + ') в сравнение не входят. ' : '') + 'Срок учитывается, если составлен график ремонта' + (wp && wp.shift > 0 ? '; коммуналка за лишние дни уже входит в потери от срока, поэтому перерасход по ней отдельно не вычитается' : '') + '.</p></div>';
   return h;
 }
+/* ===== Отчёт инвестору ===== */
+const REP_COLORS = ['#0A63FF', '#F5A623', '#12875A', '#9AA6B8', '#8B5CF6', '#D6343B', '#14B8A6'];
+function reportHtml(d) {
+  const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
+  const exp = d.expenses || [];
+  const spent = exp.reduce((x, e) => x + e.sum, 0);
+  const dt = today().split('-').reverse().join('.');
+  let h = '<div class="sheet"><h1>' + esc(d.name || 'Объект') + '</h1><div class="meta">' + (d.address ? esc(d.address) + ' · ' : '') + 'этап: ' + esc(d.stage) + ' · отчёт на ' + dt + '</div>';
+  // Ключевые цифры
+  const f = p ? dealForecast(d, p, c) : null;
+  const sold = d.saleFact > 0;
+  h += '<h2>Ключевые цифры</h2><table>' +
+    '<tr><td>Покупка</td><td class="n">' + rub(c.price) + '</td></tr>' +
+    '<tr><td>Расходы на объект (по факту)</td><td class="n">' + rub(spent) + '</td></tr>' +
+    '<tr class="tot"><td>Вложено на сегодня</td><td class="n">' + rub(c.price + spent) + '</td></tr>' +
+    (sold ? '<tr><td>Продано за</td><td class="n">' + rub(d.saleFact) + '</td></tr>' : (p ? '<tr><td>Ожидаемая цена продажи</td><td class="n">' + rub(c.sale) + '</td></tr>' : '')) +
+    (p ? '<tr><td>Чистая прибыль по плану</td><td class="n">' + rub(p.net) + '</td></tr>' +
+      '<tr class="tot"><td>Прогноз чистой прибыли</td><td class="n ' + (f.fore < 0 ? 'bad' : 'good') + '">' + rub(f.fore) + '</td></tr>' +
+      '<tr><td>Доходность по прогнозу</td><td class="n">' + (p.ownCash > 0 ? pct(f.fore / p.ownCash * 100 * 12 / p.m) + ' годовых' : '—') + '</td></tr>' +
+      '<tr><td>Срок проекта по плану</td><td class="n">' + p.m + ' мес.</td></tr>' : '') + '</table>';
+  if (sold) {
+    const fp = d.saleFact - d.saleFact * c.commission / 100 - c.price - spent;
+    h += '<p class="mut" style="margin:8px 0 0">Фактический результат продажи до налога: <b class="' + (fp < 0 ? 'bad' : 'good') + '">' + rub(fp) + '</b> (с учётом комиссии ' + c.commission + '%).</p>';
+  }
+  if (!p) {
+    h += '<p class="mut">Расчёт по объекту ещё не заполнен, поэтому плана и прогноза нет.</p>';
+  } else {
+    // План и факт по статьям с полосами
+    h += '<h2>Расходы: план и факт</h2>' + f.pf.rows.filter(r => r.plan > 0 || r.fact > 0).map(r => {
+      const w = r.plan > 0 ? Math.min(100, r.fact / r.plan * 100) : (r.fact > 0 ? 100 : 0);
+      return '<div class="rl"><span>' + esc(r.name) + '</span><span class="' + (r.diff > 0 ? 'bad' : '') + '">' + rub(r.fact) + ' из ' + rub(r.plan) + (r.diff > 0 ? ' (перерасход ' + rub(r.diff) + ')' : '') + '</span></div>' +
+        '<div class="rbar"><i style="width:' + w.toFixed(1) + '%;background:' + (r.diff > 0 ? '#D6343B' : '#0A63FF') + '"></i></div>';
+    }).join('');
+    h += '<table style="margin-top:12px"><tr><td>Перерасход по статьям</td><td class="n ' + (f.pf.over > 0 ? 'bad' : '') + '">' + rub(-f.pf.over) + '</td></tr>' +
+      (f.wp ? '<tr><td>' + (f.wp.shift < 0 ? 'Экономия от срока' : 'Потери от срока') + '</td><td class="n ' + (f.sched > 0 ? 'bad' : 'good') + '">' + rub(-f.sched) + '</td></tr>' : '') + '</table>';
+  }
+  // Структура вложений
+  const parts = [['Покупка', c.price]];
+  if (spent > 0) {
+    const g = {};
+    exp.forEach(e => { const k = EXP_CATS.includes(e.cat) ? e.cat : 'Прочее'; g[k] = (g[k] || 0) + e.sum; });
+    EXP_CATS.forEach(k => { if (g[k] > 0) parts.push([k, g[k]]); });
+  }
+  const tot = parts.reduce((x, y) => x + Math.max(0, y[1]), 0);
+  if (tot > 0) {
+    h += '<h2>Структура вложений</h2><div class="rbar" style="height:16px">' + parts.map((x, i) => '<i style="width:' + (Math.max(0, x[1]) / tot * 100).toFixed(2) + '%;background:' + REP_COLORS[i % REP_COLORS.length] + '"></i>').join('') + '</div>' +
+      '<div class="legend">' + parts.map((x, i) => '<span><u style="background:' + REP_COLORS[i % REP_COLORS.length] + '"></u>' + esc(x[0]) + ' ' + rub(x[1]) + ' · ' + Math.round(Math.max(0, x[1]) / tot * 100) + '%</span>').join('') + '</div>';
+  }
+  // График ремонта
+  if (d.works) {
+    const wp = worksPlan(d.works, today());
+    const lab = {done: 'готово', work: 'в работе', late: 'просрочено', wait: 'ожидает'};
+    h += '<h2>График ремонта</h2><table><tr><th>Этап</th><th>План до</th><th>По прогнозу</th><th>Статус</th></tr>' + wp.rows.map(r =>
+      '<tr><td>' + esc(r.name) + '</td><td>' + dayRu(r.pEnd) + '</td><td>' + dayRu(r.fEnd) + '</td><td class="' + (r.state === 'late' ? 'bad' : r.state === 'done' ? 'good' : 'mut') + '">' + lab[r.state] + (r.state === 'late' ? ' на ' + r.overdue + ' дн.' : '') + '</td></tr>').join('') + '</table>' +
+      '<p style="margin:8px 0 0">Выход на продажу: по плану <b>' + dayRu(wp.planEnd) + '</b>, по прогнозу <b class="' + (wp.shift > 0 ? 'bad' : '') + '">' + dayRu(wp.foreEnd) + '</b>' + (wp.shift ? ' (' + (wp.shift > 0 ? '+' : '−') + Math.abs(wp.shift) + ' дн.)' : '') + '.</p>';
+  }
+  h += '<div class="disc">Прогноз приблизителен и построен на введённых данных: перерасход по статьям и сдвиг сроков ремонта. Это отчёт о ходе работ, а не гарантия дохода и не инвестиционная рекомендация. Налоги и итоговая цена продажи могут отличаться.</div></div>';
+  return h;
+}
+function openReport(d) {
+  const el = $('#report');
+  el.innerHTML = '<div class="rep-bar"><button class="btn" data-ra="close">‹ Закрыть</button><span class="small">Печать → «Сохранить как PDF». На iPhone: Поделиться → Печать.</span><button class="btn pri" data-ra="print">Печать / PDF</button></div>' + reportHtml(d);
+  el.classList.add('on'); el.scrollTop = 0; document.body.classList.add('rep-on');
+  const cb = el.querySelector('[data-ra=close]'); if (cb) cb.focus();
+}
+function closeReport() { const el = $('#report'); document.body.classList.remove('rep-on'); if (el && el.classList.contains('on')) { el.classList.remove('on'); el.innerHTML = ''; } }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#report').classList.contains('on')) navBack(); });
+$('#report').addEventListener('click', e => {
+  const b = e.target.closest('[data-ra]'); if (!b) return;
+  if (b.dataset.ra === 'close') navBack();
+  else if (b.dataset.ra === 'print') { try { window.print(); } catch (err) { toast('Печать недоступна: откройте приложение в браузере'); } }
+});
+
 // Системное меню «Поделиться» (iPhone, Android); где его нет — копируем текст
 function shareDeal(d) {
   const p = dealPlan(d), spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
@@ -1400,6 +1507,7 @@ function navWrite(method, st, depth) {
   try { window.history[method](Object.assign({nav: 1}, st, {depth, y: st.y || 0}), ''); } catch (e) {}
 }
 function navShow(st, cls, y) {
+  closeReport();
   openDeal = st.deal; rayonView = st.rayon; rayonFrom = st.from;
   go(st.tab, cls, y);
 }
@@ -1443,6 +1551,7 @@ window.addEventListener('popstate', e => {
 function navInit() {
   try { window.history.scrollRestoration = 'manual'; } catch (e) {}
   const h = window.history && window.history.state;
+  if (h && h.nav === 1 && h.rep) { try { window.history.back(); return; } catch (e) {} }
   if (h && h.nav === 1) {
     const st = navClean(h);
     navDepth = st.depth;
@@ -1685,6 +1794,7 @@ view.addEventListener('click', e => {
     case 'deal-open': if (S.tab === 'home') navTab('deals'); openDealView(b.dataset.id); break;
     case 'deal-close': closeDeal(); break;
     case 'deal-share': if (d) shareDeal(d); break;
+    case 'deal-report': if (d) { navRecord(Object.assign(navNow(), {rep: 1})); openReport(d); } break;
     case 'deal-stage': if (d) { d.stage = b.dataset.v; d.updated = Date.now(); save(); renderDeal(d); } break;
     case 'deal-to-calc':
       if (d) { S.calc = Object.assign({}, DEFAULT_CALC, d.calc || {}); S.calcDeal = d.id; save(); navPush(navRoot('calc'), 'anim-up'); }

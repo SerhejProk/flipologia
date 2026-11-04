@@ -339,6 +339,22 @@ vm.runInContext(`
   S.deals = [];
 }
 
+/* --- Отчёт инвестору --- */
+{
+  const mk = o => Object.assign({id: 'r1', name: 'Однушка <img src=x>', address: 'ул. "Тест" & <b>', stage: 'Ремонт', calc: Object.assign({}, DEFAULT_CALC), expenses: [{id: 'a', cat: 'Ремонт', sum: 900000, date: '2026-11-01', note: ''}, {id: 'b', cat: 'Чужая', sum: 5000, date: '2026-11-01', note: ''}], works: cleanWorks({start: today(), items: []}), saleFact: 0}, o || {});
+  const h = reportHtml(mk());
+  check('отчёт: название и адрес экранированы', !h.includes('<img src=x>') && h.includes('&lt;img') && h.includes('&amp; &lt;b&gt;'), h.slice(0, 200));
+  check('отчёт: есть ключевые цифры и прогноз', h.includes('Ключевые цифры') && h.includes('Прогноз чистой прибыли') && h.includes(rub(compute(DEFAULT_CALC).net - 100000 - 5000)), '');
+  check('отчёт: перерасход и план/факт', h.includes('перерасход ' + rub(100000)) && h.includes('Структура вложений') && h.includes('График ремонта'));
+  check('отчёт: есть оговорка про гарантию дохода', h.includes('не гарантия дохода'));
+  const h2 = reportHtml(mk({calc: null, works: null, expenses: []}));
+  check('отчёт: сделка без расчёта — без падения и без прогноза', h2.includes('Расчёт по объекту ещё не заполнен') && !h2.includes('Прогноз чистой прибыли') && !h2.includes('График ремонта'));
+  const h3 = reportHtml(mk({saleFact: 8000000}));
+  check('отчёт: проданная сделка показывает факт', h3.includes('Продано за') && h3.includes('Фактический результат продажи'));
+  const h4 = reportHtml(mk({calc: Object.assign({}, DEFAULT_CALC, {price: 0, sale: 0})}));
+  check('отчёт: нулевые цены — без NaN и Infinity', !/NaN|Infinity/.test(h4));
+}
+
 /* --- История: кнопка «назад» --- */
 {
   S.deals = [{id: 'd1', name: 'Сделка', expenses: []}];
