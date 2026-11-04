@@ -19,6 +19,8 @@ const ctx = vm.createContext({
   localStorage: {getItem: k => store.has(k) ? store.get(k) : null, setItem: (k, v) => store.set(k, String(v))},
   setTimeout: () => 0, clearTimeout: () => {}, confirm: () => true, Intl, console
 });
+const rayonyFile = __dirname + '/rayony-data.js';
+if (fs.existsSync(rayonyFile)) vm.runInContext(fs.readFileSync(rayonyFile, 'utf8'), ctx);
 vm.runInContext(code, ctx);
 
 let pass = 0, fail = 0;
@@ -211,6 +213,81 @@ vm.runInContext(`
   const s = load();
   check('старые данные: торги по умолчанию', s.torgi.kind === 'auction' && s.torgi.start === DEFAULT_TORGI.start);
   check('старые данные: цена м² = 0', s.sellM2 === 0);
+  check('старые данные: районы пустые', s.rayony.fav.length === 0 && Object.keys(s.rayony.notes).length === 0);
+}
+
+/* --- Районы: логика --- */
+{
+  const list = [{id: 'perovo', name: 'Перово', okrug: 'ВАО'}, {id: 'strogino', name: 'Строгино', okrug: 'СЗАО'}, {id: 'biryulevo-v', name: 'Бирюлёво Восточное', okrug: 'ЮАО'}];
+  check('поиск: часть названия', rayonFilter(list, 'стро').map(r => r.id).join() === 'strogino');
+  check('поиск: е вместо ё', rayonFilter(list, 'бирюлево').length === 1);
+  check('поиск: округ', rayonFilter(list, 'вао')[0].id === 'perovo');
+  check('поиск: пустой — все', rayonFilter(list, '  ').length === 3);
+  check('район из адреса', guessRayon('Москва, ВАО, р-н Перово, Зелёный просп., 20', list) === 'perovo');
+  check('«Перовская ул.» — не Перово', guessRayon('Москва, Перовская ул., 20', list) === '');
+  check('район без ё', guessRayon('р-н Бирюлево Восточное', list) === 'biryulevo-v');
+  check('название перед «р-н»', guessRayon('г Москва, Перово р-н, ул. Плеханова', list) === 'perovo');
+  check('район с дефисом', guessRayon('район Бирюлёво-Восточное', list) === 'biryulevo-v');
+  check('другая область', guessRayon('Московская обл., Одинцовский р-н, д. Перово', list) === '');
+  check('другая область 2', guessRayon('Тульская область, район Перово', list) === '');
+  check('чужой район с названием-деревней', guessRayon('Одинцовский р-н, Перово', list) === '');
+  check('описание — не адрес', guessRayon('Квартира у парка Перово, до проспекта 5 минут', list) === '');
+  check('только метро не считается', guessRayon('м. Перово', list) === '');
+  check('«Бирюлёво» без уточнения не гадаем', guessRayon('Москва, Бирюлево, ул. Медынская, 7', list) === '');
+  check('телефон: ссылка', phoneHref('+74957577893') === 'tel:+74957577893');
+  check('телефон: мусор не становится ссылкой', phoneHref('javascript:alert(1)') === '' && phoneHref('') === '');
+  check('телефон: вид', phoneText('+74957577893') === '+7 (495) 757-78-93', phoneText('+74957577893'));
+  check('телефон 8 800', phoneText('+78007000099') === '8 (800) 700-00-99', phoneText('+78007000099'));
+  check('маршрут по координатам', placeMapUrl({n: 'А', a: 'Б', lat: 55.7, lon: 37.7}) === 'https://yandex.ru/maps/?rtext=~55.7,37.7&rtt=auto');
+  check('адрес Москвы', /%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0/.test(placeMapUrl({n: 'А', a: 'Рязанский просп., 2'})));
+  check('адрес вне Москвы без слова Москва', !/%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0/.test(placeMapUrl({n: 'А', a: 'Реутов, Горьковское ш.'})));
+  const r = {name: 'Тест', items: [{id: 'a', c: 'metro', n: 'Кузьминки'}, {id: 'b', c: 'super', n: 'Дикси'}, {id: 'c', c: 'super', n: 'Дикси'}, {id: 'd', c: 'prom', n: 'Завод'}, {id: 'e', c: 'school', n: 'Школа 1'}]};
+  const ids = new Set(['a', 'b', 'c', 'd']);
+  const t = adText(r, ids);
+  check('абзац: метро и магазин', /метро: Кузьминки/.test(t) && /магазины: Дикси/.test(t), t);
+  check('абзац: без повторов', t.split('Дикси').length === 2, t);
+  check('абзац: промзона не попадает', !/Завод/.test(t), t);
+  check('абзац: неотмеченное не попадает', !/Школа/.test(t), t);
+  check('абзац: нет расстояний', !/\\bмин|\\bкм\\b|шагов/.test(t), t);
+  check('абзац: пусто без отметок', adText(r, new Set()) === '');
+  const cr = cleanRayony({fav: ['perovo', '"><img', 5], notes: {abc1: 'да', 'x"><b': 'нет', abc2: 5}, dnotes: {perovo: 'мастер', '<x': 'нет'}});
+  check('копия: избранное очищено', cr.fav.join() === 'perovo', cr.fav);
+  check('копия: дубли избранного убраны', cleanRayony({fav: ['perovo', 'perovo']}).fav.length === 1);
+  check('копия: __proto__ не загрязняет', cleanRayony(JSON.parse('{"notes":{"__proto__":"x"}}')).notes.x === undefined && ({}).x === undefined);
+  check('копия: пометки очищены', Object.keys(cr.notes).join() === 'abc1' && Object.keys(cr.dnotes).join() === 'perovo', cr);
+  check('копия: не объект', cleanRayony('x').fav.length === 0 && cleanRayony(null).fav.length === 0);
+  check('копия: район сделки очищен', cleanDeal({id: '1', rayon: '"><img'}).rayon === '' && cleanDeal({id: '1', rayon: 'perovo'}).rayon === 'perovo');
+  check('старая сделка без района', cleanDeal({id: '1'}).rayon === '');
+}
+
+/* --- Районы: данные --- */
+{
+  check('районов 6', RAYONY.length === 6, RAYONY.length);
+  const ids = new Set();
+  RAYONY.forEach(r => {
+    check(r.name + ': есть цена', r.price > 0 && typeof r.change === 'number');
+    const need = ['mfc', 'stroy', 'super', 'school'];
+    need.forEach(c => check(r.name + ': есть ' + c, r.items.some(it => it.c === c)));
+    r.items.forEach(it => {
+      check(r.name + ': название и адрес у ' + it.id, !!it.n && !!it.a, it);
+      check(r.name + ': категория известна ' + it.c, !!RAYON_CATS[it.c]);
+      check(r.name + ': телефон корректен у ' + it.n, !it.p || !!phoneHref(it.p), it.p);
+      check(r.name + ': id подходит для пометки ' + it.id, /^[a-z0-9]{1,30}$/.test(it.id), it.id);
+    });
+    const local = r.items.map(it => it.id);
+    check(r.name + ': id без повторов', new Set(local).size === local.length);
+  });
+  const all = JSON.stringify(RAYONY);
+  check('снятые нотариусы отсутствуют', !/Габанян|Курбатова|Агейченков/.test(all));
+  check('рынки есть хотя бы в части районов', RAYONY.filter(r => r.items.some(it => it.c === 'market')).length >= 2);
+  check('нет «дублёра» в адресах', !/дублёр/.test(all));
+  check('служебной Обменной нет', !RAYONY.some(r => r.items.some(it => it.c === 'train' && /Обменная/.test(it.n))));
+  check('Бирюлёво-Товарная осталась транспортом', rayonById('biryulevo-v').items.some(it => it.c === 'train' && /Товарная/.test(it.n)));
+  check('часы Рай убраны из-за расхождения адреса', rayonById('kuzminki').items.find(it => /^Рай /.test(it.n)).h === '');
+  check('нет опечатки в часах', !/00:07/.test(all));
+  check('начальная школа не в садах', !RAYONY.some(r => r.items.some(it => it.c === 'kinder' && /начальн/i.test(it.n))));
+  check('ТЭЦ-11 есть в минусах Перово', rayonById('perovo').items.some(it => it.c === 'prom' && /ТЭЦ-11/.test(it.n)));
+  check('Кузьминки: общая цена помечена', rayonById('kuzminki').shared && rayonById('tekstilshchiki').shared);
 }
 `, ctx);
 

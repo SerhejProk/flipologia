@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#14283A">
+<meta name="theme-color" content="#F6F7FA">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="description" content="Флипология — калькулятор сделки, смета ремонта и учёт сделок для флиперов недвижимости">
 <link rel="manifest" href="manifest.webmanifest">
@@ -24,44 +24,37 @@
 <link rel="apple-touch-startup-image" href="splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Флипология">
 <title>Флипология</title>
 <style>
+@font-face{font-family:'Golos Text';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/golos-400.ttf) format('truetype')}
+@font-face{font-family:'Golos Text';font-style:normal;font-weight:600;font-display:swap;src:url(fonts/golos-600.ttf) format('truetype')}
+@font-face{font-family:'Golos Text';font-style:normal;font-weight:800;font-display:swap;src:url(fonts/golos-800.ttf) format('truetype')}
+/* стиль «Светлый минимализм»: воздух, белые карточки без рамок, один синий акцент, цифра — главный герой */
 :root{
-  --bg:#F4F1EA; --card:#FFFDF8; --ink:#16252E; --muted:#56656B; --line:#DED6C6;
-  --dark:#14283A; --dark-ink:#F4F1EA; --gold:#F2B630; --gold-ink:#8A5A00;
-  --good:#1F7A4D; --good-bg:#E3F2E9; --warn:#8A5A00; --warn-bg:#FBF0D2; --bad:#A3321C; --bad-bg:#F8E1DA;
-  --input:#FFFFFF; --shadow:0 1px 2px rgba(20,40,58,.06),0 4px 14px rgba(20,40,58,.06);
-  /* фон: мягкий градиент на бумажном тоне + едва заметная сетка-чертёж */
-  --bg-grid:rgba(20,40,58,.035); --bg-glow1:rgba(242,182,48,.16); --bg-glow2:rgba(20,40,58,.07);
-  /* полупрозрачные шапка и нижнее меню с размытием, как в приложениях iOS */
-  --bar:rgba(255,253,248,.78); --bar-line:rgba(20,40,58,.12); --top-bg:rgba(20,40,58,.86);
+  --bg:#F6F7FA; --card:#FFFFFF; --ink:#14171C; --muted:#6B7280; --line:#E9ECF1;
+  --dark:#14171C; --dark-ink:#FFFFFF; --gold:#0A63FF; --gold-ink:#0A63FF; --acc-soft:#E8F0FF;
+  --good:#12875A; --good-bg:#E4F5EC; --warn:#A35F00; --warn-bg:#FDF1D8; --bad:#D6343B; --bad-bg:#FCE7E8;
+  --input:#F1F3F7; --shadow:0 1px 2px rgba(20,23,28,.05),0 6px 18px rgba(20,23,28,.04);
+  --bar:rgba(255,255,255,.82); --bar-line:rgba(20,23,28,.08); --top-bg:rgba(246,247,250,.82);
+  --font:'Golos Text',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --bg:#0E1C27; --card:#162A38; --ink:#EAF0F2; --muted:#A6B7BE; --line:#2A4352;
-    --dark:#0A1620; --dark-ink:#EAF0F2; --gold:#F2B630; --gold-ink:#F5C55A;
-    --good:#7FD3A4; --good-bg:#183A2B; --warn:#F5C55A; --warn-bg:#3A3018; --bad:#F29A85; --bad-bg:#3D2019;
-    --input:#0F2230; --shadow:none;
-    --bg-grid:rgba(242,182,48,.06); --bg-glow1:rgba(242,182,48,.10); --bg-glow2:rgba(64,140,170,.12);
-    --bar:rgba(22,42,56,.78); --bar-line:rgba(234,240,242,.10); --top-bg:rgba(10,22,32,.82);
+    --bg:#0B0D10; --card:#15181D; --ink:#F3F5F7; --muted:#9AA3AE; --line:#232830;
+    --dark:#2A2F37; --dark-ink:#F3F5F7; --gold:#3D86FF; --gold-ink:#6BA4FF; --acc-soft:#16233A;
+    --good:#4FD39B; --good-bg:#12302A; --warn:#F5C55A; --warn-bg:#352C14; --bad:#FF8A8F; --bad-bg:#3A1B1D;
+    --input:#1D2127; --shadow:none;
+    --bar:rgba(21,24,29,.82); --bar-line:rgba(243,245,247,.08); --top-bg:rgba(11,13,16,.82);
   }
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;overscroll-behavior:none}
-body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
-body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:
-    radial-gradient(60vmax 45vmax at 100% 0%,var(--bg-glow1),transparent 70%),
-    radial-gradient(55vmax 45vmax at 0% 100%,var(--bg-glow2),transparent 70%),
-    linear-gradient(var(--bg-grid) 1px,transparent 1px) 0 0/24px 24px,
-    linear-gradient(90deg,var(--bg-grid) 1px,transparent 1px) 0 0/24px 24px,
-    linear-gradient(var(--bg-grid) 1px,transparent 1px) 0 0/120px 120px,
-    linear-gradient(90deg,var(--bg-grid) 1px,transparent 1px) 0 0/120px 120px}
-.top{position:sticky;top:0;z-index:5;background:var(--top-bg);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--dark-ink);height:calc(50px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 16px 0;display:flex;align-items:center;gap:10px}
-.top img{width:30px;height:30px;border-radius:7px}
-.brand{font-weight:800;letter-spacing:2px;font-size:14px;transition:opacity .2s}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--font);-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+.top{position:sticky;top:0;z-index:5;background:var(--top-bg);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--ink);height:calc(50px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 16px 0;display:flex;align-items:center;gap:10px}
+.top img{width:30px;height:30px;border-radius:8px}
+.brand{font-weight:800;letter-spacing:2px;font-size:14px;color:var(--ink);transition:opacity .2s}
 .sub{position:absolute;left:64px;right:64px;bottom:0;height:50px;line-height:50px;text-align:center;font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .2s;pointer-events:none}
 .top.scrolled .brand{opacity:0}
 .top.scrolled .sub{opacity:1}
@@ -69,17 +62,17 @@ main{max-width:720px;margin:0 auto;padding:12px 16px 16px;overflow-x:hidden;over
 body.has-install{padding-bottom:calc(190px + env(safe-area-inset-bottom))}
 /* крупный заголовок раздела (Large Title) */
 .lt{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:6px 0 14px}
-.lt h1{font-size:32px;line-height:1.12;font-weight:800;letter-spacing:-.4px;margin:0;overflow-wrap:anywhere}
+.lt h1{font-size:32px;line-height:1.12;font-weight:600;letter-spacing:-.8px;margin:0;overflow-wrap:anywhere}
 .lt .btn{flex:none}
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--bar-line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
 .tabs button{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
 .tabs button svg{width:24px;height:24px;transition:transform .12s}
 .tabs button:active svg{transform:scale(.88)}
-.tabs button.on{color:var(--ink);font-weight:600}
+.tabs button.on{color:var(--gold-ink);font-weight:600}
 .tabs button.on svg{color:var(--gold-ink)}
-h2{font-size:22px;margin:4px 0 12px}
-h3{font-size:16px;margin:0 0 10px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+h2{font-size:22px;font-weight:600;letter-spacing:-.3px;margin:4px 0 12px}
+h3{font-size:16px;font-weight:600;margin:0 0 12px}
+.card{background:var(--card);border-radius:20px;padding:18px;margin-bottom:12px;box-shadow:var(--shadow)}
 .muted{color:var(--muted)}
 .small{font-size:13px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
@@ -87,49 +80,72 @@ h3{font-size:16px;margin:0 0 10px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
 .inwrap{position:relative;display:flex;align-items:center}
 .inwrap span{position:absolute;right:10px;font-size:14px;color:var(--muted);pointer-events:none}
-input[type=text],input[type=date],input[type=url],select,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--input);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px}
+input[type=text],input[type=date],input[type=url],select,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--input);border:1px solid transparent;border-radius:12px;padding:10px 12px;min-height:46px}
 .inwrap input{padding-right:40px}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);outline-offset:0;border-color:transparent}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);outline-offset:0;background:var(--card)}
 textarea{min-height:90px;resize:vertical}
-.seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg{display:flex;background:var(--input);border-radius:12px;padding:3px;gap:3px}
 .seg button{flex:1;border:0;background:none;font:inherit;font-size:14px;color:var(--muted);padding:8px 6px;border-radius:8px;min-height:38px;cursor:pointer}
-.seg button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:15px;font-weight:600;border-radius:10px;padding:10px 16px;min-height:44px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-decoration:none}
-.btn.pri{background:var(--gold);border-color:var(--gold);color:#1B1400}
-.btn.danger{color:var(--bad)}
+.seg button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(20,23,28,.12)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:15px;font-weight:600;border-radius:14px;padding:10px 16px;min-height:46px;border:0;background:var(--acc-soft);color:var(--gold-ink);cursor:pointer;text-decoration:none}
+.btn.pri{background:var(--gold);color:#fff}
+.btn.danger{background:var(--bad-bg);color:var(--bad)}
 .btn.block{width:100%}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .chk{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:15px;cursor:pointer}
-.chk input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:#C88A00}
-.verdict{border-radius:14px;padding:16px;margin-bottom:14px;border:1px solid transparent}
-.verdict .v{font-size:26px;font-weight:800;line-height:1.15}
-.verdict.good{background:var(--good-bg);color:var(--good)}
-.verdict.warn{background:var(--warn-bg);color:var(--warn)}
-.verdict.bad{background:var(--bad-bg);color:var(--bad)}
-.verdict p{margin:6px 0 0;color:var(--ink);font-size:14px}
-.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
-.kpi{background:var(--card);border-radius:10px;padding:10px 12px}
-.kpi b{display:block;font-size:19px;color:var(--ink)}
-.kpi span{font-size:12px;color:var(--muted)}
+.chk input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:var(--gold)}
+.verdict{text-align:center;padding:18px 8px 6px;margin-bottom:6px}
+.verdict .v{display:inline-block;font-size:13px;font-weight:600;letter-spacing:.02em;line-height:1.2;padding:7px 16px;border-radius:999px;background:var(--card);box-shadow:var(--shadow)}
+.verdict.good .v{color:var(--good)}
+.verdict.warn .v{color:var(--warn)}
+.verdict.bad .v{color:var(--bad)}
+.verdict .lbl{color:var(--muted);font-size:14px;margin-top:22px}
+.verdict .big{font-size:46px;font-weight:800;letter-spacing:-1.6px;line-height:1.1;margin:4px 0;font-variant-numeric:tabular-nums;color:var(--ink);overflow-wrap:anywhere}
+.verdict .big.neg{color:var(--bad)}
+.verdict .sub2{color:var(--muted);font-size:15px}
+.verdict .sub2 b{color:var(--ink);font-weight:600}
+.verdict.good .sub2 b{color:var(--good)}
+.verdict .sub2 b.neg{color:var(--bad)}
+.verdict p{margin:12px auto 0;max-width:34em;color:var(--muted);font-size:14px}
+.price-slide{padding-bottom:14px}
+.price-slide .head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.price-slide .head span{color:var(--muted);font-size:14px}
+.price-slide .head b{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.price-slide input[type=range]{width:100%;height:32px;margin:6px 0 0;accent-color:var(--gold)}
+.price-slide .ends{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.kpis{background:var(--card);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;margin:0 0 12px}
+.kpi{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);font-size:14px}
+.kpi:last-child{border-bottom:0}
+.kpi span{color:var(--muted)}
+.kpi b{font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;text-align:right}
+.kpi b.neg{color:var(--bad)}
+.stackbar{display:flex;gap:2px;height:14px;border-radius:999px;overflow:hidden}
+.stackbar i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:10px}
+.legend u{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;text-decoration:none}
 table{width:100%;border-collapse:collapse;font-size:14px}
 td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 td.n,th.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 tr.total td{font-weight:700;border-bottom:0}
 .neg{color:var(--bad)} .pos{color:var(--good)}
-.pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--input);color:var(--muted)}
 .pill.st{background:var(--warn-bg);color:var(--warn);border-color:transparent}
-.deal{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.deal{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;border:0}
 .deal .t{font-weight:700;font-size:16px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chips button{font:inherit;font-size:13px;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer;min-height:36px}
-.chips button.on{background:var(--dark);color:var(--dark-ink);border-color:var(--dark)}
+.chips button{font:inherit;font-size:13px;padding:7px 14px;border-radius:999px;border:0;background:var(--card);box-shadow:var(--shadow);color:var(--muted);cursor:pointer;min-height:36px}
+.chips button.on{background:var(--gold);color:#fff}
 details{border-bottom:1px solid var(--line);padding:4px 0}
 details:last-child{border-bottom:0}
-summary{cursor:pointer;font-weight:600;padding:10px 0;list-style-position:outside}
+summary{cursor:pointer;font-weight:600;padding:10px 0;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"";flex:none;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-2px);transition:transform .15s}
+details[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
+b,strong,.deal .t,.place .t{font-weight:600}
 details ul{margin:0 0 10px;padding-left:20px}
 details li{margin:4px 0}
 .note{font-size:13px;color:var(--muted);margin:8px 0 0}
-.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:var(--dark-ink);padding:10px 16px;border-radius:10px;font-size:14px;z-index:10;max-width:calc(100% - 32px);opacity:0;transition:opacity .2s;pointer-events:none}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:var(--dark-ink);padding:10px 18px;border-radius:999px;font-size:14px;z-index:10;max-width:calc(100% - 32px);opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .back{background:none;border:0;font:inherit;color:var(--gold-ink);font-weight:600;padding:6px 0 10px;cursor:pointer}
 .lt .back{display:block;font-size:17px;font-weight:500;padding:0 0 4px}
@@ -147,11 +163,24 @@ button,summary,.tabs,.top,.chips,.seg,.lt{-webkit-user-select:none;user-select:n
 .anim-left{animation:inLeft .26s cubic-bezier(.2,.8,.2,1)}
 @media (prefers-reduced-motion: reduce){.anim-up,.anim-right,.anim-left{animation:none}.btn,.deal,.brand,.sub{transition:none}}
 /* подсказка «Установить на экран Домой» */
-.install{position:fixed;left:12px;right:12px;bottom:calc(70px + env(safe-area-inset-bottom));z-index:6;max-width:520px;margin:0 auto;background:var(--dark);color:var(--dark-ink);border-radius:14px;padding:12px 44px 12px 14px;font-size:14px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:fadeUp .3s ease-out}
-.install b{color:var(--gold)}
-.install svg{width:16px;height:16px;vertical-align:-3px;color:var(--gold)}
+.install{position:fixed;left:12px;right:12px;bottom:calc(70px + env(safe-area-inset-bottom));z-index:6;max-width:520px;margin:0 auto;background:var(--dark);color:var(--dark-ink);border-radius:20px;padding:12px 44px 12px 14px;font-size:14px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:fadeUp .3s ease-out}
+.install b{color:#fff}
+.install svg{width:16px;height:16px;vertical-align:-3px;color:#fff}
 .install .x{position:absolute;top:6px;right:6px;width:36px;height:36px;border:0;background:none;color:var(--dark-ink);font-size:22px;line-height:1;cursor:pointer;opacity:.7}
-.install .btn{margin-top:8px;min-height:38px;padding:6px 14px}
+.install .btn{margin-top:8px;min-height:38px;padding:6px 14px;background:var(--gold);color:#fff}
+/* раздел «Районы» */
+.place{padding:12px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.place:first-of-type{border-top:0;padding-top:2px}
+.place .t{font-weight:700;font-size:15px}
+.place .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.place .acts .btn{min-height:44px;padding:6px 14px;font-size:14px}
+.place details{border:0;padding:0;margin-top:4px}
+.place summary{font-size:13px;font-weight:500;color:var(--muted);padding:8px 0}
+.place .chk{padding:0 0 4px}
+.price-big{font-size:28px;font-weight:800;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.rseg button{font-size:13px;padding:8px 2px}
+.star{width:44px;height:44px;border:0;border-radius:12px;box-shadow:var(--shadow);background:var(--card);color:var(--gold-ink);font-size:22px;line-height:1;cursor:pointer}
+.rlink{display:block;padding:9px 0;color:var(--gold-ink);font-weight:600;font-size:14px}
 </style>
 </head>
 <body>
@@ -171,6 +200,7 @@ button,summary,.tabs,.top,.chips,.seg,.lt{-webkit-user-select:none;user-select:n
 </nav>
 <div class="toast" id="toast"></div>
 
+<script src="rayony-data.js"></script>
 <script>
 'use strict';
 /* ===== Настройки и данные по умолчанию ===== */
@@ -256,6 +286,7 @@ function load() {
     calcDeal: typeof s.calcDeal === 'string' ? s.calcDeal : null,
     smeta, torgi,
     sellM2: Math.max(0, Number(s.sellM2) || 0),
+    rayony: cleanRayony(s.rayony),
     lastBackup: Number(s.lastBackup) || 0,
     tab: ['calc', 'smeta', 'torgi', 'deals', 'ref'].includes(s.tab) ? s.tab : 'calc'
   };
@@ -274,11 +305,24 @@ function clean(def, src, enums) {
   });
   return o;
 }
+// Избранные районы и свои пометки: только строки и только допустимые ключи
+function cleanRayony(r) {
+  const out = {fav: [], notes: {}, dnotes: {}};
+  if (!r || typeof r !== 'object') return out;
+  if (Array.isArray(r.fav)) out.fav = [...new Set(r.fav.filter(x => typeof x === 'string' && /^[a-z-]{1,30}$/.test(x)))];
+  [['notes', /^[a-z0-9]{1,30}$/], ['dnotes', /^[a-z-]{1,30}$/]].forEach(([key, re]) => {
+    if (r[key] && typeof r[key] === 'object') Object.keys(r[key]).forEach(k => {
+      if (re.test(k) && typeof r[key][k] === 'string' && r[key][k]) out[key][k] = r[key][k].slice(0, 2000);
+    });
+  });
+  return out;
+}
 function cleanDeal(d) {
   if (!d || typeof d !== 'object') return null;
   const str = v => v == null ? '' : String(v);
   return {
     id: str(d.id) || uid(), name: str(d.name), address: str(d.address), link: str(d.link),
+    rayon: /^[a-z-]{1,30}$/.test(str(d.rayon)) ? str(d.rayon) : '',
     stage: STAGES.includes(d.stage) ? d.stage : STAGES[0],
     calc: d.calc ? clean(DEFAULT_CALC, d.calc, CALC_ENUMS) : null,
     expenses: Array.isArray(d.expenses) ? d.expenses.filter(e => e && typeof e === 'object').map(e =>
@@ -426,6 +470,13 @@ function renderCalc() {
     '<textarea id="parseText" placeholder="2-к. квартира, 54,3 м², 5/9 эт.&#10;12 500 000 ₽&#10;Москва, Кузьминская ул., 11">' + esc(parseDraft) + '</textarea>' +
     '<div class="grid2" style="margin-top:10px"><label class="f">Продажа после ремонта, за м²<div class="inwrap"><input type="text" inputmode="decimal" id="sellM2" value="' + (S.sellM2 ? num(S.sellM2) : '') + '"><span>₽</span></div><span class="small">Необязательно: цена м² отремонтированных квартир рядом</span></label></div>' +
     '<button class="btn pri block" style="margin-top:10px" data-a="parse">Разобрать</button><div id="parseRes"></div></details></div>';
+  h += '<div id="calcHero"></div>';
+  if (c.price > 0) {
+    const lo = Math.round(c.price * 0.6 / 10000) * 10000, hi = Math.round(c.price * 1.4 / 10000) * 10000;
+    h += '<div class="card price-slide"><div class="head"><span>Цена покупки</span><b id="priceVal">' + rub(c.price) + '</b></div>' +
+      '<input type="range" id="priceSlide" min="' + lo + '" max="' + hi + '" step="10000" value="' + c.price + '" aria-label="Цена покупки">' +
+      '<div class="ends"><span>' + rub(lo) + '</span><span>' + rub(hi) + '</span></div></div>';
+  }
   h += '<div id="calcRes"></div>';
   CALC_GROUPS.forEach(([title, fields]) => {
     h += '<div class="card"><h3>' + title + '</h3><div class="grid2">';
@@ -460,13 +511,20 @@ function updateSmetaHint() {
 }
 function updateCalcResults() {
   const c = S.calc, a = analyse(c), b = a.base;
-  let h = '<div class="verdict ' + a.cls + '"><div class="small" style="font-weight:600;opacity:.85">ВЕРДИКТ</div><div class="v">' + esc(a.verdict) + '</div><p>' + esc(a.why) + '</p>' +
-    '<div class="kpis">' +
-    '<div class="kpi"><b class="' + (b.net < 0 ? 'neg' : '') + '">' + rub(b.net) + '</b><span>чистая прибыль</span></div>' +
-    '<div class="kpi"><b>' + pct(b.annual) + '</b><span>годовых на свои деньги</span></div>' +
-    '<div class="kpi"><b>' + rub(b.ownCash) + '</b><span>нужно своих денег</span></div>' +
-    '<div class="kpi"><b>' + (a.breakeven != null ? rub(a.breakeven) : '—') + '</b><span>продажа в ноль</span></div>' +
-    '</div></div>';
+  const hero = '<div class="verdict ' + a.cls + '"><div class="v">' + esc(a.verdict) + '</div>' +
+    '<div class="lbl">Чистая прибыль</div><div class="big' + (b.net < 0 ? ' neg' : '') + '">' + rub(b.net) + '</div>' +
+    '<div class="sub2"><b class="' + (b.annual < 0 ? 'neg' : '') + '">' + pct(b.annual) + '</b> годовых на свои деньги</div><p>' + esc(a.why) + '</p></div>';
+  const heroEl = $('#calcHero'); if (heroEl) heroEl.innerHTML = hero;
+  let h = '<div class="kpis">' +
+    '<div class="kpi"><span>Нужно своих денег</span><b>' + rub(b.ownCash) + '</b></div>' +
+    '<div class="kpi"><span>Продажа в ноль</span><b>' + (a.breakeven != null ? rub(a.breakeven) : '—') + '</b></div>' +
+    '<div class="kpi"><span>Срок</span><b>' + b.m + ' мес.</b></div>' +
+    '</div>';
+  const seg = [['Покупка', c.price + c.buyCosts, '#C9D0DB'], ['Ремонт и подготовка', c.repair + c.furniture, '#9AA6B8'], ['Налоги, комиссии, коммуналка, проценты', Math.max(0, b.tax) + b.comm + b.util + (b.loan > 0 ? b.interest : 0), '#F5A623'], ['Прибыль', Math.max(0, b.net), '#1FB86A']];
+  const segTot = seg.reduce((x, y) => x + Math.max(0, y[1]), 0) || 1;
+  h += '<div class="card"><h3>Куда уходят деньги</h3><div class="stackbar">' +
+    seg.map(x => '<i style="width:' + (Math.max(0, x[1]) / segTot * 100).toFixed(2) + '%;background:' + x[2] + '"></i>').join('') + '</div>' +
+    '<div class="legend">' + seg.map(x => '<span><u style="background:' + x[2] + '"></u>' + x[0] + '</span>').join('') + '</div></div>';
   h += '<div class="card"><h3>Из чего складывается</h3><table>' +
     '<tr><td>Цена продажи</td><td class="n">' + rub(c.sale) + '</td></tr>' +
     '<tr><td>Покупка</td><td class="n neg">' + rub(-c.price) + '</td></tr>' +
@@ -711,13 +769,14 @@ function renderTorgi() {
 }
 function updateTorgiResults() {
   const t = S.torgi, a = torgiPlan(S.calc, t), s0 = a.at(t.start);
-  let h = '<div class="verdict ' + a.cls + '"><div class="small" style="font-weight:600;opacity:.85">ВЕРДИКТ ПО ЛОТУ</div><div class="v">' + esc(a.verdict) + '</div><p>' + esc(a.why) + '</p>' +
+  let h = '<div class="verdict ' + a.cls + '"><div class="v">' + esc(a.verdict) + '</div>' +
+    '<div class="lbl">Предел ставки под цель</div><div class="big">' + (a.maxBid > 0 ? rub(a.limit) : '—') + '</div>' +
+    '<p>' + esc(a.why) + '</p></div>' +
     '<div class="kpis">' +
-    '<div class="kpi"><b>' + (a.maxBid > 0 ? rub(a.limit) : '—') + '</b><span>предел ставки под цель</span></div>' +
-    '<div class="kpi"><b>' + (a.zeroBid > 0 ? rub(round10k(a.zeroBid)) : '—') + '</b><span>ставка без убытка</span></div>' +
-    '<div class="kpi"><b>' + rub(a.deposit) + '</b><span>задаток</span></div>' +
-    '<div class="kpi"><b class="' + (s0.net < 0 ? 'neg' : '') + '">' + rub(s0.net) + '</b><span>прибыль по начальной цене</span></div>' +
-    '</div></div>';
+    '<div class="kpi"><span>Ставка без убытка</span><b>' + (a.zeroBid > 0 ? rub(round10k(a.zeroBid)) : '—') + '</b></div>' +
+    '<div class="kpi"><span>Задаток</span><b>' + rub(a.deposit) + '</b></div>' +
+    '<div class="kpi"><span>Прибыль по начальной цене</span><b class="' + (s0.net < 0 ? 'neg' : '') + '">' + rub(s0.net) + '</b></div>' +
+    '</div>';
   const row = (label, p, r) => '<tr><td>' + label + '</td><td class="n' + (a.limit > 0 && p <= a.limit ? ' pos' : '') + '">' + rub(p) + '</td><td class="n' + (r.net < 0 ? ' neg' : '') + '">' + rub(r.net) + '</td><td class="n">' + pct(r.annual) + '</td></tr>';
   if (t.kind === 'offer' && a.stages.length) {
     h += '<div class="card"><h3>Этапы снижения цены</h3><table><tr><th>Этап</th><th class="n">Цена</th><th class="n">Прибыль</th><th class="n">Годовых</th></tr>' +
@@ -771,6 +830,10 @@ function renderDeal(d) {
   let h = '';
   h += '<div class="card"><label class="f">Название<input type="text" data-d="name" value="' + esc(d.name) + '"></label>' +
     '<div style="height:10px"></div><label class="f">Адрес<input type="text" data-d="address" value="' + esc(d.address || '') + '"></label>' +
+    // Без файла данных список не показываем: иначе выбор «Не выбран» стёр бы сохранённый район
+    (rayonData().length ? '<div style="height:10px"></div><label class="f">Район<select id="dealRayonSel"><option value="">Не выбран</option>' +
+    rayonData().map(r => '<option value="' + esc(r.id) + '"' + (d.rayon === r.id ? ' selected' : '') + '>' + esc(r.name) + '</option>').join('') + '</select></label>' +
+    '<div id="dealRayon">' + dealRayonHtml(d) + '</div>' : '') +
     '<div style="height:10px"></div><label class="f">Ссылка на объявление или лот<input type="url" data-d="link" value="' + esc(d.link || '') + '" placeholder="https://"></label>' +
     '<p class="note" id="dealLink">' + dealLinkHtml(d) + '</p>' +
     '<h3 style="margin-top:14px">Этап</h3><div class="chips">' +
@@ -830,13 +893,184 @@ function dealFactHtml(d) {
       (p ? '<p class="note">План до налога был ' + rub(p.pbt) + '.</p>' : '') : '<p class="note">Впишите цену продажи, чтобы увидеть фактическую прибыль. Расходы на сделку при покупке вносите в «Расходы» со статьёй «Оформление сделки».</p>';
 }
 function newDeal(name, calc) {
-  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], checks: {}, notes: '', saleFact: 0, created: Date.now(), updated: Date.now()};
+  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', rayon: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], checks: {}, notes: '', saleFact: 0, created: Date.now(), updated: Date.now()};
   S.deals.push(d); save(); return d;
+}
+
+/* ===== Раздел «Районы» ===== */
+const RAYON_CATS = {notary: 'Нотариусы', mfc: 'МФЦ «Мои Документы»', stroy: 'Строймагазины', stroyrynok: 'Стройрынки', hardware: 'Магазины в районе',
+  metro: 'Метро в границах района', train: 'Ж/д, МЦД и МЦК', super: 'Супермаркеты', market: 'Рынки и ярмарки', clinic: 'Поликлиники', school: 'Школы', kinder: 'Детские сады и дошкольные корпуса', park: 'Парки и скверы', prom: 'Промышленные территории'};
+const RAYON_BLOCKS = {
+  deal: {label: 'Сделка', cats: ['notary', 'mfc']},
+  repair: {label: 'Ремонт', cats: ['stroy', 'stroyrynok', 'hardware']},
+  buyer: {label: 'Покупатель', cats: ['metro', 'train', 'super', 'market', 'clinic', 'school', 'kinder', 'park']},
+  minus: {label: 'Минусы', cats: ['prom']}
+};
+const AD_LABELS = {metro: 'метро', train: 'ж/д, МЦД и МЦК', super: 'магазины', market: 'рынки и ярмарки', clinic: 'поликлиники', school: 'школы', kinder: 'детские сады и дошкольные корпуса', park: 'парки и скверы'};
+const OUTSIDE_MOSCOW = /Томилино|Котельники|Балашиха|Реутов|Красногорск|Ленинский г\.о\./;
+let rayonView = null;     // null — справочник, 'list' — список районов, иначе id района
+let rayonFrom = null;     // 'deal', если карточку открыли из сделки
+let rayonBlock = 'deal';
+let rayonQuery = '';
+let adSel = new Set();    // места, отмеченные для абзаца объявления
+let adExtra = '';         // своё дополнение к абзацу: минуты до метро и т. п.
+let adRayon = null;       // район, к которому относятся отметки и дополнение
+function rayonData() { return typeof RAYONY !== 'undefined' ? RAYONY : []; }
+function rayonById(id) { return rayonData().find(r => r.id === id) || null; }
+const normRu = s => String(s == null ? '' : s).toLowerCase().replace(/ё/g, 'е');
+function rayonFilter(list, q) {
+  const w = normRu(q).trim();
+  return w ? list.filter(r => normRu(r.name + ' ' + r.okrug).includes(w)) : list;
+}
+// Район подставляем, только если он прямо назван в адресе: «р-н Перово» или «Перово район».
+// Метро и слово в описании не считаются: станция бывает в соседнем районе, а «д. Перово» — в другой области.
+function guessRayon(address, list) {
+  const t = normRu(address);
+  if (/област|обл\.|край|респ\.|республик/.test(t)) return '';
+  const hit = (list || rayonData()).find(r => {
+    const n = normRu(r.name).replace(/\s+/g, '[\\s-]+');
+    return new RegExp('(^|[^а-я])(р-н|р-он|район)\\s+' + n + '($|[^а-я])').test(t) || new RegExp('(^|[^а-я])' + n + '\\s+(р-н|р-он|район)($|[^а-я])').test(t);
+  });
+  return hit ? hit.id : '';
+}
+function phoneHref(p) { return /^\+7\d{10}$/.test(p || '') ? 'tel:' + p : ''; }
+function phoneText(p) {
+  if (!phoneHref(p)) return '';
+  const m = p.match(/^\+7(\d{3})(\d{3})(\d{2})(\d{2})$/);
+  return (m[1] === '800' ? '8' : '+7') + ' (' + m[1] + ') ' + m[2] + '-' + m[3] + '-' + m[4];
+}
+// С координатами — маршрут до точки; без них — поиск адреса на карте
+function placeMapUrl(it) {
+  if (typeof it.lat === 'number' && typeof it.lon === 'number') return 'https://yandex.ru/maps/?rtext=~' + it.lat + ',' + it.lon + '&rtt=auto';
+  return 'https://yandex.ru/maps/?text=' + encodeURIComponent(it.n + ', ' + (OUTSIDE_MOSCOW.test(it.a) ? '' : 'Москва, ') + it.a);
+}
+function rayonSearchUrl(what, r) { return 'https://yandex.ru/maps/?text=' + encodeURIComponent(what + ', район ' + r.name + ', Москва'); }
+function placeSource(it) {
+  const m = typeof RAYONY_META !== 'undefined' ? RAYONY_META : {};
+  if (it.s === 'fnp') return 'Реестр нотариусов, сверено ' + m.fnpDate + (it.h ? '; часы из каталога за ' + m.handDate + ', уточняйте' : '');
+  if (it.s === 'hand') return 'Собрано вручную, проверено ' + m.handDate;
+  return 'OpenStreetMap на ' + m.osmDate + ', вручную не проверено';
+}
+// Абзац для объявления: только отмеченные места и без расстояний, которых нет в данных
+function adText(r, ids) {
+  const parts = [];
+  Object.keys(AD_LABELS).forEach(c => {
+    const names = [...new Set(r.items.filter(it => it.c === c && ids.has(it.id)).map(it => it.n))];
+    if (names.length) parts.push('— ' + AD_LABELS[c] + ': ' + names.join(', '));
+  });
+  return parts.length ? 'Инфраструктура района ' + r.name + ':\n' + parts.join('\n') : '';
+}
+function changeText(v) { return (v > 0 ? '+' : '') + pct(v); }
+function rayonPriceLine(r) { return num(r.price) + ' ₽/м²'; }
+function rayonAttribution() {
+  const m = typeof RAYONY_META !== 'undefined' ? RAYONY_META : {};
+  if (!rayonData().length) return '';
+  return '<p class="note">Цены: ' + esc(m.priceSource) + '. Нотариусы: реестр Федеральной нотариальной палаты. МФЦ, строймагазины и стройрынки собраны вручную: сайты сетей, md.mos.ru, Яндекс Карты. Остальные места: © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:var(--gold-ink)">OpenStreetMap</a>, лицензия ODbL. Перед поездкой проверяйте адрес и часы.</p>';
+}
+function rayonRowHtml(r) {
+  return '<button class="card deal" data-a="rayon-open" data-id="' + esc(r.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(r.name) + '</span><span class="pill">' + esc(r.okrug) + '</span></div>' +
+    '<div class="small" style="margin-top:6px"><b>' + rayonPriceLine(r) + '</b> <span class="' + (r.change < 0 ? 'neg' : 'pos') + '">' + changeText(r.change) + '</span> за месяц</div></button>';
+}
+function rayonListHtml() {
+  if (!rayonData().length) return '<div class="card empty"><p><b>Справочник не загрузился</b></p><p class="muted">Подключитесь к интернету и откройте приложение заново.</p></div>';
+  const all = rayonFilter(rayonData(), rayonQuery);
+  if (!all.length) return '<div class="card empty"><p class="muted">Такого района пока нет. Сейчас в справочнике ' + rayonData().length + ' районов Москвы.</p></div>';
+  const fav = all.filter(r => S.rayony.fav.includes(r.id)), rest = all.filter(r => !S.rayony.fav.includes(r.id));
+  return (fav.length ? '<h3>Мои районы</h3>' + fav.map(rayonRowHtml).join('') + (rest.length ? '<h3>Все районы</h3>' : '') : '') + rest.map(rayonRowHtml).join('');
+}
+function renderRayonList() {
+  setTitle('Районы', '', true, 'rayon-back', '‹ Справочник');
+  $('#view').innerHTML = '<div class="card"><label class="f">Поиск района<input type="text" id="rayonQ" value="' + esc(rayonQuery) + '" placeholder="Название или округ"></label></div>' +
+    '<div id="rayonList">' + rayonListHtml() + '</div>' + rayonAttribution();
+}
+function placeHtml(it, withAd) {
+  const tel = phoneHref(it.p), note = S.rayony.notes[it.id] || '';
+  const name = esc(it.n);
+  return '<div class="place">' +
+    (withAd ? '<label class="chk"><input type="checkbox" data-ad="' + esc(it.id) + '"' + (adSel.has(it.id) ? ' checked' : '') + '><span class="t">' + name + '</span></label>' : '<div class="t">' + name + '</div>') +
+    '<div class="small">' + esc(it.a) + '</div>' +
+    (it.h ? '<div class="small muted">' + esc(it.h) + '</div>' : '') +
+    (it.note ? '<div class="small" style="color:var(--warn)">' + esc(it.note) + '</div>' : '') +
+    '<div class="acts">' + (tel ? '<a class="btn" href="' + esc(tel) + '" aria-label="Позвонить: ' + name + '">Позвонить</a>' : '') +
+    '<a class="btn" href="' + esc(placeMapUrl(it)) + '" target="_blank" rel="noopener">' + (typeof it.lat === 'number' ? 'Маршрут' : 'На карте') + '</a></div>' +
+    (tel ? '<div class="small muted" style="margin-top:6px">' + esc(phoneText(it.p)) + '</div>' : '') +
+    '<details' + (note ? ' open' : '') + '><summary>Моя пометка</summary><input type="text" maxlength="2000" data-pn="' + esc(it.id) + '" value="' + esc(note) + '" aria-label="Моя пометка: ' + name + '" placeholder="Например: быстро принимает"></details></div>';
+}
+function rayonLink(url, text) { return '<a class="rlink" href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(text) + ' ›</a>'; }
+function rayonBlockHtml(r, block) {
+  const withAd = block === 'buyer';
+  let h = '';
+  if (withAd) {
+    const txt = adText(r, adSel);
+    h += '<div class="card"><h3>Абзац для объявления</h3><p class="small muted" style="margin-top:0">Отметьте места ниже, и текст соберётся здесь. Расстояний в нём нет: пройдите от дома сами и впишите минуты в дополнение.</p>' +
+      '<textarea id="adText" readonly aria-label="Абзац для объявления" placeholder="Пока ничего не отмечено">' + esc(txt) + '</textarea>' +
+      '<div style="height:10px"></div><label class="f">Своё дополнение<textarea id="adExtra" maxlength="2000" placeholder="Например: до метро 7 минут пешком">' + esc(adExtra) + '</textarea></label>' +
+      '<button class="btn block" style="margin-top:10px" data-a="rayon-copy">Скопировать</button></div>';
+  }
+  if (block === 'minus') {
+    h += '<div class="card"><h3>Что проверить самому</h3><ul style="margin:0;padding-left:20px"><li>Входит ли дом или соседние дома в программу реновации.</li><li>Шум трасс и железной дороги: откройте окно вечером и в час пик.</li><li>Запах и грузовики рядом с промышленными территориями.</li><li>Что собираются строить под окнами.</li></ul>' +
+      rayonLink('https://www.mos.ru/city/projects/renovation/', 'Реновация на сайте Москвы') + '</div>';
+  }
+  RAYON_BLOCKS[block].cats.forEach(c => {
+    const list = r.items.filter(it => it.c === c);
+    if (c === 'notary' && !list.length) {
+      h += '<div class="card"><h3>' + RAYON_CATS[c] + '</h3><p class="small muted" style="margin:0">Действующих нотариусов этого района в реестре не нашли. Посмотрите соседние районы.</p>' + rayonLink('https://data.notariat.ru/directory/notary/', 'Реестр нотариусов') + '</div>';
+    } else if (c === 'prom' && !list.length) {
+      h += '<div class="card"><h3>' + RAYON_CATS[c] + '</h3><p class="small muted" style="margin:0">В открытых данных нет подписанных промышленных территорий района. Это не значит, что их нет: посмотрите карту вокруг дома.</p></div>';
+    } else if (c === 'metro' && !list.length) {
+      h += '<div class="card"><h3>' + RAYON_CATS[c] + '</h3><p class="small muted" style="margin:0">В открытых данных нет станций метро в границах района. Проверьте, как добираться от дома до ближайшей станции.</p></div>';
+    } else if (c === 'market' && !list.length) {
+      h += '<div class="card"><h3>' + RAYON_CATS[c] + '</h3><p class="small muted" style="margin:0">В открытых данных рынков этого района нет. Поищите на карте.</p>' + rayonLink(rayonSearchUrl('рынок', r), 'Рынки на карте') + '</div>';
+    } else if (list.length) {
+      // Источник один на группу: строка у каждого места растягивала экран
+      const srcs = [...new Set(list.map(placeSource))];
+      h += '<div class="card" data-cat="' + c + '"><h3 style="margin-bottom:2px">' + RAYON_CATS[c] + ' · ' + list.length + '</h3><p class="small muted src" style="margin:0 0 10px">' + esc(srcs.join('. ')) + '</p>' + list.map(it => placeHtml(it, withAd && !!AD_LABELS[c])).join('') + '</div>';
+    }
+  });
+  if (block === 'deal') {
+    h += '<div class="card"><h3>Ещё для сделки</h3>' + rayonLink(rayonSearchUrl('БТИ', r), 'БТИ: найти на карте') + rayonLink('https://www.mos.ru/mgi/', 'Мосжилинспекция: перепланировка') + rayonLink('https://data.notariat.ru/directory/notary/', 'Реестр нотариусов') + '</div>';
+  }
+  if (block === 'repair') {
+    h += '<div class="card"><h3>Найти на карте</h3>' + rayonLink(rayonSearchUrl('вывоз строительного мусора', r), 'Вывоз строительного мусора') + rayonLink(rayonSearchUrl('аренда строительного инструмента', r), 'Аренда инструмента') +
+      '<h3 style="margin-top:12px">Мои контакты по району</h3><textarea data-rn="' + esc(r.id) + '" maxlength="2000" aria-label="Мои контакты по району" placeholder="Проверенные мастера, прорабы, поставщики">' + esc(S.rayony.dnotes[r.id] || '') + '</textarea></div>';
+  }
+  if (block === 'buyer') {
+    h += '<div class="card"><h3>Показаны не все места</h3><p class="small muted" style="margin-top:0">Для каждого типа выбраны несколько мест ближе к центру района.</p>' + rayonLink(rayonSearchUrl('супермаркет', r), 'Все супермаркеты на карте') + rayonLink(rayonSearchUrl('школа', r), 'Все школы на карте') + '</div>';
+  }
+  return h;
+}
+function renderRayon(id) {
+  const r = rayonById(id);
+  if (!r) { rayonView = 'list'; renderRayonList(); return; }
+  const fav = S.rayony.fav.includes(r.id);
+  setTitle(r.name, '<button class="star" data-a="rayon-fav" aria-pressed="' + fav + '" aria-label="' + (fav ? 'Убрать из моих районов' : 'Добавить в мои районы') + '">' + (fav ? '★' : '☆') + '</button>', true, 'rayon-back', rayonFrom === 'deal' ? '‹ Сделка' : '‹ Районы');
+  $('#view').innerHTML = '<div class="card"><div class="price-big">' + rayonPriceLine(r) + '</div>' +
+    '<div class="small"><span class="' + (r.change < 0 ? 'neg' : 'pos') + '">' + changeText(r.change) + '</span> за месяц · ' + esc(r.okrug) + '</div>' +
+    '<p class="note">' + esc(RAYONY_META.priceSource) + (r.shared ? '. Источник даёт одну цену на два района: ' + esc(r.shared) : '') + '</p></div>' +
+    '<div class="seg rseg" data-seg="rblock" style="margin-bottom:14px">' + Object.keys(RAYON_BLOCKS).map(k => '<button data-v="' + k + '" class="' + (rayonBlock === k ? 'on' : '') + '">' + RAYON_BLOCKS[k].label + '</button>').join('') + '</div>' +
+    '<div id="rayonBlock">' + rayonBlockHtml(r, rayonBlock) + '</div>' + rayonAttribution();
+}
+function dealRayonHtml(d) {
+  const r = rayonById(d.rayon);
+  if (!r) return '';
+  return '<p class="note">' + esc(r.name) + ': <b>' + rayonPriceLine(r) + '</b>, ' + esc(RAYONY_META.priceSource) + '</p>' +
+    '<button class="btn block" style="margin-top:8px" data-a="rayon-open" data-id="' + esc(r.id) + '" data-from="deal">Открыть карточку района</button>';
+}
+function rayonShow(cls) { renderRef(); window.scrollTo(0, 0); animate(cls); onScroll(); }
+function rayonBack() {
+  if (rayonFrom === 'deal' && rayonView !== 'list') { rayonView = null; rayonFrom = null; go('deals'); return; }
+  rayonView = rayonView === 'list' ? null : 'list';
+  rayonFrom = null;
+  rayonShow('anim-left');
 }
 
 /* ===== Раздел «Справка» ===== */
 function renderRef() {
+  if (rayonView === 'list') return renderRayonList();
+  if (rayonView) return renderRayon(rayonView);
+  setTitle(TITLES.ref);
   $('#view').innerHTML = '' +
+    '<button class="card deal" data-a="rayon-list"><span class="t">Районы</span><br><span class="small muted">Нотариусы, МФЦ, строймагазины, супермаркеты, рынки и цена м² по районам Москвы</span></button>' +
     '<a class="card deal" href="https://t.me/flipologia" target="_blank" rel="noopener" style="text-decoration:none"><span class="t">Новости и лоты недели</span><br><span class="small muted">Свежие новости рынка, цены м² и лоты с дисконтом — в Telegram-канале «Флипология»</span></a>' +
     '<div class="card">' +
     '<details open><summary>Налог при продаже квартиры (физлицо)</summary><ul>' +
@@ -866,15 +1100,18 @@ function renderRef() {
     '<li><b>Не брать</b> — убыток или доходность ниже цели даже при сильном торге.</li>' +
     '<li>Плохой сценарий: продажа на 10% дешевле, срок на 3 месяца дольше, ремонт на 20% дороже.</li></ul></details>' +
     '</div><p class="note">Расчёты и справка — ориентир, а не гарантия прибыли и не юридическая консультация. Перед сделкой сверьтесь с юристом и бухгалтером.</p>' +
-    '<p class="note">Флипология · прототип v0.3</p>';
+    '<p class="note">Флипология · прототип v0.4</p>';
 }
 
 /* ===== Навигация ===== */
 const TITLES = {calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
-function setTitle(text, action, back) {
+function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
-  $('#ltBack').classList.toggle('hide', !back);
+  const b = $('#ltBack');
+  b.classList.toggle('hide', !back);
+  b.dataset.a = backAction || 'deal-close';
+  b.textContent = backLabel || '‹ Сделки';
 }
 function onScroll() {
   $('#top').classList.toggle('scrolled', $('#lt').getBoundingClientRect().bottom < $('#top').getBoundingClientRect().bottom);
@@ -897,24 +1134,31 @@ function closeDeal() { openDeal = null; renderDeals(); window.scrollTo(0, 0); an
 let swipe = null;
 document.addEventListener('touchstart', e => {
   const p = e.touches[0];
-  swipe = standalone && S.tab === 'deals' && openDeal && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView)) && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
 }, {passive: true});
 document.addEventListener('touchend', e => {
   if (!swipe) return;
   const p = e.changedTouches[0], dx = p.clientX - swipe.x, dy = Math.abs(p.clientY - swipe.y);
   swipe = null;
-  if (dx > 70 && dy < 60) closeDeal();
+  if (dx > 70 && dy < 60) { if (S.tab === 'ref') rayonBack(); else closeDeal(); }
 }, {passive: true});
-$('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { if (b.dataset.tab === 'deals') openDeal = null; go(b.dataset.tab); } });
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { if (b.dataset.tab === 'deals') openDeal = null; if (b.dataset.tab === 'ref') { rayonView = null; rayonFrom = null; } go(b.dataset.tab); } });
 
 /* ===== Ввод данных ===== */
 const view = $('main');  // события ловим на всём main: и в разделе, и у кнопки рядом с крупным заголовком
 const INT_KEYS = ['months', 'term'];
 view.addEventListener('input', e => {
   const t = e.target;
+  if (t.id === 'priceSlide') {
+    S.calc.price = Math.round(+t.value || 0); save();
+    const pf = view.querySelector('input[data-k="price"]'); if (pf) pf.value = num(S.calc.price);
+    const pv = $('#priceVal'); if (pv) pv.textContent = rub(S.calc.price);
+    updateCalcResults(); return;
+  }
   if (t.dataset.k && t.type !== 'checkbox' && t.tagName !== 'SELECT') {
     let v = parseNum(t.value); if (INT_KEYS.includes(t.dataset.k)) v = Math.max(1, Math.round(v) || 1);
     S.calc[t.dataset.k] = v; save(); updateCalcResults();
+    if (t.dataset.k === 'price') { const sl = $('#priceSlide'), pv = $('#priceVal'); if (sl) sl.value = v; if (pv) pv.textContent = rub(v); }
   } else if (t.dataset.sm) {
     let v = parseNum(t.value); if (t.dataset.sm !== 'area' && t.dataset.sm !== 'contingency') v = Math.max(0, Math.round(v));
     S.smeta[t.dataset.sm] = v; save(); updateSmetaTableKeepFocus();
@@ -932,6 +1176,16 @@ view.addEventListener('input', e => {
     S.torgi[t.dataset.t] = v; save(); updateTorgiResults();
   } else if (t.id === 'parseText') {
     parseDraft = t.value;
+  } else if (t.id === 'rayonQ') {
+    rayonQuery = t.value; $('#rayonList').innerHTML = rayonListHtml();
+  } else if (t.id === 'adExtra') {
+    adExtra = t.value;
+  } else if (t.dataset.pn) {
+    if (t.value.trim()) S.rayony.notes[t.dataset.pn] = t.value; else delete S.rayony.notes[t.dataset.pn];
+    save();
+  } else if (t.dataset.rn) {
+    if (t.value.trim()) S.rayony.dnotes[t.dataset.rn] = t.value; else delete S.rayony.dnotes[t.dataset.rn];
+    save();
   } else if (t.id === 'sellM2') {
     S.sellM2 = Math.max(0, parseNum(t.value)); save();
   }
@@ -948,6 +1202,13 @@ view.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset.k === 'tax') { S.calc.tax = t.value; save(); $('#repDedBox').classList.toggle('hide', t.value !== 'ndfl'); updateCalcResults(); }
   else if (t.dataset.k === 'repairDed') { S.calc.repairDed = t.checked; save(); updateCalcResults(); }
+  else if (t.id === 'dealRayonSel') {
+    const d = S.deals.find(x => x.id === openDeal); if (!d) return;
+    d.rayon = t.value; d.updated = Date.now(); save(); $('#dealRayon').innerHTML = dealRayonHtml(d);
+  } else if (t.dataset.ad) {
+    if (t.checked) adSel.add(t.dataset.ad); else adSel.delete(t.dataset.ad);
+    $('#adText').value = adText(rayonById(rayonView), adSel);
+  }
   else if (t.dataset.check) {
     const d = S.deals.find(x => x.id === openDeal); if (!d) return;
     d.checks = d.checks || {}; d.checks[t.dataset.check] = t.checked; d.updated = Date.now(); save(); renderDeal(d);
@@ -985,6 +1246,7 @@ view.addEventListener('click', e => {
     if (seg === 'fin') { S.calc.fin = segBtn.dataset.v; $('#mortBox').classList.toggle('hide', S.calc.fin !== 'mortgage'); updateCalcResults(); }
     if (seg === 'level') { S.smeta.level = Number(segBtn.dataset.v); updateSmetaTable(); }
     if (seg === 'tkind') { S.torgi.kind = segBtn.dataset.v; save(); renderTorgi(); return; }
+    if (seg === 'rblock') { rayonBlock = segBtn.dataset.v; $('#rayonBlock').innerHTML = rayonBlockHtml(rayonById(rayonView), rayonBlock); }
     segBtn.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === segBtn));
     save(); return;
   }
@@ -1020,8 +1282,30 @@ view.addEventListener('click', e => {
       applyParse(r);
       const nd = newDeal(parseTitle(r), S.calc);
       nd.address = r.address || ''; if (r.link) nd.link = r.link;
+      nd.rayon = guessRayon(nd.address);
       nd.notes = 'Из объявления: ' + [r.price ? rub(r.price) : '', r.floor ? 'этаж ' + r.floor + ' из ' + r.floors : '', r.metro ? 'м. ' + r.metro : ''].filter(Boolean).join(', ');
       S.calcDeal = nd.id; save(); renderCalc(); toast('Сделка создана — она в разделе «Сделки»'); break;
+    }
+    case 'rayon-list': rayonView = 'list'; rayonFrom = null; rayonShow('anim-right'); break;
+    case 'rayon-open': {
+      // Отметки и дополнение держим, пока не открыт другой район
+      if (adRayon !== b.dataset.id) { adSel = new Set(); adExtra = ''; adRayon = b.dataset.id; }
+      rayonView = b.dataset.id; rayonBlock = 'deal';
+      if (b.dataset.from === 'deal') { rayonFrom = 'deal'; go('ref'); } else { rayonFrom = null; rayonShow('anim-right'); }
+      break;
+    }
+    case 'rayon-back': rayonBack(); break;
+    case 'rayon-fav': {
+      const i = S.rayony.fav.indexOf(rayonView);
+      if (i >= 0) S.rayony.fav.splice(i, 1); else S.rayony.fav.push(rayonView);
+      save(); renderRayon(rayonView); toast(i >= 0 ? 'Убрано из моих районов' : 'Добавлено в мои районы'); break;
+    }
+    case 'rayon-copy': {
+      const txt = [$('#adText').value.trim(), adExtra.trim()].filter(Boolean).join('\n');
+      if (!txt) { toast('Сначала отметьте места'); break; }
+      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => toast('Абзац скопирован'), () => toast('Не получилось скопировать: выделите текст вручную'));
+      else toast('Не получилось скопировать: выделите текст вручную');
+      break;
     }
     case 'go-calc': go('calc'); break;
     case 'torgi-deal': {
