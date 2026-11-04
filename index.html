@@ -1081,13 +1081,6 @@ function dealRayonHtml(d) {
   return '<p class="note">' + esc(r.name) + ': <b>' + rayonPriceLine(r) + '</b>, ' + esc(RAYONY_META.priceSource) + '</p>' +
     '<button class="btn block" style="margin-top:8px" data-a="rayon-open" data-id="' + esc(r.id) + '" data-from="deal">Открыть карточку района</button>';
 }
-function rayonShow(cls) { renderRef(); window.scrollTo(0, 0); animate(cls); onScroll(); }
-function rayonBack() {
-  if (rayonFrom === 'deal' && rayonView !== 'list') { rayonView = null; rayonFrom = null; go('deals'); return; }
-  rayonView = rayonView === 'list' ? null : 'list';
-  rayonFrom = null;
-  rayonShow('anim-left');
-}
 
 /* ===== Раздел «Справка» ===== */
 function renderRef() {
@@ -1146,15 +1139,99 @@ window.addEventListener('scroll', onScroll, {passive: true});
 function animate(cls) {
   const v = $('#view'); v.classList.remove('anim-up', 'anim-right', 'anim-left'); void v.offsetWidth; v.classList.add(cls);
 }
-function go(tab) {
+function go(tab, cls, y) {
   S.tab = tab; save();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
   ({calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef})[tab]();
-  window.scrollTo(0, 0); animate('anim-up'); onScroll();
+  window.scrollTo(0, y || 0); animate(cls || 'anim-up'); onScroll();
 }
-function openDealView(id) { openDeal = id; renderDeals(); window.scrollTo(0, 0); animate('anim-right'); onScroll(); }
-function closeDeal() { openDeal = null; renderDeals(); window.scrollTo(0, 0); animate('anim-left'); onScroll(); }
+/* ===== История: системная кнопка «назад», кнопка «‹» и свайп идут одним путём =====
+   Стопка: «Расчёт» (глубина 0) → другая вкладка (1) → экраны вглубь (2, 3…).
+   Вкладки записи не копят: со вкладки «назад» ведёт в «Расчёт», а из него — выход из приложения. */
+const NAV_TABS = ['calc', 'smeta', 'torgi', 'deals', 'ref'];
+let navDepth = 0;       // глубина текущего экрана в стопке
+let navPending = null;  // вкладка, которую запишем, когда история вернётся к началу стопки
+const navRoot = tab => ({tab, deal: null, rayon: null, from: null});
+// Запись истории может устареть (сделку удалили) или быть подделанной: оставляем только то, что существует
+function navClean(st) {
+  const s = st && typeof st === 'object' ? st : {};
+  const tab = NAV_TABS.includes(s.tab) ? s.tab : 'calc';
+  const deal = typeof s.deal === 'string' && S.deals.some(d => d.id === s.deal) ? s.deal : null;
+  const rayon = tab === 'ref' && (s.rayon === 'list' || (typeof s.rayon === 'string' && rayonById(s.rayon))) ? s.rayon : null;
+  const from = s.from === 'deal' && deal && rayon && rayon !== 'list' ? 'deal' : null;
+  const depth = Number.isInteger(s.depth) && s.depth > 0 ? s.depth : 0;
+  const y = typeof s.y === 'number' && s.y > 0 ? s.y : 0;
+  return {tab, deal: tab === 'deals' || from ? deal : null, rayon, from, depth, y};
+}
+// Куда вернуться с экрана, если записи в истории нет
+function navParent(st) {
+  if (st.from === 'deal') return {tab: 'deals', deal: st.deal, rayon: null, from: null};
+  if (st.rayon && st.rayon !== 'list') return {tab: 'ref', deal: null, rayon: 'list', from: null};
+  return navRoot(st.tab === 'calc' || st.deal || st.rayon ? st.tab : 'calc');
+}
+function navNow() { return {tab: S.tab, deal: openDeal, rayon: rayonView, from: rayonFrom}; }
+function navWrite(method, st, depth) {
+  navDepth = depth;
+  try { window.history[method](Object.assign({nav: 1}, st, {depth, y: st.y || 0}), ''); } catch (e) {}
+}
+function navShow(st, cls, y) {
+  openDeal = st.deal; rayonView = st.rayon; rayonFrom = st.from;
+  go(st.tab, cls, y);
+}
+// Запоминаем прокрутку текущего экрана и кладём новую запись, не меняя экран
+function navRecord(st) {
+  navWrite('replaceState', Object.assign(navNow(), {y: window.scrollY}), navDepth);
+  navWrite('pushState', st, navDepth + 1);
+}
+// Переход вглубь или по ссылке на другой раздел
+function navPush(st, cls) { navRecord(st); navShow(st, cls || 'anim-right'); }
+function navBack() {
+  if (navDepth > 0) { try { window.history.back(); return; } catch (e) {} }
+  navShow(navParent(navNow()), 'anim-left');
+}
+function navCommitTab(st) {
+  if (st.tab === 'calc') navWrite('replaceState', st, 0);
+  else navWrite('pushState', st, 1);
+}
+// Нижнее меню: экран меняем сразу, стопку приводим к виду «Расчёт → вкладка»
+function navTab(tab) {
+  const st = navRoot(tab);
+  navShow(st, 'anim-up');
+  if (navPending) { navPending = st; return; }
+  if (navDepth === 0) navCommitTab(st);
+  else if (navDepth === 1 && tab !== 'calc') navWrite('replaceState', st, 1);
+  else {
+    navPending = st;
+    try { window.history.go(-navDepth); } catch (e) {}
+    // Если браузер не вернулся (стопка оказалась короче), не зависаем: просто фиксируем вкладку
+    setTimeout(() => { if (navPending) { const p = navPending; navPending = null; navWrite('replaceState', p, p.tab === 'calc' ? 0 : 1); } }, 600);
+  }
+}
+window.addEventListener('popstate', e => {
+  if (navPending) { const p = navPending; navPending = null; navDepth = 0; navCommitTab(p); return; }
+  if (!e.state || e.state.nav !== 1) return;
+  const st = navClean(e.state), cls = st.depth < navDepth ? 'anim-left' : 'anim-right';
+  navDepth = st.depth;
+  navShow(st, cls, st.y);
+});
+// Запуск: после перезагрузки остаёмся на том же экране, при новом открытии — на сохранённой вкладке
+function navInit() {
+  try { window.history.scrollRestoration = 'manual'; } catch (e) {}
+  const h = window.history && window.history.state;
+  if (h && h.nav === 1) {
+    const st = navClean(h);
+    navDepth = st.depth;
+    navShow(st, 'anim-up');
+    return;
+  }
+  const tab = S.tab;
+  navWrite('replaceState', navRoot('calc'), 0);
+  if (tab !== 'calc') navWrite('pushState', navRoot(tab), 1);
+  navShow(navRoot(tab), 'anim-up');
+}
+function openDealView(id) { navPush({tab: 'deals', deal: id, rayon: null, from: null}); }
+function closeDeal() { navBack(); }
 // Свайп от левого края в карточке сделки — назад к списку, как в iOS
 let swipe = null;
 document.addEventListener('touchstart', e => {
@@ -1165,9 +1242,9 @@ document.addEventListener('touchend', e => {
   if (!swipe) return;
   const p = e.changedTouches[0], dx = p.clientX - swipe.x, dy = Math.abs(p.clientY - swipe.y);
   swipe = null;
-  if (dx > 70 && dy < 60) { if (S.tab === 'ref') rayonBack(); else closeDeal(); }
+  if (dx > 70 && dy < 60) navBack();
 }, {passive: true});
-$('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { if (b.dataset.tab === 'deals') openDeal = null; if (b.dataset.tab === 'ref') { rayonView = null; rayonFrom = null; } go(b.dataset.tab); } });
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) navTab(b.dataset.tab); });
 
 /* ===== Ввод данных ===== */
 const view = $('main');  // события ловим на всём main: и в разделе, и у кнопки рядом с крупным заголовком
@@ -1244,7 +1321,7 @@ view.addEventListener('change', e => {
         const data = JSON.parse(r.result);
         if (!data || !Array.isArray(data.deals)) throw new Error('bad');
         if (!confirm('Заменить текущие данные копией? Сделок в копии: ' + data.deals.length)) return;
-        localStorage.setItem(LS_KEY, JSON.stringify(data)); S = load(); toast('Копия загружена'); go('deals');
+        localStorage.setItem(LS_KEY, JSON.stringify(data)); S = load(); toast('Копия загружена'); navTab('deals');
       } catch (err) { toast('Это не файл копии Флипологии'); }
     };
     r.readAsText(t.files[0]);
@@ -1312,15 +1389,16 @@ view.addEventListener('click', e => {
       nd.notes = 'Из объявления: ' + [r.price ? rub(r.price) : '', r.floor ? 'этаж ' + r.floor + ' из ' + r.floors : '', r.metro ? 'м. ' + r.metro : ''].filter(Boolean).join(', ');
       S.calcDeal = nd.id; save(); renderCalc(); toast('Сделка создана — она в разделе «Сделки»'); break;
     }
-    case 'rayon-list': rayonView = 'list'; rayonFrom = null; rayonShow('anim-right'); break;
+    case 'rayon-list': navPush({tab: 'ref', deal: null, rayon: 'list', from: null}); break;
     case 'rayon-open': {
       // Отметки и дополнение держим, пока не открыт другой район
       if (adRayon !== b.dataset.id) { adSel = new Set(); adExtra = ''; adRayon = b.dataset.id; }
-      rayonView = b.dataset.id; rayonBlock = 'deal';
-      if (b.dataset.from === 'deal') { rayonFrom = 'deal'; go('ref'); } else { rayonFrom = null; rayonShow('anim-right'); }
+      rayonBlock = 'deal';
+      if (b.dataset.from === 'deal') navPush({tab: 'ref', deal: openDeal, rayon: b.dataset.id, from: 'deal'});
+      else navPush({tab: 'ref', deal: null, rayon: b.dataset.id, from: null});
       break;
     }
-    case 'rayon-back': rayonBack(); break;
+    case 'rayon-back': navBack(); break;
     case 'rayon-fav': {
       const i = S.rayony.fav.indexOf(rayonView);
       if (i >= 0) S.rayony.fav.splice(i, 1); else S.rayony.fav.push(rayonView);
@@ -1333,7 +1411,7 @@ view.addEventListener('click', e => {
       else toast('Не получилось скопировать: выделите текст вручную');
       break;
     }
-    case 'go-calc': go('calc'); break;
+    case 'go-calc': navPush(navRoot('calc'), 'anim-up'); break;
     case 'torgi-deal': {
       const name = ($('#lotName').value || '').trim();
       if (!name) { toast('Впишите название сделки'); $('#lotName').focus(); break; }
@@ -1342,9 +1420,14 @@ view.addEventListener('click', e => {
       const link = $('#lotLink').value.trim(); if (/^https?:\/\//i.test(link)) nd.link = link;
       nd.notes = 'Торги: ' + (t.kind === 'offer' ? 'публичное предложение' : 'аукцион') + ', начальная цена ' + rub(t.start) +
         ', предел ставки ' + (tp.maxBid > 0 ? rub(tp.limit) : '—') + ', задаток ' + rub(tp.deposit) + '.';
-      save(); openDeal = nd.id; go('deals'); toast('Сделка по лоту создана'); break;
+      // В стопке между лотом и сделкой — список сделок: кнопка «‹ Сделки» обещает именно его
+      {
+        const dealSt = {tab: 'deals', deal: nd.id, rayon: null, from: null};
+        save(); navRecord(navRoot('deals')); navWrite('pushState', dealSt, navDepth + 1); navShow(dealSt, 'anim-right');
+        toast('Сделка по лоту создана'); break;
+      }
     }
-    case 'smeta-to-calc': S.calc.repair = Math.round(smetaTotal().total); save(); go('calc'); toast('Ремонт перенесён в расчёт'); break;
+    case 'smeta-to-calc': S.calc.repair = Math.round(smetaTotal().total); save(); navPush(navRoot('calc'), 'anim-up'); toast('Ремонт перенесён в расчёт'); break;
     case 'smeta-reset':
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
       break;
@@ -1354,7 +1437,7 @@ view.addEventListener('click', e => {
     case 'deal-share': if (d) shareDeal(d); break;
     case 'deal-stage': if (d) { d.stage = b.dataset.v; d.updated = Date.now(); save(); renderDeal(d); } break;
     case 'deal-to-calc':
-      if (d) { S.calc = Object.assign({}, DEFAULT_CALC, d.calc || {}); S.calcDeal = d.id; save(); go('calc'); }
+      if (d) { S.calc = Object.assign({}, DEFAULT_CALC, d.calc || {}); S.calcDeal = d.id; save(); navPush(navRoot('calc'), 'anim-up'); }
       break;
     case 'exp-add': {
       if (!d) break;
@@ -1369,7 +1452,7 @@ view.addEventListener('click', e => {
       break;
     case 'deal-del':
       if (d && confirm('Удалить сделку «' + d.name + '» со всеми расходами?')) {
-        S.deals = S.deals.filter(x => x.id !== d.id); if (S.calcDeal === d.id) S.calcDeal = null; openDeal = null; save(); renderDeals();
+        S.deals = S.deals.filter(x => x.id !== d.id); if (S.calcDeal === d.id) S.calcDeal = null; save(); navBack();
       }
       break;
     case 'backup-save': {
@@ -1413,7 +1496,7 @@ $('#install').addEventListener('click', e => {
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; showInstall(); });
 setTimeout(showInstall, 1500);
 
-go(S.tab);
+navInit();
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

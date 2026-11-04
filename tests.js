@@ -239,6 +239,31 @@ vm.runInContext(`
   check('ползунок: слишком малая цена — его нет', priceSlideRange(10000) === null && priceSlideRange(1000) === null);
 }
 
+/* --- История: кнопка «назад» --- */
+{
+  S.deals = [{id: 'd1', name: 'Сделка', expenses: []}];
+  const c = navClean;
+  check('история: мусор — Расчёт', c('x').tab === 'calc' && c(null).tab === 'calc' && c({tab: '<img>'}).tab === 'calc');
+  check('история: сделка на месте', c({tab: 'deals', deal: 'd1'}).deal === 'd1');
+  check('история: удалённая сделка — список', c({tab: 'deals', deal: 'нет'}).deal === null);
+  check('история: подделанный id сделки', c({tab: 'deals', deal: {a: 1}}).deal === null);
+  check('история: район на месте', c({tab: 'ref', rayon: 'perovo'}).rayon === 'perovo');
+  check('история: список районов', c({tab: 'ref', rayon: 'list'}).rayon === 'list');
+  check('история: несуществующий район', c({tab: 'ref', rayon: '"><img'}).rayon === null);
+  check('история: район только в Справке', c({tab: 'calc', rayon: 'perovo'}).rayon === null);
+  check('история: район из сделки', (s => s.from === 'deal' && s.deal === 'd1' && s.rayon === 'perovo')(c({tab: 'ref', deal: 'd1', rayon: 'perovo', from: 'deal'})));
+  check('история: район из удалённой сделки — обычная карточка', (s => s.from === null && s.deal === null && s.rayon === 'perovo')(c({tab: 'ref', deal: 'нет', rayon: 'perovo', from: 'deal'})));
+  check('история: глубина и прокрутка очищены', c({depth: -2, y: 'x'}).depth === 0 && c({depth: 1.5}).depth === 0 && c({y: -5}).y === 0 && c({depth: 3, y: 120}).depth === 3 && c({y: 120}).y === 120);
+  check('история: сделка не прилипает к чужой вкладке', c({tab: 'calc', deal: 'd1'}).deal === null);
+  const p = navParent;
+  check('родитель: район из сделки — сделка', p({tab: 'ref', deal: 'd1', rayon: 'perovo', from: 'deal'}).deal === 'd1' && p({tab: 'ref', deal: 'd1', rayon: 'perovo', from: 'deal'}).tab === 'deals');
+  check('родитель: район — список', p({tab: 'ref', rayon: 'perovo', deal: null, from: null}).rayon === 'list');
+  check('родитель: список — справочник', (s => s.tab === 'ref' && s.rayon === null)(p({tab: 'ref', rayon: 'list', deal: null, from: null})));
+  check('родитель: сделка — список', (s => s.tab === 'deals' && s.deal === null)(p({tab: 'deals', deal: 'd1', rayon: null, from: null})));
+  check('родитель: вкладка — Расчёт', p({tab: 'smeta', deal: null, rayon: null, from: null}).tab === 'calc');
+  S.deals = [];
+}
+
 /* --- Районы: логика --- */
 {
   const list = [{id: 'perovo', name: 'Перово', okrug: 'ВАО'}, {id: 'strogino', name: 'Строгино', okrug: 'СЗАО'}, {id: 'biryulevo-v', name: 'Бирюлёво Восточное', okrug: 'ЮАО'}];
