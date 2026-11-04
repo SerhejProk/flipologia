@@ -131,6 +131,19 @@ tr.total td{font-weight:700;border-bottom:0}
 .pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--input);color:var(--muted)}
 .pill.st{background:var(--warn-bg);color:var(--warn);border-color:transparent}
 .deal{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;border:0}
+#splash{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;animation:splashOut .45s ease 1.7s forwards}
+#splash.out{animation:splashOut .25s ease forwards}
+.nosplash #splash{display:none}
+#splash img{width:104px;height:104px;border-radius:24px;box-shadow:0 10px 30px rgba(20,23,28,.18);animation:splashIn .7s cubic-bezier(.2,.8,.2,1) both}
+#splash .nm{font-size:22px;font-weight:700;letter-spacing:.14em;color:var(--ink);animation:splashUp .6s ease .25s both}
+#splash .tg{font-size:14px;color:var(--muted);animation:splashUp .6s ease .45s both}
+#splash .bar{position:absolute;bottom:16%;width:120px;height:3px;border-radius:2px;background:var(--line);overflow:hidden}
+#splash .bar i{display:block;height:100%;width:100%;background:var(--gold);transform-origin:left;animation:splashBar 1.5s ease .1s both}
+@keyframes splashIn{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:none}}
+@keyframes splashUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes splashBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes splashOut{to{opacity:0;visibility:hidden;pointer-events:none}}
+@media (prefers-reduced-motion:reduce){#splash img,#splash .nm,#splash .tg,#splash .bar i{animation:none}}
 .hh{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:18px 4px 8px}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 12px}
 .tile{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:16px;text-align:left;border:0;font:inherit;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:112px}
@@ -194,8 +207,13 @@ button,summary,.tabs,.top,.chips,.seg,.lt{-webkit-user-select:none;user-select:n
 .star{width:44px;height:44px;border:0;border-radius:12px;box-shadow:var(--shadow);background:var(--card);color:var(--gold-ink);font-size:22px;line-height:1;cursor:pointer}
 .rlink{display:block;padding:9px 0;color:var(--gold-ink);font-weight:600;font-size:14px}
 </style>
+<script data-boot>
+// Экран запуска показываем один раз за сеанс; при автоматических проверках — только по ?splash
+try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splash/.test(location.search))) document.documentElement.classList.add('nosplash'); } catch (e) {}
+</script>
 </head>
 <body>
+<div id="splash" role="img" aria-label="Флипология"><img src="icon-192.png" alt=""><div class="nm">ФЛИПОЛОГИЯ</div><div class="tg">Расчёт сделок с недвижимостью</div><div class="bar"><i></i></div></div>
 <header class="top" id="top">
   <img src="icon-192.png" alt="">
   <div class="brand">ФЛИПОЛОГИЯ</div>
@@ -1434,6 +1452,15 @@ function navInit() {
   navWrite('replaceState', navRoot('home'), 0);
   navShow(navRoot('home'), 'anim-up');
 }
+// Экран запуска: пропуск касанием, после анимации убираем из страницы
+(function () {
+  const el = document.getElementById('splash');
+  if (!el) return;
+  if (document.documentElement.classList.contains('nosplash')) { el.remove(); return; }
+  try { sessionStorage.setItem('fl-splash', '1'); } catch (e) {}
+  el.addEventListener('click', () => el.classList.add('out'));
+  el.addEventListener('animationend', e => { if (e.animationName === 'splashOut') el.remove(); });
+})();
 function openDealView(id) { navPush({tab: 'deals', deal: id, rayon: null, from: null}); }
 function closeDeal() { navBack(); }
 // Свайп от левого края в карточке сделки — назад к списку, как в iOS
