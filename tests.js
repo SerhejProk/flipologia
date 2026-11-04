@@ -239,6 +239,42 @@ vm.runInContext(`
   check('ползунок: слишком малая цена — его нет', priceSlideRange(10000) === null && priceSlideRange(1000) === null);
 }
 
+/* --- Предел цены покупки, желаемая прибыль, месяц простоя --- */
+{
+  const D = DEFAULT_CALC, mk = d => analyse(Object.assign({}, D, d));
+  const a0 = mk({});
+  check('предел: без желаемой прибыли как раньше (по доходности)', a0.maxBuy === a0.maxBuyYield && a0.maxBuyProfit === null, [a0.maxBuy, a0.maxBuyYield]);
+  check('предел по доходности: при нём доходность равна цели', near(compute(Object.assign({}, D, {price: a0.maxBuy})).annual, D.target, 0.01), a0.maxBuy);
+  const a1 = mk({minProfit: 1000000});
+  check('предел по прибыли: при нём чистая прибыль равна желаемой', a1.maxBuyProfit != null && near(compute(Object.assign({}, D, {price: a1.maxBuyProfit})).net, 1000000, 1), a1.maxBuyProfit);
+  check('предел: берётся меньший из двух', a1.maxBuy === Math.min(a1.maxBuyYield, a1.maxBuyProfit), [a1.maxBuy, a1.maxBuyYield, a1.maxBuyProfit]);
+  const hi = mk({minProfit: 100000000});
+  check('желаемая прибыль недостижима: предела нет, не «Брать»', hi.maxBuy === null && hi.verdict !== 'Брать', [hi.maxBuy, hi.verdict]);
+  const big = mk({price: 3000000, sale: 9000000, repair: 300000, minProfit: 8000000});
+  check('прибыль ниже желаемой — вердикт не «Брать»', big.verdict !== 'Брать' && big.base.net < 8000000, big.verdict);
+  check('нулевая и отрицательная желаемая прибыль не влияют', mk({minProfit: -5}).maxBuy === a0.maxBuy && mk({minProfit: 0}).verdict === a0.verdict);
+  const idle = a0.idle, c1 = compute(Object.assign({}, D, {months: D.months + 1}));
+  check('месяц простоя = разница прибыли при сроке +1', near(idle, a0.base.net - c1.net, 0.01) && idle >= D.utilities - 1, idle);
+  const im = mk({fin: 'mortgage', down: 20, rate: 20, term: 20});
+  check('месяц простоя с ипотекой больше, чем без неё', im.idle > a0.idle, [im.idle, a0.idle]);
+  check('старые данные без minProfit: 0', clean(DEFAULT_CALC, {price: 1}, CALC_ENUMS).minProfit === 0 && clean(DEFAULT_CALC, {minProfit: 'x'}, CALC_ENUMS).minProfit === 0);
+}
+
+/* --- Ревью: желаемая прибыль в вердикте, строках и «Торгах» --- */
+{
+  const D = DEFAULT_CALC, mk = d => analyse(Object.assign({}, D, d));
+  const u = mk({price: 3000000, sale: 8000000, repair: 300000, minProfit: 20000000});
+  check('недостижимая прибыль: причина про прибыль, не про доходность', u.verdict === 'Не брать' && /недостижима/.test(u.why) && !/Доходность ниже цели/.test(u.why), [u.verdict, u.why]);
+  const r = mk({price: 3000000, sale: 4000000, repair: 300000, minProfit: 5000000});
+  check('рискованно + недобор прибыли: в причине есть прибыль', /желаем/.test(r.why), [r.verdict, r.why]);
+  const t0 = {kind: 'auction', start: 4000000, step: 5, extra: 0, delay: 0, periods: 0, drop: 0};
+  const cc = Object.assign({}, D, {minProfit: 900000});
+  const tp = torgiPlan(cc, t0), tp0 = torgiPlan(Object.assign({}, D), t0);
+  check('торги: предел с желаемой прибылью ниже предела только по доходности', tp.limit > 0 && tp.limit < tp0.limit, [tp.limit, tp0.limit]);
+  check('торги: при предельной ставке прибыль не меньше желаемой', compute(Object.assign({}, tp.c, {price: tp.limit})).net >= 900000, tp.limit);
+  check('торги: без желаемой прибыли предел прежний', tp0.limit === round10k(tp0.maxBid), tp0.limit);
+}
+
 /* --- История: кнопка «назад» --- */
 {
   S.deals = [{id: 'd1', name: 'Сделка', expenses: []}];

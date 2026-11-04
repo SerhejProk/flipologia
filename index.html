@@ -212,7 +212,7 @@ const DEFAULT_CALC = {
   sale: 7000000, commission: 2,
   fin: 'own', down: 30, rate: 20, term: 20,
   tax: 'ndfl', repairDed: false,
-  target: 30,
+  target: 30, minProfit: 0,
   torgiExtra: 0, torgiDelay: 0  // сколько расходов и месяцев торгов уже вошло в buyCosts и months
 };
 const LEVELS = ['Косметика', 'Стандарт', 'Под ключ'];
@@ -421,26 +421,36 @@ function analyse(c) {
   const worst = scen[scen.length - 1].r;
   // Верхняя граница от затрат: ответ не зависит от текущей цены продажи
   const breakeven = solve(s => compute(Object.assign({}, c, {sale: s})).net, 0, Math.max(c.sale, base.costs) * 3 + 1e6, 0);
-  const maxBuy = c.sale > 0 ? solve(p => compute(Object.assign({}, c, {price: p})).annual, 1, c.sale, c.target) : null;
+  const maxBuyYield = c.sale > 0 ? solve(p => compute(Object.assign({}, c, {price: p})).annual, 1, c.sale, c.target) : null;
+  // Желаемая чистая прибыль в рублях (необязательно): предел цены, при котором она ещё получается
+  const wantProfit = c.minProfit > 0;
+  const maxBuyProfit = wantProfit && c.sale > 0 ? solve(p => compute(Object.assign({}, c, {price: p})).net, 1, c.sale, c.minProfit) : null;
+  const maxBuy = !wantProfit ? maxBuyYield : (maxBuyYield != null && maxBuyProfit != null ? Math.min(maxBuyYield, maxBuyProfit) : null);
+  const profitShort = wantProfit && base.net < c.minProfit;
+  // Сколько стоит лишний месяц простоя: коммуналка, проценты и сдвиг налога
+  const idle = base.net - compute(Object.assign({}, c, {months: base.m + 1})).net;
   let verdict, cls, why;
   if (c.price <= 0 || c.sale <= 0) {
     verdict = 'Заполните цены'; cls = 'warn'; why = 'Нужны цена покупки и ожидаемая цена продажи.';
-  } else if (base.annual >= c.target && worst.net >= 0) {
+  } else if (base.annual >= c.target && !profitShort && worst.net >= 0) {
     verdict = 'Брать'; cls = 'good';
     why = 'Доходность ' + pct(base.annual) + ' годовых не ниже цели ' + pct(c.target) + ', и даже в плохом сценарии сделка без убытка.';
   } else if (maxBuy && maxBuy > 0 && maxBuy < c.price) {
     verdict = 'Торговаться до ' + rub(round10k(maxBuy)); cls = 'warn';
-    why = base.annual < c.target
-      ? 'При текущей цене доходность ' + pct(base.annual) + ' годовых — ниже цели ' + pct(c.target) + '. Цель достигается при покупке не дороже ' + rub(round10k(maxBuy)) + '.'
+    why = base.annual < c.target || profitShort
+      ? 'При текущей цене ' + [base.annual < c.target ? 'доходность ' + pct(base.annual) + ' годовых — ниже цели ' + pct(c.target) : '', profitShort ? 'чистая прибыль ' + rub(base.net) + ' — ниже желаемой ' + rub(c.minProfit) : ''].filter(Boolean).join(', ') + '. ' + (base.annual < c.target && profitShort ? 'Обе цели достигаются' : 'Цель достигается') + ' при покупке не дороже ' + rub(round10k(maxBuy)) + '.'
       : 'Цель по доходности выполнена, но в плохом сценарии сделка уходит в минус. Безопаснее сбить цену до ' + rub(round10k(maxBuy)) + ' или ниже.';
   } else if (base.net > 0 && worst.net < 0) {
     verdict = 'Рискованно'; cls = 'warn';
-    why = 'Сделка в плюсе, но в плохом сценарии (продажа −10%, срок +3 мес., ремонт +20%) уходит в минус.';
+    why = 'Сделка в плюсе, но в плохом сценарии (продажа −10%, срок +3 мес., ремонт +20%) уходит в минус.' +
+      (profitShort ? ' Чистая прибыль ' + rub(base.net) + ' ниже желаемой ' + rub(c.minProfit) + ', и при такой продаже и расходах желаемая прибыль недостижима ни при какой цене покупки.' : '');
   } else {
     verdict = 'Не брать'; cls = 'bad';
-    why = base.net <= 0 ? 'Сделка убыточна при текущих цифрах.' : 'Доходность ниже цели даже при сильном торге.';
+    why = base.net <= 0 ? 'Сделка убыточна при текущих цифрах.'
+      : profitShort && base.annual >= c.target ? 'Чистая прибыль ' + rub(base.net) + ' ниже желаемой ' + rub(c.minProfit) + '. При такой цене продажи и расходах желаемая прибыль недостижима ни при какой цене покупки.'
+      : 'Доходность ниже цели даже при сильном торге.';
   }
-  return {base, scen, breakeven, maxBuy, verdict, cls, why};
+  return {base, scen, breakeven, maxBuy, maxBuyYield, maxBuyProfit, idle, verdict, cls, why};
 }
 
 /* ===== Раздел «Расчёт» ===== */
@@ -495,7 +505,7 @@ function renderCalc() {
     '</select>' +
     '<label class="chk' + (c.tax === 'ndfl' ? '' : ' hide') + '" id="repDedBox"><input type="checkbox" data-k="repairDed"' + (c.repairDed ? ' checked' : '') + '><span>Учесть ремонт в расходах <span class="small muted">(только если купили без отделки по договору и есть чеки)</span></span></label>' +
     '</div>';
-  h += '<div class="card"><h3>Цель</h3><div class="grid2">' + field('target', 'Желаемая доходность, годовых', '%', 'На свои вложенные деньги', c.target) + '</div></div>';
+  h += '<div class="card"><h3>Цель</h3><div class="grid2">' + field('target', 'Желаемая доходность, годовых', '%', 'На свои вложенные деньги', c.target) + field('minProfit', 'Желаемая чистая прибыль', '₽', 'Необязательно. 0 — не учитывать', c.minProfit) + '</div></div>';
   h += '<div class="card"><h3>Сохранить</h3>' + (deal
     ? '<button class="btn pri block" data-a="calc-save-deal">Сохранить в сделку «' + esc(deal.name) + '»</button>'
     : '<div class="row"><input type="text" id="newDealName" placeholder="Название, например «Однушка на Ленина 5»" style="flex:1;min-width:200px"><button class="btn pri" data-a="calc-new-deal">Создать сделку</button></div>') +
@@ -538,8 +548,13 @@ function updateCalcResults() {
     '<div class="lbl">Чистая прибыль</div><div class="big' + (filled && b.net < 0 ? ' neg' : '') + '">' + hn.net + '</div>' +
     '<div class="sub2"><b class="' + (filled && b.annual < 0 ? 'neg' : '') + '">' + hn.annual + '</b> годовых на свои деньги</div><p>' + esc(a.why) + '</p></div>';
   const heroEl = $('#calcHero'); if (heroEl) heroEl.innerHTML = hero;
+  const lim = a.maxBuy != null && c.price > 0 && c.sale > 0 ? round10k(a.maxBuy) : null;
+  const over = lim != null && a.maxBuy < c.price;
   let h = '<div class="kpis">' +
     '<div class="kpi"><span>Нужно своих денег</span><b>' + rub(b.ownCash) + '</b></div>' +
+    '<div class="kpi"><span>Предельная цена покупки</span><b>' + (lim != null ? rub(lim) : '—') + '</b></div>' +
+    '<div class="kpi"><span>' + (over ? 'Торговаться вниз на' : 'Запас до предела') + '</span><b' + (over ? ' class="neg"' : '') + '>' + (lim != null ? rub(over ? c.price - lim : Math.max(0, lim - c.price)) : '—') + '</b></div>' +
+    '<div class="kpi"><span>Месяц простоя стоит</span><b>' + (filled ? rub(Math.max(0, a.idle)) : '—') + '</b></div>' +
     '<div class="kpi"><span>Продажа в ноль</span><b>' + (a.breakeven != null ? rub(a.breakeven) : '—') + '</b></div>' +
     '<div class="kpi"><span>Срок</span><b>' + b.m + ' мес.</b></div>' +
     '</div>';
@@ -721,7 +736,12 @@ function torgiPlan(c0, t) {
   const b = torgiBase(c0);
   const c = Object.assign({}, c0, {buyCosts: b.buyCosts + t.extra, months: b.months + t.delay, torgiExtra: t.extra, torgiDelay: t.delay});
   const at = p => compute(Object.assign({}, c, {price: p}));
-  const maxBid = c.sale > 0 ? solve(p => at(p).annual, 1, c.sale, c.target) : null;
+  const maxBidY = c.sale > 0 ? solve(p => at(p).annual, 1, c.sale, c.target) : null;
+  // Желаемая прибыль из «Расчёта» (если задана) тоже ограничивает ставку
+  const wantProfit = c0.minProfit > 0;
+  const maxBidP = wantProfit && c.sale > 0 ? solve(p => at(p).net, 1, c.sale, c0.minProfit) : null;
+  const maxBid = !wantProfit ? maxBidY : (maxBidY != null && maxBidP != null ? Math.min(maxBidY, maxBidP) : null);
+  const goal = wantProfit ? ' или желаемой прибыли ' + rub(c0.minProfit) : '';
   const zeroBid = c.sale > 0 ? solve(p => at(p).net, 1, c.sale * 2, 0) : null;
   const limit = maxBid > 0 ? round10k(maxBid) : 0;
   const stages = [];
@@ -741,18 +761,18 @@ function torgiPlan(c0, t) {
   } else if (t.start <= 0) {
     verdict = 'Впишите начальную цену'; cls = 'warn'; why = 'Начальная цена лота есть в сообщении о торгах.';
   } else if (!(maxBid > 0)) {
-    verdict = 'Не участвовать'; cls = 'bad'; why = 'Даже почти даром сделка не выходит на цель ' + pct(c.target) + ' годовых.';
+    verdict = 'Не участвовать'; cls = 'bad'; why = 'Даже почти даром сделка не выходит на цель ' + pct(c.target) + ' годовых' + goal + '.';
   } else if (t.kind === 'auction') {
     if (t.start <= limit) {
       verdict = 'Ставка до ' + rub(limit); cls = 'good';
       why = 'Начальная цена ниже предела' + (stepSum > 0 ? ': запас примерно ' + steps + ' шаг. аукциона по ' + rub(stepSum) : '') +
-        '. Дороже ' + rub(limit) + ' доходность ниже цели ' + pct(c.target) + '.';
+        '. Дороже ' + rub(limit) + ' доходность ниже цели ' + pct(c.target) + goal + '.';
     } else if (t.start <= maxBid) {
       verdict = 'Только по начальной цене'; cls = 'warn';
       why = 'Начальная цена ' + rub(t.start) + ' почти на пределе: доходность ' + pct(at(t.start).annual) + ' годовых — ровно цель. Поднимать ставку нельзя.';
     } else {
       verdict = 'Не участвовать'; cls = 'bad';
-      why = 'Начальная цена ' + rub(t.start) + ' уже выше предела ' + rub(limit) + ': доходность ' + pct(at(t.start).annual) + ' годовых — ниже цели ' + pct(c.target) + '.';
+      why = 'Начальная цена ' + rub(t.start) + ' уже выше предела ' + rub(limit) + ': доходность ' + pct(at(t.start).annual) + ' годовых — ниже цели ' + pct(c.target) + goal + '.';
     }
   } else if (entry) {
     verdict = 'Заявка на этапе ' + (entry.i + 1); cls = 'good';
