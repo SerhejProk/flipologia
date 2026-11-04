@@ -378,16 +378,18 @@ function calcTax(c, x) {
 function compute(c) {
   const m = Math.max(1, Math.round(c.months));
   const loan = c.fin === 'mortgage' ? Math.max(0, c.price * (1 - c.down / 100)) : 0;
-  let bal = loan, interest = 0, pmt = 0;
+  let bal = loan, interest = 0, pmt = 0, payments = 0;
   if (loan > 0) {
     const r = c.rate / 1200, n = Math.max(1, c.term * 12);
     pmt = r > 0 ? loan * r / (1 - Math.pow(1 + r, -n)) : loan / n;
-    for (let i = 0; i < m; i++) { const it = bal * r; interest += it; bal -= (pmt - it); }
+    // Платим, только пока кредит не погашен: срок проекта бывает дольше срока кредита
+    payments = Math.min(m, Math.ceil(n));
+    for (let i = 0; i < payments; i++) { const it = bal * r; interest += it; bal -= (pmt - it); }
     if (bal < 0) bal = 0;
   }
   const comm = c.sale * c.commission / 100;
   const util = c.utilities * m;
-  const ownCash = (c.price - loan) + c.buyCosts + c.repair + c.furniture + util + pmt * m;
+  const ownCash = (c.price - loan) + c.buyCosts + c.repair + c.furniture + util + pmt * payments;
   const costs = c.price + c.buyCosts + c.repair + c.furniture + util + interest + comm;
   const pbt = c.sale - costs;
   const tax = calcTax(c, {interest, comm, util});
@@ -417,7 +419,8 @@ function analyse(c) {
     ['Всё сразу', {sale: c.sale * 0.9, months: c.months + 3, repair: c.repair * 1.2}]
   ].map(([name, d]) => ({name, r: compute(Object.assign({}, c, d))}));
   const worst = scen[scen.length - 1].r;
-  const breakeven = solve(s => compute(Object.assign({}, c, {sale: s})).net, 0, c.sale * 3 + 1e6, 0);
+  // Верхняя граница от затрат: ответ не зависит от текущей цены продажи
+  const breakeven = solve(s => compute(Object.assign({}, c, {sale: s})).net, 0, Math.max(c.sale, base.costs) * 3 + 1e6, 0);
   const maxBuy = c.sale > 0 ? solve(p => compute(Object.assign({}, c, {price: p})).annual, 1, c.sale, c.target) : null;
   let verdict, cls, why;
   if (c.price <= 0 || c.sale <= 0) {
@@ -471,12 +474,7 @@ function renderCalc() {
     '<div class="grid2" style="margin-top:10px"><label class="f">Продажа после ремонта, за м²<div class="inwrap"><input type="text" inputmode="decimal" id="sellM2" value="' + (S.sellM2 ? num(S.sellM2) : '') + '"><span>₽</span></div><span class="small">Необязательно: цена м² отремонтированных квартир рядом</span></label></div>' +
     '<button class="btn pri block" style="margin-top:10px" data-a="parse">Разобрать</button><div id="parseRes"></div></details></div>';
   h += '<div id="calcHero"></div>';
-  if (c.price > 0) {
-    const lo = Math.round(c.price * 0.6 / 10000) * 10000, hi = Math.round(c.price * 1.4 / 10000) * 10000;
-    h += '<div class="card price-slide"><div class="head"><span>Цена покупки</span><b id="priceVal">' + rub(c.price) + '</b></div>' +
-      '<input type="range" id="priceSlide" min="' + lo + '" max="' + hi + '" step="10000" value="' + c.price + '" aria-label="Цена покупки">' +
-      '<div class="ends"><span>' + rub(lo) + '</span><span>' + rub(hi) + '</span></div></div>';
-  }
+  h += '<div id="priceBox">' + priceSlideHtml(c.price) + '</div>';
   h += '<div id="calcRes"></div>';
   CALC_GROUPS.forEach(([title, fields]) => {
     h += '<div class="card"><h3>' + title + '</h3><div class="grid2">';
@@ -506,14 +504,39 @@ function renderCalc() {
   updateCalcResults();
   updateSmetaHint();
 }
+// Границы ползунка цены: ±40% с шагом 10 тыс. Если цены нет или она слишком мала, ползунка нет
+function priceSlideRange(price) {
+  if (!(price > 0)) return null;
+  const lo = Math.round(price * 0.6 / 10000) * 10000, hi = Math.round(price * 1.4 / 10000) * 10000;
+  return hi > lo ? {lo, hi} : null;
+}
+function priceSlideHtml(price) {
+  const g = priceSlideRange(price);
+  if (!g) return '';
+  return '<div class="card price-slide"><div class="head"><span>Цена покупки</span><b id="priceVal">' + rub(price) + '</b></div>' +
+    '<input type="range" id="priceSlide" min="' + g.lo + '" max="' + g.hi + '" step="10000" value="' + price + '" aria-label="Цена покупки">' +
+    '<div class="ends"><span id="priceLo">' + rub(g.lo) + '</span><span id="priceHi">' + rub(g.hi) + '</span></div></div>';
+}
+// После ввода цены в поле: границы по новой цене. Ползунок не пересоздаём, чтобы не сорвать начатое перетаскивание
+function syncPriceSlide() {
+  const box = $('#priceBox'); if (!box) return;
+  const price = S.calc.price, g = priceSlideRange(price), sl = $('#priceSlide');
+  if (!g || !sl) { box.innerHTML = priceSlideHtml(price); return; }
+  sl.min = g.lo; sl.max = g.hi; sl.value = price;
+  $('#priceLo').textContent = rub(g.lo); $('#priceHi').textContent = rub(g.hi); $('#priceVal').textContent = rub(price);
+}
+// Пока цены не заполнены, крупные цифры не показываем: прибыль без цены покупки была бы ложной
+function heroNumbers(c, b) {
+  return c.price > 0 && c.sale > 0 ? {net: rub(b.net), annual: pct(b.annual)} : {net: '—', annual: '—'};
+}
 function updateSmetaHint() {
   const el = $('#smetaHint'); if (el) el.textContent = 'Смета сейчас: ' + rub(smetaTotal().total);
 }
 function updateCalcResults() {
-  const c = S.calc, a = analyse(c), b = a.base;
+  const c = S.calc, a = analyse(c), b = a.base, hn = heroNumbers(c, b), filled = hn.net !== '—';
   const hero = '<div class="verdict ' + a.cls + '"><div class="v">' + esc(a.verdict) + '</div>' +
-    '<div class="lbl">Чистая прибыль</div><div class="big' + (b.net < 0 ? ' neg' : '') + '">' + rub(b.net) + '</div>' +
-    '<div class="sub2"><b class="' + (b.annual < 0 ? 'neg' : '') + '">' + pct(b.annual) + '</b> годовых на свои деньги</div><p>' + esc(a.why) + '</p></div>';
+    '<div class="lbl">Чистая прибыль</div><div class="big' + (filled && b.net < 0 ? ' neg' : '') + '">' + hn.net + '</div>' +
+    '<div class="sub2"><b class="' + (filled && b.annual < 0 ? 'neg' : '') + '">' + hn.annual + '</b> годовых на свои деньги</div><p>' + esc(a.why) + '</p></div>';
   const heroEl = $('#calcHero'); if (heroEl) heroEl.innerHTML = hero;
   let h = '<div class="kpis">' +
     '<div class="kpi"><span>Нужно своих денег</span><b>' + rub(b.ownCash) + '</b></div>' +
@@ -775,7 +798,9 @@ function updateTorgiResults() {
     '<div class="kpis">' +
     '<div class="kpi"><span>Ставка без убытка</span><b>' + (a.zeroBid > 0 ? rub(round10k(a.zeroBid)) : '—') + '</b></div>' +
     '<div class="kpi"><span>Задаток</span><b>' + rub(a.deposit) + '</b></div>' +
-    '<div class="kpi"><span>Прибыль по начальной цене</span><b class="' + (s0.net < 0 ? 'neg' : '') + '">' + rub(s0.net) + '</b></div>' +
+    (t.start > 0 && S.calc.sale > 0
+      ? '<div class="kpi"><span>Прибыль по начальной цене</span><b class="' + (s0.net < 0 ? 'neg' : '') + '">' + rub(s0.net) + '</b></div>'
+      : '<div class="kpi"><span>Прибыль по начальной цене</span><b>—</b></div>') +
     '</div>';
   const row = (label, p, r) => '<tr><td>' + label + '</td><td class="n' + (a.limit > 0 && p <= a.limit ? ' pos' : '') + '">' + rub(p) + '</td><td class="n' + (r.net < 0 ? ' neg' : '') + '">' + rub(r.net) + '</td><td class="n">' + pct(r.annual) + '</td></tr>';
   if (t.kind === 'offer' && a.stages.length) {
@@ -1231,6 +1256,7 @@ view.addEventListener('focusout', e => {
   if (t.dataset.k && t.type === 'text') {
     const v = S.calc[t.dataset.k]; const pctLike = ['commission', 'down', 'rate', 'target', 'months', 'term'].includes(t.dataset.k);
     t.value = pctLike ? String(v).replace('.', ',') : num(v);
+    if (t.dataset.k === 'price') syncPriceSlide();
   }
   if (t.dataset.price) t.value = num(parseNum(t.value));
   if (t.id === 'expSum' && t.value) t.value = num(parseNum(t.value));

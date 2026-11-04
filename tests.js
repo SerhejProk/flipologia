@@ -216,6 +216,29 @@ vm.runInContext(`
   check('старые данные: районы пустые', s.rayony.fav.length === 0 && Object.keys(s.rayony.notes).length === 0);
 }
 
+/* --- Находки ревью 04.11.2026: расчёт --- */
+{
+  const b = Object.assign({}, DEFAULT_CALC, {fin: 'mortgage', down: 20, rate: 20, term: 1});
+  const m12 = compute(Object.assign({}, b, {months: 12})), m24 = compute(Object.assign({}, b, {months: 24}));
+  check('кредит погашен: проценты не убывают с ростом срока', near(m24.interest, m12.interest, 1), [m12.interest, m24.interest]);
+  check('кредит погашен: свои деньги растут только на коммуналку', near(m24.ownCash - m12.ownCash, b.utilities * 12, 1), [m12.ownCash, m24.ownCash]);
+  check('дольше срок — прибыль не выше', m24.net < m12.net, [m12.net, m24.net]);
+  const m6 = compute(Object.assign({}, b, {months: 6}));
+  check('до погашения платежи считаются как раньше', near(m6.ownCash, 5000000 - m6.loan + b.buyCosts + b.repair + b.furniture + b.utilities * 6 + m6.pmt * 6, 1), m6.ownCash);
+  const be = s => analyse(Object.assign({}, DEFAULT_CALC, {sale: s})).breakeven;
+  check('продажа в ноль не зависит от текущей продажи', be(0) != null && near(be(0), be(7000000), 1), [be(0), be(7000000)]);
+  check('продажа в ноль при малой продаже', be(1000000) != null && near(be(1000000), be(7000000), 1), [be(1000000), be(7000000)]);
+  check('герой: цена 0 — прочерк', heroNumbers(Object.assign({}, DEFAULT_CALC, {price: 0}), analyse(Object.assign({}, DEFAULT_CALC, {price: 0})).base).net === '—');
+  check('герой: цена меньше нуля — прочерк', heroNumbers(Object.assign({}, DEFAULT_CALC, {price: -100}), analyse(Object.assign({}, DEFAULT_CALC, {price: -100})).base).annual === '—');
+  check('герой: продажа 0 — прочерк', heroNumbers(Object.assign({}, DEFAULT_CALC, {sale: 0}), analyse(Object.assign({}, DEFAULT_CALC, {sale: 0})).base).net === '—');
+  const ok = analyse(Object.assign({}, DEFAULT_CALC)).base, hn = heroNumbers(DEFAULT_CALC, ok);
+  check('герой: при заполненных ценах суммы как в расчёте', hn.net === rub(ok.net) && hn.annual === pct(ok.annual), hn);
+  check('ползунок: границы ±40% с шагом 10 тыс.', priceSlideRange(5000000).lo === 3000000 && priceSlideRange(5000000).hi === 7000000);
+  check('ползунок: 12 млн — новые границы', priceSlideRange(12000000).lo === 7200000 && priceSlideRange(12000000).hi === 16800000);
+  check('ползунок: без цены его нет', priceSlideRange(0) === null && priceSlideRange(-5) === null);
+  check('ползунок: слишком малая цена — его нет', priceSlideRange(10000) === null && priceSlideRange(1000) === null);
+}
+
 /* --- Районы: логика --- */
 {
   const list = [{id: 'perovo', name: 'Перово', okrug: 'ВАО'}, {id: 'strogino', name: 'Строгино', okrug: 'СЗАО'}, {id: 'biryulevo-v', name: 'Бирюлёво Восточное', okrug: 'ЮАО'}];
