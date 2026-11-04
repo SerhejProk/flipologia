@@ -275,6 +275,52 @@ vm.runInContext(`
   check('торги: без желаемой прибыли предел прежний', tp0.limit === round10k(tp0.maxBid), tp0.limit);
 }
 
+/* --- План / факт и график ремонта --- */
+{
+  const mkW = (start, o) => cleanWorks({start, items: Object.keys(o || {}).map(k => Object.assign({k}, o[k]))});
+  const w0 = mkW('2026-11-01');
+  check('график: 5 этапов с днями по умолчанию', w0 && w0.items.length === 5 && w0.items.map(i => i.days).join() === '5,20,7,25,7', w0);
+  const p0 = worksPlan(w0, '2026-11-01');
+  check('график: сумма 64 дня, выход на продажу 04.01', p0.planEnd - isoDay('2026-11-01') === 64 && dayRu(p0.planEnd) === '04.01', dayRu(p0.planEnd));
+  check('график: без отметок сдвига нет', p0.shift === 0 && p0.rows[0].state === 'work' && p0.rows[1].state === 'wait');
+  // Демонтаж готов 06.11 вместо 06.11 (5 дн.) — а теперь на 3 дня позже: 09.11
+  const w1 = mkW('2026-11-01', {demo: {done: '2026-11-09'}});
+  const p1 = worksPlan(w1, '2026-11-09');
+  check('сдвиг: демонтаж на 3 дня позже — всё остальное и выход на продажу +3', p1.shift === 3 && p1.rows[1].fStart === p1.rows[1].pStart + 3 && p1.foreEnd === p1.planEnd + 3, p1.shift);
+  const p1b = worksPlan(mkW('2026-11-01', {demo: {done: '2026-11-04'}}), '2026-11-05');
+  check('раньше срока: сдвиг отрицательный', p1b.shift === -2, p1b.shift);
+  // этап не отмечен: сегодня на 4 дня позже плана
+  const p2 = worksPlan(w0, '2026-11-10');
+  check('просрочка: демонтаж не отмечен, сегодня 10.11 (план до 06.11) — 4 дня', p2.rows[0].state === 'late' && p2.rows[0].overdue === 4 && p2.shift === 4 && p2.rows[1].state === 'wait', [p2.rows[0].state, p2.rows[0].overdue, p2.shift]);
+  check('просрочка растёт с датой', worksPlan(w0, '2026-11-11').shift === 5);
+  check('график ещё не начался: этапы ждут', worksPlan(w0, '2026-10-20').rows.every(r => r.state === 'wait') && worksPlan(w0, '2026-10-20').shift === 0);
+  check('график: плохая дата — нет графика', cleanWorks({start: '2026-02-30', items: []}) === null && cleanWorks({start: 'x'}) === null && cleanWorks(null) === null && cleanWorks('a') === null);
+  const wbad = cleanWorks({start: '2026-11-01', items: [{k: 'demo', days: 'abc', done: '2026-13-40'}, {k: 'rough', days: 9999}, {k: 'elec', days: -5}, null, {k: 'нет', days: 3}]});
+  check('график: мусор в этапах очищен', wbad.items[0].days === 5 && wbad.items[0].done === '' && wbad.items[1].days === 365 && wbad.items[2].days === 0 && wbad.items.length === 5, wbad);
+  check('сделка из копии сохраняет график', cleanDeal({id: 'a', works: w1}).works.items[0].done === '2026-11-09' && cleanDeal({id: 'a'}).works === null);
+  // план / факт
+  const c = Object.assign({}, DEFAULT_CALC), b = compute(c);
+  const pf = planFact(c, b, [{cat: 'Ремонт', sum: 600000}, {cat: 'Материалы', sum: 300000}, {cat: 'Мебель и техника', sum: 50000}, {cat: 'Ипотека', sum: 99999}, {cat: 'Налоги', sum: 1}, {cat: 'Что-то', sum: 7000}]);
+  check('план/факт: ремонт 900 000 при плане 800 000 — +100 000', pf.rows[0].fact === 900000 && pf.rows[0].diff === 100000, pf.rows[0]);
+  check('план/факт: мебель в пределах плана не даёт перерасхода', pf.rows[1].diff === -50000);
+  check('план/факт: чужая статья идёт в «Прочее»', pf.rows[4].fact === 7000 && pf.rows[4].diff === 7000);
+  check('план/факт: перерасход = 100 000 + 7 000, ипотека и налоги отдельно', pf.over === 107000 && pf.skipped === 100000, [pf.over, pf.skipped]);
+  check('план/факт: пустые расходы — нулевой перерасход', planFact(c, b, []).over === 0);
+  check('месяц простоя в графике = монотонно положителен', monthIdle(c) >= c.utilities - 1);
+}
+
+/* --- Ревью графика ремонта --- */
+{
+  const mk2 = (o) => cleanWorks({start: '2026-11-01', items: Object.keys(o).map(k => Object.assign({k}, o[k]))});
+  const z = worksPlan(mk2({demo: {days: 0}}), '2026-11-04');
+  check('этап 0 дней не даёт просрочки и сдвига', z.rows[0].state === 'wait' && z.rows[0].overdue === 0 && z.shift === 0, z.shift);
+  check('этап 0 дней: следующий этап идёт сразу', z.rows[1].state === 'work' && z.rows[1].fStart === z.rows[0].fEnd, z.rows[1]);
+  const w = DEFAULT_CALC, b2 = compute(w);
+  const e = [{cat: 'Коммуналка', sum: 60000}, {cat: 'Ремонт', sum: 900000}];
+  check('коммуналка в перерасходе без сдвига', planFact(w, b2, e, false).over === 100000 + 18000, planFact(w, b2, e, false).over);
+  check('при сдвиге коммуналка не вычитается дважды', planFact(w, b2, e, true).over === 100000, planFact(w, b2, e, true).over);
+}
+
 /* --- История: кнопка «назад» --- */
 {
   S.deals = [{id: 'd1', name: 'Сделка', expenses: []}];
@@ -374,6 +420,22 @@ vm.runInContext(`
   check('Кузьминки: общая цена помечена', rayonById('kuzminki').shared && rayonById('tekstilshchiki').shared);
 }
 `, ctx);
+
+/* --- Запуск приложения с уже сохранёнными данными (ловит порядок объявлений при старте) --- */
+{
+  const seeded = new Map();
+  seeded.set('flipologia-v1', JSON.stringify({deals: [{id: 'z1', name: 'Старая', stage: 'Ремонт', expenses: [], works: {start: '2026-11-01', items: [{k: 'demo', days: 5, done: '2026-11-06'}]}}]}));
+  const ctx2 = vm.createContext({
+    document: fake, window: fake, navigator: {}, location: {protocol: 'file:'},
+    localStorage: {getItem: k => seeded.has(k) ? seeded.get(k) : null, setItem: (k, v) => seeded.set(k, String(v))},
+    setTimeout: () => 0, clearTimeout: () => {}, confirm: () => true, Intl, console
+  });
+  let err = null;
+  try { vm.runInContext(code, ctx2); } catch (e) { err = String(e); }
+  ctx.check('старт с сохранённым графиком ремонта: без ошибок', err === null, err);
+  const w = err === null ? vm.runInContext('S.deals[0] && S.deals[0].works', ctx2) : null;
+  ctx.check('старт: график загружен', !!w && w.start === '2026-11-01' && w.items.length === 5 && w.items[0].done === '2026-11-06', w);
+}
 
 console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
 process.exit(fail ? 1 : 0);
