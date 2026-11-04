@@ -293,6 +293,8 @@ const DEFAULT_CALC = {
   target: 30, minProfit: 0,
   torgiExtra: 0, torgiDelay: 0  // сколько расходов и месяцев торгов уже вошло в buyCosts и months
 };
+// Пустой расчёт при каждом запуске: суммы нули, настройки (срок, комиссия, налог, доходность) прежние. Старый расчёт не хранится.
+const BLANK_CALC = Object.assign({}, DEFAULT_CALC, {price: 0, buyCosts: 0, repair: 0, furniture: 0, utilities: 0, sale: 0});
 const LEVELS = ['Косметика', 'Стандарт', 'Под ключ'];
 // Ориентировочные цены «работа + материалы», ₽. Пользователь правит под свой регион.
 const SMETA_ITEMS = [
@@ -422,8 +424,8 @@ function load() {
   torgi.periods = Math.min(30, Math.max(1, Math.round(torgi.periods)));
   return {
     deals: Array.isArray(s.deals) ? s.deals.map(cleanDeal).filter(Boolean) : [],
-    calc: clean(DEFAULT_CALC, s.calc, CALC_ENUMS),
-    calcDeal: typeof s.calcDeal === 'string' ? s.calcDeal : null,
+    calc: Object.assign({}, BLANK_CALC),
+    calcDeal: null,
     smeta, torgi,
     sellM2: Math.max(0, Number(s.sellM2) || 0),
     rayony: cleanRayony(s.rayony),
@@ -476,7 +478,7 @@ function cleanDeal(d) {
 let S = load();
 let openDeal = null; // id сделки, открытой в разделе «Сделки»
 function save() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(S)); }
+  try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, S, {calc: undefined, calcDeal: undefined}))); }
   catch (e) { toast('Не получилось сохранить: память браузера недоступна'); }
 }
 
@@ -1485,7 +1487,7 @@ const ICO = {
   parse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 12h6M9 16h4"/></svg>'
 };
 const QUICK = [['price', 'Покупка', '₽'], ['sale', 'Продажа', '₽'], ['repair', 'Ремонт', '₽'], ['months', 'Срок', 'мес']];
-// Быстрая оценка работает с теми же цифрами, что и «Расчёт»
+// Экспресс-оценка покупки работает с теми же цифрами, что и «Расчёт»
 function quickHeroHtml(c) {
   const a = analyse(c), b = a.base;
   const lim = a.maxBuy != null && c.price > 0 && c.sale > 0 ? round10k(a.maxBuy) : null;
@@ -1500,7 +1502,7 @@ function homeDealHtml(d) {
 }
 function renderHome() {
   const c = S.calc, linked = S.calcDeal && S.deals.find(d => d.id === S.calcDeal);
-  let h = '<div class="card"><h3>Быстрая оценка</h3><div class="grid2">' +
+  let h = '<div class="card"><h3>Экспресс-оценка покупки</h3><div class="grid2">' +
     QUICK.map(([k, l, suf]) => '<label class="f">' + l + '<div class="inwrap"><input type="text" inputmode="decimal" data-q="' + k + '" value="' + (k === 'months' ? String(c[k]).replace('.', ',') : num(c[k])) + '"><span>' + suf + '</span></div></label>').join('') +
     '</div>' + (linked ? '<div class="row" style="justify-content:space-between;margin-top:12px"><span class="small">Сейчас здесь расчёт сделки <b>' + esc(linked.name) + '</b></span><button class="btn" data-a="calc-detach">Новый расчёт</button></div>' : '') +
     '<div id="homeHero" style="margin-top:12px">' + quickHeroHtml(c) + '</div>' +
@@ -1919,7 +1921,7 @@ view.addEventListener('click', e => {
       if (linked && !confirm('Сейчас в расчёте сделка «' + linked.name + '». Поменять ставку в этом расчёте на ' + fmtPct(mort) + '? В саму сделку она попадёт, когда вы сохраните расчёт.')) break;
       S.calc.rate = mort; save(); toast('Ставка ' + fmtPct(mort) + ' перенесена в расчёт' + (S.calc.fin === 'own' ? '. Включите ипотеку в «Расчёте»' : '')); break;
     }
-    case 'calc-detach': S.calcDeal = null; save(); if (S.tab === 'home') renderHome(); else renderCalc(); break;
+    case 'calc-detach': S.calcDeal = null; S.calc = Object.assign({}, BLANK_CALC); save(); if (S.tab === 'home') renderHome(); else renderCalc(); break;
     case 'calc-new-deal': {
       const name = ($('#newDealName').value || '').trim();
       if (!name) { toast('Впишите название сделки'); $('#newDealName').focus(); break; }

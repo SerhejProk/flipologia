@@ -503,5 +503,27 @@ vm.runInContext(`
   ctx.check('старт: график загружен', !!w && w.start === '2026-11-01' && w.items.length === 5 && w.items[0].done === '2026-11-06', w);
 }
 
+/* --- Пустой расчёт при запуске: старый расчёт не сохраняется --- */
+{
+  const seeded = new Map();
+  seeded.set('flipologia-v1', JSON.stringify({calc: {price: 9000000, sale: 12000000, repair: 700000}, calcDeal: 'z1', deals: [{id: 'z1', name: 'Старая', stage: 'Поиск', expenses: [], calc: {price: 4000000, sale: 6000000}}]}));
+  const ctx3 = vm.createContext({
+    document: fake, window: fake, navigator: {}, location: {protocol: 'file:'},
+    localStorage: {getItem: k => seeded.has(k) ? seeded.get(k) : null, setItem: (k, v) => seeded.set(k, String(v))},
+    setTimeout: () => 0, clearTimeout: () => {}, confirm: () => true, Intl, console
+  });
+  vm.runInContext(code, ctx3);
+  const r = vm.runInContext('({c: S.calc, cd: S.calcDeal, dealPrice: S.deals[0] && S.deals[0].calc && S.deals[0].calc.price})', ctx3);
+  ctx.check('запуск: суммы расчёта нули', r.c.price === 0 && r.c.sale === 0 && r.c.repair === 0 && r.c.furniture === 0 && r.c.buyCosts === 0 && r.c.utilities === 0, r.c);
+  ctx.check('запуск: связь со сделкой сброшена', r.cd === null, r.cd);
+  ctx.check('запуск: расчёт самой сделки сохранён', r.dealPrice === 4000000, r.dealPrice);
+  vm.runInContext('S.calc.price = 5555555; S.calcDeal = null; save();', ctx3);
+  const saved = JSON.parse(seeded.get('flipologia-v1'));
+  ctx.check('сохранение: расчёт не пишется в память', !('calc' in saved) && !('calcDeal' in saved) && saved.deals.length === 1, Object.keys(saved));
+  const q = vm.runInContext('(function(){const a = analyse(S.calc); return heroNumbers(S.calc, a.base).net;})()', ctx3);
+  ctx.check('пустой расчёт: прибыль — прочерк, не ложное число', q === '—', q);
+  ctx.check('главная: заголовок «Экспресс-оценка покупки»', /Экспресс-оценка покупки/.test(html) && !/<h3>Быстрая оценка<\/h3>/.test(html));
+}
+
 console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
 process.exit(fail ? 1 : 0);
