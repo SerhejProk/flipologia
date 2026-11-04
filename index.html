@@ -211,6 +211,30 @@ details li{margin:4px 0}
 .note{font-size:13px;color:var(--muted);margin:8px 0 0}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:var(--dark-ink);padding:10px 18px;border-radius:999px;font-size:14px;z-index:95;max-width:calc(100% - 32px);opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
+/* подсказки «?», окно-пояснение, «что дальше», выбор ремонта, пример */
+.hint{position:relative;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:6px;padding:0;border:0;border-radius:50%;background:var(--acc-soft);color:var(--gold-ink);font:inherit;font-size:12px;font-weight:700;line-height:1;cursor:pointer;vertical-align:middle}
+.hint::after{content:'';position:absolute;inset:-12px}
+.plain{margin-top:12px;font-size:17px;font-weight:600;letter-spacing:-.2px}
+.next{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:16px 18px;margin:10px 0 12px}
+.card .next{background:var(--input);box-shadow:none;border-radius:14px;padding:12px 14px;margin:12px 0 0}
+.next h4{margin:0 0 6px;font-size:15px;font-weight:600}
+.next ol{margin:0;padding-left:20px;color:var(--muted);font-size:14px;line-height:1.45}
+.next li{margin:4px 0}
+.next .row{margin-top:10px}
+.rp{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);scroll-margin-top:72px}
+.rp-opts{display:grid;gap:8px;margin-top:10px}
+.rp-opt{display:flex;flex-direction:column;gap:2px;text-align:left;font:inherit;color:var(--ink);background:var(--input);border:0;border-radius:14px;padding:12px 14px;cursor:pointer;min-height:56px}
+.rp-opt b{font-size:15px;font-weight:600}
+.rp-opt span{font-size:13px;color:var(--muted)}
+.demo-note{background:var(--acc-soft);box-shadow:none}
+.demo-note p{margin:0 0 10px;font-size:14px}
+#sheet{display:none;position:fixed;inset:0;z-index:92}
+#sheet.on{display:block}
+#sheet .sh-back{position:absolute;inset:0;background:rgba(20,23,28,.4)}
+#sheet .sh-box{position:absolute;left:0;right:0;bottom:0;max-width:720px;margin:0 auto;background:var(--card);border-radius:24px 24px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.18);max-height:80vh;overflow:auto}
+#sheet h3{margin:0 0 8px;font-size:18px}
+#sheet p{margin:0 0 14px;font-size:15px;line-height:1.5}
+.gloss p{margin:0 0 12px;font-size:14px;line-height:1.45}
 .back{background:none;border:0;font:inherit;color:var(--gold-ink);font-weight:600;padding:6px 0 10px;cursor:pointer}
 .lt .back{display:block;font-size:17px;font-weight:500;padding:0 0 4px}
 .empty{text-align:center;padding:28px 12px}
@@ -284,6 +308,7 @@ try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splas
 </nav>
 <div class="toast" id="toast"></div>
 
+<div id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetT"><div class="sh-back" data-a="sheet-close"></div><div class="sh-box"><h3 id="sheetT"></h3><p id="sheetP"></p><div class="row"><button type="button" class="btn pri" data-a="sheet-close" id="sheetOk">Понятно</button><button type="button" class="btn" data-a="term-all">Все термины</button></div></div></div>
 <div id="report" role="dialog" aria-modal="true" aria-label="Отчёт инвестору"></div>
 <script src="rayony-data.js"></script>
 <script>
@@ -334,6 +359,46 @@ const CHECKLIST = [
   ['replan', 'Перепланировка узаконена или её нет'],
   ['view', 'Осмотр: стояки, проводка, окна, соседи сверху']
 ];
+// Словарь простыми словами: подсказки «?» у полей и раздел «Словарь» в «Справке»
+const TERMS = {
+  verdict: ['Вердикт', 'Короткий ответ на вопрос «стоит ли брать». «Брать» — доходность не ниже вашей цели и даже в плохом сценарии без убытка. «Торговаться до X» — при цене X и ниже сделка выходит на цель. «Рискованно» — в плюсе, но плохой поворот уводит в минус. «Не брать» — убыток или доходность ниже цели. Плохой сценарий: продажа на 10% дешевле, срок на 3 месяца дольше, ремонт на 20% дороже.'],
+  annual: ['Доходность в год', 'Чистая прибыль в пересчёте на год относительно ваших собственных вложенных денег. Так можно сравнить быструю сделку на 3 месяца и долгую на 9. Для сравнения: вклад приносит примерно ключевую ставку (она на экране «Курсы и ставки»), а у сделки есть риски, поэтому цель обычно ставят выше.'],
+  maxprice: ['Предельная цена покупки', 'Самая высокая цена, при которой сделка ещё достигает вашей цели по доходности (и по желаемой прибыли, если вы её указали). Дороже покупать нельзя: прибыль не дотянет до цели. Это главный ориентир в торге с продавцом.'],
+  owncash: ['Нужно своих денег', 'Сколько собственных денег вы вложите: покупка (без кредита), расходы на сделку, ремонт, мебель, коммуналка и платежи по ипотеке за срок проекта. Доходность считается от этой суммы.'],
+  idle: ['Месяц простоя', 'Сколько прибыли вы теряете за каждый лишний месяц до продажи: коммуналка, проценты по кредиту и налоговые последствия. Затянули ремонт или продажу на месяц — минус на эту сумму.'],
+  breakeven: ['Продажа в ноль', 'Минимальная цена продажи, при которой вы не теряете деньги: ни прибыли, ни убытка. Продавать ниже — в минус.'],
+  stress: ['Стресс-тест', 'Проверка: что будет с прибылью, если что-то пойдёт хуже плана — продажа дешевле, ремонт дороже, срок дольше. Минус в строке значит, что при таком повороте сделка убыточна.'],
+  buycosts: ['Расходы на сделку', 'Всё, что платите при покупке, кроме цены квартиры: нотариус, госпошлина за регистрацию, услуги риелтора или юриста, проверка объекта, банковская ячейка.'],
+  cadastral: ['Кадастровая стоимость', 'Оценка квартиры государством, указана в выписке ЕГРН. Нужна для налога: если квартира продана дешевле 70% кадастровой стоимости, налог считают от 70% кадастровой. Не знаете — оставьте 0.'],
+  repair: ['Ремонт', 'Работа и материалы. Не знаете, сколько заложить, — выберите готовый вариант в блоке «Подсказать ремонт по площади»: косметика, стандарт или под ключ. Цены ориентировочные, их можно поправить в «Смете ремонта».'],
+  staging: ['Мебель, техника, стейджинг', 'Стейджинг — подготовка к показам: чистота, свет, текстиль, немного мебели и декор, хорошие фото. Нужен, чтобы продать быстрее и не дешевле, чем могли бы.'],
+  months: ['Срок проекта', 'Весь путь от покупки до получения денег: оформление, ремонт, выставление на продажу, показы, сделка. Обычно 4–8 месяцев. Чем дольше, тем больше коммуналки, процентов и упущенной выгоды.'],
+  utilities: ['Коммуналка в месяц', 'Платежи за квартиру, пока она ваша: свет, вода, отопление, капремонт, содержание дома. Считаются за каждый месяц срока проекта.'],
+  commission: ['Комиссия риелтору', 'Процент от цены продажи, который получает агент. Часто 1–3%. Если продаёте сами — поставьте 0.'],
+  down: ['Первый взнос', 'Доля цены, которую вы платите своими деньгами, остальное — кредит. 30% значит, что 70% цены даёт банк.'],
+  rate: ['Ставка по кредиту', 'Процент в год, который банк берёт за кредит. Ориентир: ключевая ставка ЦБ плюс 2–3 пункта; её можно подставить на экране «Курсы и ставки». Реальную ставку уточняйте в банке.'],
+  termloan: ['Срок кредита', 'На сколько лет взят кредит. Для флиппинга важны платёж и проценты за срок проекта: кредит обычно гасят деньгами от продажи.'],
+  tax: ['Налог при продаже', 'Физлицо (НДФЛ): 13% с дохода до 2,4 млн ₽ в год и 15% с суммы выше. Налога нет, если владели квартирой минимальный срок (обычно 5 лет, иногда 3) — во флиппинге так почти не бывает. Вычет: 1 млн ₽ или подтверждённые расходы на покупку. ИП на УСН: 6% с дохода или 15% с разницы «доходы минус расходы». Регулярные перепродажи могут признать бизнесом, выбор режима обсудите с бухгалтером.'],
+  target: ['Желаемая доходность', 'Минимальная доходность в год, ниже которой сделка вас не устраивает. По ней считаются вердикт и предельная цена. 30% годовых — частый ориентир: заметно выше вклада, потому что у сделки есть риски.'],
+  minprofit: ['Желаемая чистая прибыль', 'Необязательное поле: сколько рублей чистыми вы хотите заработать на сделке. Если указать, предельная цена учтёт и эту цель. 0 — не учитывать.'],
+  torgikind: ['Аукцион и публичное предложение', 'Аукцион: цена растёт шагами от начальной, лот получает тот, кто предложил больше всех. Публичное предложение: цена снижается по этапам, лот получает первый, кто подал заявку по текущей цене этапа.'],
+  deposit: ['Задаток', 'Деньги, которые вносят для участия в торгах, обычно 5–20% от начальной цены. Проигравшим возвращают. Победитель засчитывает задаток в оплату; если откажется от покупки — теряет.'],
+  step: ['Шаг аукциона', 'На сколько процентов от начальной цены повышается ставка за один шаг. Обычно около 5%.'],
+  drop: ['Снижение за этап', 'На сколько процентов от начальной цены падает цена лота с каждым этапом публичного предложения. Ждать дешевле, но лот может достаться другому.'],
+  risk: ['Проблемы объекта и резерв', 'Кнопка «!» у пункта проверки отмечает найденную проблему. В поле «Резерв» впишите, сколько она может стоить (юрист, долги, суд). Сумма вычитается из прогноза прибыли в сделке и в отчёте инвестору.'],
+  planfact: ['План / факт', 'Сравнение того, что заложили в расчёт (план), с тем, что реально потратили (факт). Перерасход и сдвиг сроков уменьшают прогноз прибыли.'],
+  flip: ['Флиппинг', 'Купить квартиру, сделать ремонт и продать дороже. Прибыль — разница между продажей и всеми затратами, включая налог.'],
+  egrn: ['Выписка ЕГРН', 'Официальный документ о квартире: собственник, площадь, кадастровая стоимость, обременения и аресты. Заказывается на Госуслугах или в МФЦ.'],
+  encumbrance: ['Обременение', 'Ограничение прав на квартиру: залог у банка, арест, рента, право проживания третьих лиц. Видно в выписке ЕГРН; с обременением сделка может не пройти.']
+};
+// Ремонт: ориентир по срокам. Цена считается по тем же строкам, что и «Смета ремонта»
+const REPAIR_PLAN = [
+  {name: 'Косметика', what: 'покраска, обои, напольное покрытие, без замены сантехники', work: 'ремонт около 1–1,5 мес.', months: 4},
+  {name: 'Стандарт', what: 'новая отделка, полы, санузел, электрика', work: 'ремонт около 2–3 мес.', months: 5},
+  {name: 'Под ключ', what: 'дизайнерский: инженерия, дорогие материалы, кухня', work: 'ремонт около 3–4 мес.', months: 7}
+];
+// Пример: учебная сделка и пример цифр для пустого расчёта
+const DEMO_CALC = {price: 9200000, buyCosts: 120000, repair: 850000, furniture: 120000, months: 6, utilities: 7000, sale: 12600000};
 // Торги: аукцион (цена растёт шагами) или публичное предложение (цена снижается по этапам)
 const DEFAULT_TORGI = {kind: 'auction', start: 4000000, deposit: 20, step: 5, drop: 10, periods: 8, extra: 50000, delay: 2};
 /* ===== Курсы и ставки: данные ===== */
@@ -494,7 +559,7 @@ function cleanDeal(d) {
       ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note)})) : [],
     checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
     risks: cleanRisks(d.risks),
-    notes: str(d.notes), saleFact: Number(d.saleFact) || 0, works: cleanWorks(d.works),
+    notes: str(d.notes), saleFact: Number(d.saleFact) || 0, works: cleanWorks(d.works), demo: d.demo === true,
     created: Number(d.created) || Date.now(), updated: Number(d.updated) || Date.now()
   };
 }
@@ -526,6 +591,66 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
 }
 function round10k(v) { return Math.floor(v / 10000) * 10000; }
+
+/* ===== Подсказки «?», пример, подбор ремонта ===== */
+const hasTerm = k => Object.prototype.hasOwnProperty.call(TERMS, k);
+function hintBtn(k) {
+  return hasTerm(k) ? '<button type="button" class="hint" data-a="term" data-t="' + k + '" aria-label="Что это: ' + esc(TERMS[k][0]) + '">?</button>' : '';
+}
+function openSheet(k) {
+  const el = $('#sheet'); if (!hasTerm(k) || !el) return;
+  $('#sheetT').textContent = TERMS[k][0]; $('#sheetP').textContent = TERMS[k][1];
+  el.classList.add('on');
+  const ok = $('#sheetOk'); if (ok && ok.focus) ok.focus();
+}
+function closeSheet() { const el = $('#sheet'); if (el) el.classList.remove('on'); }
+function openGlossary() {
+  navTab('ref');
+  const g = $('#gloss'); if (g) { g.open = true; g.scrollIntoView({block: 'start'}); }
+}
+// Стоимость ремонта на площадь и уровень: те же строки и цены, что в «Смете ремонта» (с вашими правками цен)
+function repairCost(area, level) {
+  const sm = {area, rooms: S.smeta.rooms, baths: S.smeta.baths, level, contingency: S.smeta.contingency, custom: S.smeta.custom};
+  const sub = SMETA_ITEMS.reduce((s, it) => s + smetaQty(it, sm) * smetaPrice(it, sm), 0);
+  return sub * (1 + sm.contingency / 100);
+}
+// Срок проекта по варианту ремонта. Месяцы торгов уже входят в срок сделки с торгов, их не теряем
+function presetMonths(i, c) { return REPAIR_PLAN[i].months + Math.max(0, Number(c.torgiDelay) || 0); }
+function repairOptsHtml() {
+  const area = S.smeta.area;
+  if (!(area > 0)) return '<p class="small muted" style="margin:0">Впишите площадь квартиры.</p>';
+  return REPAIR_PLAN.map((p, i) => {
+    const total = Math.round(repairCost(area, i) / 10000) * 10000;
+    return '<button type="button" class="rp-opt" data-a="repair-preset" data-v="' + i + '"><b>' + p.name + ' · ' + rub(total) + '</b>' +
+      '<span>≈ ' + rub(total / area) + ' за м² · ' + p.work + ', проект целиком ' + p.months + ' мес.</span><span>' + p.what + '</span></button>';
+  }).join('');
+}
+function repairBoxHtml() {
+  return '<div class="rp" id="rpBox"><h3 style="margin-bottom:8px">Подсказать ремонт по площади' + hintBtn('repair') + '</h3>' +
+    '<label class="f"><span>Площадь квартиры</span><div class="inwrap"><input type="text" inputmode="decimal" data-ra="area" value="' + esc(String(S.smeta.area).replace('.', ',')) + '"><span>м²</span></div></label>' +
+    '<div class="rp-opts" id="rpOpts">' + repairOptsHtml() + '</div>' +
+    '<p class="small muted" style="margin:8px 0 0">Нажмите вариант — подставятся ремонт и срок проекта. Цены ориентировочные, как в «Смете ремонта».</p></div>';
+}
+// Учебная сделка: всё заполнено, чтобы клиент увидел готовый результат. В итоги по сделкам не входит
+function demoDeal() {
+  const old = S.deals.find(x => x.demo);
+  if (old) return old;
+  const t = isoDay(today()), iso = n => new Date((t + n) * 864e5).toISOString().slice(0, 10);
+  const d = newDeal('Пример: двушка в Кузьминках', Object.assign({}, DEFAULT_CALC, DEMO_CALC));
+  d.demo = true; d.stage = 'Ремонт'; d.address = 'Москва, Кузьминская ул., 11';
+  d.rayon = rayonById('kuzminki') ? 'kuzminki' : '';
+  d.works = cleanWorks({start: iso(-18), items: [{k: 'demo', done: iso(-11)}]});
+  d.expenses = [
+    {id: uid(), cat: 'Оформление сделки', sum: 118000, date: iso(-30), note: 'Нотариус, госпошлина'},
+    {id: uid(), cat: 'Ремонт', sum: 140000, date: iso(-14), note: 'Демонтаж и вывоз мусора'},
+    {id: uid(), cat: 'Материалы', sum: 96000, date: iso(-6), note: 'Стяжка, смеси, плитка'}
+  ];
+  d.checks = {egrn: true, history: true, fssp: true, bankrupt: true};
+  d.risks = {debts: 30000};
+  d.notes = 'Учебный пример. Цифры выдуманы, чтобы показать, как выглядит готовая сделка: расчёт, график ремонта, расходы, проверка объекта и отчёт инвестору.';
+  d.updated = Date.now(); save();
+  return d;
+}
 
 /* ===== Расчёт сделки ===== */
 function calcTax(c, x) {
@@ -595,28 +720,28 @@ function analyse(c) {
   const profitShort = wantProfit && base.net < c.minProfit;
   // Сколько стоит лишний месяц простоя: коммуналка, проценты и сдвиг налога
   const idle = base.net - compute(Object.assign({}, c, {months: base.m + 1})).net;
-  let verdict, cls, why;
+  let verdict, cls, why, kind;
   if (c.price <= 0 || c.sale <= 0) {
-    verdict = 'Заполните цены'; cls = 'warn'; why = 'Нужны цена покупки и ожидаемая цена продажи.';
+    kind = 'empty'; verdict = 'Заполните цены'; cls = 'warn'; why = 'Нужны цена покупки и ожидаемая цена продажи.';
   } else if (base.annual >= c.target && !profitShort && worst.net >= 0) {
-    verdict = 'Брать'; cls = 'good';
+    kind = 'take'; verdict = 'Брать'; cls = 'good';
     why = 'Доходность ' + pct(base.annual) + ' годовых не ниже цели ' + pct(c.target) + ', и даже в плохом сценарии сделка без убытка.';
   } else if (maxBuy && maxBuy > 0 && maxBuy < c.price) {
-    verdict = 'Торговаться до ' + rub(round10k(maxBuy)); cls = 'warn';
+    kind = 'bargain'; verdict = 'Торговаться до ' + rub(round10k(maxBuy)); cls = 'warn';
     why = base.annual < c.target || profitShort
       ? 'При текущей цене ' + [base.annual < c.target ? 'доходность ' + pct(base.annual) + ' годовых — ниже цели ' + pct(c.target) : '', profitShort ? 'чистая прибыль ' + rub(base.net) + ' — ниже желаемой ' + rub(c.minProfit) : ''].filter(Boolean).join(', ') + '. ' + (base.annual < c.target && profitShort ? 'Обе цели достигаются' : 'Цель достигается') + ' при покупке не дороже ' + rub(round10k(maxBuy)) + '.'
       : 'Цель по доходности выполнена, но в плохом сценарии сделка уходит в минус. Безопаснее сбить цену до ' + rub(round10k(maxBuy)) + ' или ниже.';
   } else if (base.net > 0 && worst.net < 0) {
-    verdict = 'Рискованно'; cls = 'warn';
+    kind = 'risky'; verdict = 'Рискованно'; cls = 'warn';
     why = 'Сделка в плюсе, но в плохом сценарии (продажа −10%, срок +3 мес., ремонт +20%) уходит в минус.' +
       (profitShort ? ' Чистая прибыль ' + rub(base.net) + ' ниже желаемой ' + rub(c.minProfit) + ', и при такой продаже и расходах желаемая прибыль недостижима ни при какой цене покупки.' : '');
   } else {
-    verdict = 'Не брать'; cls = 'bad';
+    kind = 'skip'; verdict = 'Не брать'; cls = 'bad';
     why = base.net <= 0 ? 'Сделка убыточна при текущих цифрах.'
       : profitShort && base.annual >= c.target ? 'Чистая прибыль ' + rub(base.net) + ' ниже желаемой ' + rub(c.minProfit) + '. При такой цене продажи и расходах желаемая прибыль недостижима ни при какой цене покупки.'
       : 'Доходность ниже цели даже при сильном торге.';
   }
-  return {base, scen, breakeven, maxBuy, maxBuyYield, maxBuyProfit, idle, verdict, cls, why};
+  return {base, scen, breakeven, maxBuy, maxBuyYield, maxBuyProfit, idle, verdict, cls, why, kind};
 }
 
 /* ===== Стресс-тест: срок × цена продажи ===== */
@@ -655,6 +780,7 @@ function stressGridHtml(c) {
 
 /* ===== Итоги по всем сделкам ===== */
 function portfolio(deals) {
+  deals = deals.filter(d => !d.demo);   // учебный пример в итоги не входит
   const out = {n: 0, watch: 0, active: 0, sold: 0, invested: 0, forecast: 0, factProfit: 0, annualAvg: null, best: null, worst: null};
   const annuals = [];
   deals.forEach(d => {
@@ -706,17 +832,17 @@ function portfolioHtml(deals) {
 /* ===== Раздел «Расчёт» ===== */
 const CALC_GROUPS = [
   ['Покупка', [
-    ['price', 'Цена покупки', '₽'], ['buyCosts', 'Расходы на сделку', '₽', 'Нотариус, госпошлина, риелтор, проверка'],
-    ['cadastral', 'Кадастровая стоимость', '₽', 'Для правила 70%. Если не знаете — 0']]],
+    ['price', 'Цена покупки', '₽'], ['buyCosts', 'Расходы на сделку', '₽', 'Нотариус, госпошлина, риелтор, проверка', 'buycosts'],
+    ['cadastral', 'Кадастровая стоимость', '₽', 'Для правила 70%. Если не знаете — 0', 'cadastral']]],
   ['Ремонт и подготовка', [
-    ['repair', 'Ремонт', '₽'], ['furniture', 'Мебель, техника, стейджинг', '₽']]],
+    ['repair', 'Ремонт', '₽', '', 'repair'], ['furniture', 'Мебель, техника, стейджинг', '₽', '', 'staging']]],
   ['Срок и содержание', [
-    ['months', 'Срок проекта, месяцев', 'мес'], ['utilities', 'Коммуналка в месяц', '₽']]],
+    ['months', 'Срок проекта, месяцев', 'мес', '', 'months'], ['utilities', 'Коммуналка в месяц', '₽', '', 'utilities']]],
   ['Продажа', [
-    ['sale', 'Цена продажи', '₽'], ['commission', 'Комиссия риелтору', '%']]]
+    ['sale', 'Цена продажи', '₽'], ['commission', 'Комиссия риелтору', '%', '', 'commission']]]
 ];
-function field(k, label, suf, hint, val) {
-  return '<label class="f">' + esc(label) +
+function field(k, label, suf, hint, val, term) {
+  return '<label class="f"><span>' + esc(label) + hintBtn(term) + '</span>' +
     '<div class="inwrap"><input type="text" inputmode="decimal" data-k="' + k + '" value="' + esc(suf === '%' || suf === 'мес' ? String(val).replace('.', ',') : num(val)) + '"><span>' + esc(suf) + '</span></div>' +
     (hint ? '<span class="small">' + esc(hint) + '</span>' : '') + '</label>';
 }
@@ -738,24 +864,24 @@ function renderCalc() {
   h += '<div id="calcRes"></div>';
   CALC_GROUPS.forEach(([title, fields]) => {
     h += '<div class="card"><h3>' + title + '</h3><div class="grid2">';
-    fields.forEach(([k, l, s, hint]) => { h += field(k, l, s, hint, c[k]); });
+    fields.forEach(([k, l, s, hint, term]) => { h += field(k, l, s, hint, c[k], term); });
     h += '</div>';
-    if (title === 'Ремонт и подготовка') h += '<div class="row" style="margin-top:10px"><button class="btn" data-a="repair-from-smeta">Взять из сметы</button><span class="small muted" id="smetaHint"></span></div>';
+    if (title === 'Ремонт и подготовка') h += '<div class="row" style="margin-top:10px"><button class="btn" data-a="repair-from-smeta">Взять из сметы</button><span class="small muted" id="smetaHint"></span></div>' + repairBoxHtml();
     h += '</div>';
   });
   h += '<div class="card"><h3>Деньги на покупку</h3>' +
     '<div class="seg" data-seg="fin"><button data-v="own" class="' + (c.fin === 'own' ? 'on' : '') + '">Свои деньги</button><button data-v="mortgage" class="' + (c.fin === 'mortgage' ? 'on' : '') + '">Ипотека</button></div>' +
     '<div class="grid2' + (c.fin === 'mortgage' ? '' : ' hide') + '" id="mortBox" style="margin-top:12px">' +
-    field('down', 'Первый взнос', '%', '', c.down) + field('rate', 'Ставка', '%', '', c.rate) + field('term', 'Срок кредита, лет', 'лет', '', c.term) +
+    field('down', 'Первый взнос', '%', '', c.down, 'down') + field('rate', 'Ставка', '%', '', c.rate, 'rate') + field('term', 'Срок кредита, лет', 'лет', '', c.term, 'termloan') +
     '</div></div>';
-  h += '<div class="card"><h3>Налог при продаже</h3>' +
+  h += '<div class="card"><h3>Налог при продаже' + hintBtn('tax') + '</h3>' +
     '<select data-k="tax">' +
     [['ndfl', 'Физлицо: НДФЛ 13/15%'], ['usn6', 'ИП: УСН 6% с дохода'], ['usn15', 'ИП: УСН 15% доходы − расходы'], ['none', 'Без налога (владение дольше срока)']]
       .map(([v, l]) => '<option value="' + v + '"' + (c.tax === v ? ' selected' : '') + '>' + l + '</option>').join('') +
     '</select>' +
     '<label class="chk' + (c.tax === 'ndfl' ? '' : ' hide') + '" id="repDedBox"><input type="checkbox" data-k="repairDed"' + (c.repairDed ? ' checked' : '') + '><span>Учесть ремонт в расходах <span class="small muted">(только если купили без отделки по договору и есть чеки)</span></span></label>' +
     '</div>';
-  h += '<div class="card"><h3>Цель</h3><div class="grid2">' + field('target', 'Желаемая доходность, годовых', '%', 'На свои вложенные деньги', c.target) + field('minProfit', 'Желаемая чистая прибыль', '₽', 'Необязательно. 0 — не учитывать', c.minProfit) + '</div></div>';
+  h += '<div class="card"><h3>Цель</h3><div class="grid2">' + field('target', 'Желаемая доходность, годовых', '%', 'На свои вложенные деньги', c.target, 'target') + field('minProfit', 'Желаемая чистая прибыль', '₽', 'Необязательно. 0 — не учитывать', c.minProfit, 'minprofit') + '</div></div>';
   h += '<div class="card"><h3>Сохранить</h3>' + (deal
     ? '<button class="btn pri block" data-a="calc-save-deal">Сохранить в сделку «' + esc(deal.name) + '»</button>'
     : '<div class="row"><input type="text" id="newDealName" placeholder="Название, например «Однушка на Ленина 5»" style="flex:1;min-width:200px"><button class="btn pri" data-a="calc-new-deal">Создать сделку</button></div>') +
@@ -792,11 +918,44 @@ function heroNumbers(c, b) {
 function updateSmetaHint() {
   const el = $('#smetaHint'); if (el) el.textContent = 'Смета сейчас: ' + rub(smetaTotal().total);
 }
+const PLAIN = {empty: 'Введите цены покупки и продажи', take: 'Сделка выглядит выгодной', bargain: 'Дороговато — просите скидку', risky: 'В плюсе, но без запаса прочности', skip: 'Сделка не окупается'};
+// «Что дальше?»: простой следующий шаг под каждый вердикт
+function nextHtml(c, a) {
+  const linked = S.calcDeal && S.deals.find(d => d.id === S.calcDeal);
+  const lim = a.kind !== 'empty' && a.maxBuy != null && a.maxBuy > 0 && (a.kind !== 'skip' || a.maxBuy < c.price) ? rub(round10k(a.maxBuy)) : null;
+  const where = S.tab === 'calc' ? 'ниже' : 'в «Расчёте»';
+  const save = [linked ? 'Сохранить в сделку' : 'Создать сделку', 'next-save'], calc = ['Открыть расчёт', 'next-calc'];
+  let items, btns = [];
+  if (a.kind === 'empty') {
+    items = ['Впишите цену покупки и ожидаемую цену продажи — ориентируйтесь на похожие квартиры в объявлениях.',
+      'Ремонт и срок можно подставить готовым вариантом: «Подсказать ремонт по площади» в «Расчёте».'];
+    if (!(c.price > 0) && !(c.sale > 0)) { items.push('Хотите сначала посмотреть, как это работает? Подставьте пример цифр.'); btns = [['Подставить пример цифр', 'sample']]; }
+  } else if (a.kind === 'take') {
+    items = ['Проверьте объект по списку (долги, собственники, перепланировка): скрытые проблемы съедают прибыль.',
+      linked ? 'Сохраните этот расчёт в сделку: приложение будет вести расходы и график ремонта.' : 'Создайте сделку: приложение будет вести расходы, график ремонта и покажет прогноз прибыли.'];
+    btns = [save];
+  } else if (a.kind === 'bargain') {
+    items = ['Предложите продавцу цену не выше ' + lim + ': при ней сделка выходит на вашу цель.',
+      'Если продавец не уступает, лучше искать другой объект, чем покупать дороже предела.'];
+    btns = [save];
+  } else if (a.kind === 'risky') {
+    items = ['Сделка в плюсе, но запаса прочности мало. Посмотрите «Стресс-тест» ' + where + ': что будет, если цена упадёт, а срок затянется.',
+      'Сократите срок или ремонт либо поторгуйтесь по цене покупки.'];
+    btns = S.tab === 'calc' ? [] : [calc];
+  } else {
+    items = ['Проверьте цифры: цену продажи, ремонт и срок.',
+      lim ? 'Сделка заработала бы при покупке не дороже ' + lim + '.' : 'Цель не достигается даже при очень низкой цене покупки: нужна выше цена продажи или меньше расходов.',
+      'Не покупайте «в надежде на удачу» — лучше искать другой объект.'];
+    btns = S.tab === 'calc' ? [] : [calc];
+  }
+  return '<div class="next"><h4>Что дальше?</h4><ol>' + items.map(x => '<li>' + esc(x) + '</li>').join('') + '</ol>' +
+    (btns.length ? '<div class="row">' + btns.map((x, i) => '<button type="button" class="btn' + (i ? '' : ' pri') + '" data-a="' + x[1] + '">' + esc(x[0]) + '</button>').join('') + '</div>' : '') + '</div>';
+}
 function heroHtml(c, a, b) {
   const hn = heroNumbers(c, b), filled = hn.net !== '—';
-  return '<div class="verdict ' + a.cls + '"><div class="v">' + esc(a.verdict) + '</div>' +
+  return '<div class="verdict ' + a.cls + '"><div class="v">' + esc(a.verdict) + '</div>' + hintBtn('verdict') + '<div class="plain">' + esc(PLAIN[a.kind] || '') + '</div>' +
     '<div class="lbl">Чистая прибыль</div><div class="big' + (filled && b.net < 0 ? ' neg' : '') + '">' + hn.net + '</div>' +
-    '<div class="sub2"><b class="' + (filled && b.annual < 0 ? 'neg' : '') + '">' + hn.annual + '</b> годовых на свои деньги</div><p>' + esc(a.why) + '</p></div>';
+    '<div class="sub2"><b class="' + (filled && b.annual < 0 ? 'neg' : '') + '">' + hn.annual + '</b> годовых на свои деньги' + hintBtn('annual') + '</div><p>' + esc(a.why) + '</p></div>' + nextHtml(c, a);
 }
 function updateCalcResults() {
   const c = S.calc, a = analyse(c), b = a.base, hn = heroNumbers(c, b), filled = hn.net !== '—';
@@ -805,11 +964,11 @@ function updateCalcResults() {
   const lim = a.maxBuy != null && c.price > 0 && c.sale > 0 ? round10k(a.maxBuy) : null;
   const over = lim != null && a.maxBuy < c.price;
   let h = '<div class="kpis">' +
-    '<div class="kpi"><span>Нужно своих денег</span><b>' + rub(b.ownCash) + '</b></div>' +
-    '<div class="kpi"><span>Предельная цена покупки</span><b>' + (lim != null ? rub(lim) : '—') + '</b></div>' +
+    '<div class="kpi"><span>Нужно своих денег' + hintBtn('owncash') + '</span><b>' + rub(b.ownCash) + '</b></div>' +
+    '<div class="kpi"><span>Предельная цена покупки' + hintBtn('maxprice') + '</span><b>' + (lim != null ? rub(lim) : '—') + '</b></div>' +
     '<div class="kpi"><span>' + (over ? 'Торговаться вниз на' : 'Запас до предела') + '</span><b' + (over ? ' class="neg"' : '') + '>' + (lim != null ? rub(over ? c.price - lim : Math.max(0, lim - c.price)) : '—') + '</b></div>' +
-    '<div class="kpi"><span>Месяц простоя стоит</span><b>' + (filled ? rub(Math.max(0, a.idle)) : '—') + '</b></div>' +
-    '<div class="kpi"><span>Продажа в ноль</span><b>' + (a.breakeven != null ? rub(a.breakeven) : '—') + '</b></div>' +
+    '<div class="kpi"><span>Месяц простоя стоит' + hintBtn('idle') + '</span><b>' + (filled ? rub(Math.max(0, a.idle)) : '—') + '</b></div>' +
+    '<div class="kpi"><span>Продажа в ноль' + hintBtn('breakeven') + '</span><b>' + (a.breakeven != null ? rub(a.breakeven) : '—') + '</b></div>' +
     '<div class="kpi"><span>Срок</span><b>' + b.m + ' мес.</b></div>' +
     '</div>';
   const seg = [['Покупка', c.price + c.buyCosts, '#C9D0DB'], ['Ремонт и подготовка', c.repair + c.furniture, '#9AA6B8'], ['Налоги, комиссии, коммуналка, проценты', Math.max(0, b.tax) + b.comm + b.util + (b.loan > 0 ? b.interest : 0), '#F5A623'], ['Прибыль', Math.max(0, b.net), '#1FB86A']];
@@ -832,7 +991,7 @@ function updateCalcResults() {
     '</table>' +
     (b.loan > 0 ? '<p class="note">Кредит ' + rub(b.loan) + ', платёж ' + rub(b.pmt) + ' в месяц, остаток долга при продаже ' + rub(b.bal) + '.</p>' : '') +
     '<p class="note">Доходность на свои деньги: ' + pct(b.roi) + ' за ' + b.m + ' мес.</p></div>';
-  h += '<div class="card"><h3>Стресс-тест</h3><table><tr><th>Сценарий</th><th class="n">Прибыль</th><th class="n">Годовых</th></tr>' +
+  h += '<div class="card"><h3>Стресс-тест' + hintBtn('stress') + '</h3><table><tr><th>Сценарий</th><th class="n">Прибыль</th><th class="n">Годовых</th></tr>' +
     a.scen.map(s => '<tr><td>' + s.name + '</td><td class="n ' + (s.r.net < 0 ? 'neg' : '') + '">' + rub(s.r.net) + '</td><td class="n">' + pct(s.r.annual) + '</td></tr>').join('') +
     '</table><p class="note">Минус в сценарии — значит, при таком повороте сделка убыточна.</p></div>';
   h += stressGridHtml(c);
@@ -1096,18 +1255,18 @@ function torgiPlan(c0, t) {
   const deposit = (entry ? entry.p : t.start) * t.deposit / 100;
   return {c, at, maxBid, zeroBid, limit, stages, entry, stepSum, steps, verdict, cls, why, deposit};
 }
-function tField(k, label, suf, hint, val) {
-  return '<label class="f">' + esc(label) +
+function tField(k, label, suf, hint, val, term) {
+  return '<label class="f"><span>' + esc(label) + hintBtn(term) + '</span>' +
     '<div class="inwrap"><input type="text" inputmode="decimal" data-t="' + k + '" value="' + esc(suf === '₽' ? num(val) : String(val).replace('.', ',')) + '"><span>' + esc(suf) + '</span></div>' +
     (hint ? '<span class="small">' + esc(hint) + '</span>' : '') + '</label>';
 }
 function renderTorgi() {
   const t = S.torgi, c = S.calc, off = t.kind === 'offer';
   let h = '<div id="torgiRes"></div>';
-  h += '<div class="card"><h3>Лот</h3><div class="seg" data-seg="tkind"><button data-v="auction" class="' + (off ? '' : 'on') + '">Аукцион</button><button data-v="offer" class="' + (off ? 'on' : '') + '">Публичное предложение</button></div>' +
-    '<div class="grid2" style="margin-top:12px">' + tField('start', 'Начальная цена', '₽', '', t.start) + tField('deposit', 'Задаток', '%', '', t.deposit) +
-    (off ? tField('drop', 'Снижение за этап', '%', 'От начальной цены', t.drop) + tField('periods', 'Этапов снижения', 'шт', '', t.periods)
-      : tField('step', 'Шаг аукциона', '%', 'От начальной цены', t.step)) +
+  h += '<div class="card"><h3>Лот' + hintBtn('torgikind') + '</h3><div class="seg" data-seg="tkind"><button data-v="auction" class="' + (off ? '' : 'on') + '">Аукцион</button><button data-v="offer" class="' + (off ? 'on' : '') + '">Публичное предложение</button></div>' +
+    '<div class="grid2" style="margin-top:12px">' + tField('start', 'Начальная цена', '₽', '', t.start) + tField('deposit', 'Задаток', '%', '', t.deposit, 'deposit') +
+    (off ? tField('drop', 'Снижение за этап', '%', 'От начальной цены', t.drop, 'drop') + tField('periods', 'Этапов снижения', 'шт', '', t.periods)
+      : tField('step', 'Шаг аукциона', '%', 'От начальной цены', t.step, 'step')) +
     tField('extra', 'Доп. расходы торгов', '₽', 'ЭЦП, площадка, выселение, долг за капремонт', t.extra) +
     tField('delay', 'Дольше срок', 'мес', 'Оформление и освобождение квартиры', t.delay) + '</div>' +
     '<p class="note">Остальное — из раздела «Расчёт»: продажа ' + rub(c.sale) + ', ремонт ' + rub(c.repair) + ', срок ' + torgiBase(c).months + ' мес.' + (c.torgiExtra || c.torgiDelay ? ' (расходы и срок торгов из сделки не задваиваются)' : '') + ', цель ' + pct(c.target) + ' годовых.</p>' +
@@ -1162,11 +1321,11 @@ function renderDeals() {
   setTitle('Мои сделки', '<button class="btn pri" data-a="deal-new">+ Сделка</button>');
   let h = '';
   if (!S.deals.length) {
-    h += '<div class="card empty"><p><b>Сделок пока нет</b></p><p class="muted">Посчитайте объект в разделе «Расчёт» и нажмите «Создать сделку», или добавьте сделку кнопкой выше.</p></div>';
+    h += '<div class="card empty"><p><b>Сделок пока нет</b></p><p class="muted">Посчитайте объект в разделе «Расчёт» и нажмите «Создать сделку», или добавьте сделку кнопкой выше.</p><button class="btn" data-a="demo-open">Посмотреть пример сделки</button></div>';
   } else {
     S.deals.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).forEach(d => {
       const p = dealPlan(d), spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
-      h += '<button class="card deal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + esc(d.stage) + '</span></div>' +
+      h += '<button class="card deal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
         (d.address ? '<div class="small muted">' + esc(d.address) + '</div>' : '') +
         '<div class="small" style="margin-top:6px">План: ' + (p ? '<b>' + rub(p.net) + '</b> · ' + pct(p.annual) + ' годовых' : 'нет расчёта') + ' · Потрачено: ' + rub(spent) + '</div>' + lateLine(d) + '</button>';
     });
@@ -1193,7 +1352,7 @@ function riskSumHtml(d) {
 function checkCardHtml(d) {
   const checks = d.checks || {};
   const done = CHECKLIST.filter(([k]) => checks[k]).length;
-  return '<div class="card"><h3>Проверка объекта · ' + done + ' из ' + CHECKLIST.length + '</h3>' +
+  return '<div class="card"><h3>Проверка объекта · ' + done + ' из ' + CHECKLIST.length + hintBtn('risk') + '</h3>' +
     CHECKLIST.map(([k, l]) => {
       const risk = hasRisk(d, k);
       return '<div class="chkrow"><label class="chk"><input type="checkbox" data-check="' + k + '"' + (checks[k] ? ' checked' : '') + '><span>' + esc(l) + '</span></label>' +
@@ -1212,6 +1371,7 @@ function renderDeal(d) {
   const done = CHECKLIST.filter(([k]) => checks[k]).length;
   setTitle(d.name || 'Сделка', '', true);
   let h = '';
+  if (d.demo) h += '<div class="card demo-note"><p><b>Это учебный пример.</b> Здесь всё заполнено: расчёт, график ремонта, расходы, проверка объекта. Меняйте цифры и нажимайте кнопки — ничего не сломается. Отчёт инвестору — внизу страницы.</p><button class="btn danger" data-a="deal-del">Удалить пример</button></div>';
   h += '<div class="card"><label class="f">Название<input type="text" data-d="name" value="' + esc(d.name) + '"></label>' +
     '<div style="height:10px"></div><label class="f">Адрес<input type="text" data-d="address" value="' + esc(d.address || '') + '"></label>' +
     // Без файла данных список не показываем: иначе выбор «Не выбран» стёр бы сохранённый район
@@ -1300,7 +1460,7 @@ function planFactCardHtml(d, p, c) {
   const exp = d.expenses || [];
   if (!p) return '';
   const {wp, pf, sched, risk, fore} = dealForecast(d, p, c);
-  let h = '<div class="card"><h3>План / факт</h3>';
+  let h = '<div class="card"><h3>План / факт' + hintBtn('planfact') + '</h3>';
   if (!exp.length && !wp && !risk) return h + '<p class="muted" style="margin-bottom:0">Добавьте расходы, и здесь появится сравнение с планом и прогноз прибыли.</p></div>';
   h += '<table><tr><th>Статья</th><th class="n">Факт</th><th class="n">Разница</th></tr>' + pf.rows.map(r =>
     '<tr><td>' + esc(r.name) + '<br><span class="small muted">план ' + rub(r.plan) + '</span></td><td class="n">' + rub(r.fact) + '</td><td class="n ' + (r.diff > 0 ? 'neg' : r.fact > 0 ? 'pos' : 'muted') + '">' + (r.fact > 0 || r.plan > 0 ? (r.diff > 0 ? '+' : '') + rub(r.diff) : '—') + '</td></tr>').join('') + '</table>';
@@ -1380,6 +1540,12 @@ function openReport(d) {
 }
 function closeReport() { const el = $('#report'); document.body.classList.remove('rep-on'); if (el && el.classList.contains('on')) { el.classList.remove('on'); el.innerHTML = ''; } }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#report').classList.contains('on')) navBack(); });
+$('#sheet').addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  if (b.dataset.a === 'sheet-close') closeSheet();
+  else if (b.dataset.a === 'term-all') { closeSheet(); openGlossary(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 $('#report').addEventListener('click', e => {
   const b = e.target.closest('[data-ra]'); if (!b) return;
   if (b.dataset.ra === 'close') navBack();
@@ -1597,6 +1763,8 @@ function renderRef() {
     '<li>ИП на УСН 6% платит с полной суммы продажи; на УСН 15% — с разницы доходов и расходов, но не меньше 1% от дохода. Плюс страховые взносы ИП.</li>' +
     '<li>Самозанятость для продажи недвижимости не подходит.</li>' +
     '<li>Выбор режима обсудите с бухгалтером до первой сделки.</li></ul></details>' +
+    '<details id="gloss" class="gloss"><summary>Словарь: что значат слова</summary>' +
+    Object.keys(TERMS).map(k => '<p><b>' + esc(TERMS[k][0]) + '</b><br>' + esc(TERMS[k][1]) + '</p>').join('') + '</details>' +
     '<details><summary>Проверка объекта перед покупкой</summary><ul>' +
     CHECKLIST.map(([, l]) => '<li>' + esc(l) + '</li>').join('') + '</ul></details>' +
     '<details><summary>Подготовка к продаже</summary><ul>' +
@@ -1612,7 +1780,7 @@ function renderRef() {
     '<li><b>Не брать</b> — убыток или доходность ниже цели даже при сильном торге.</li>' +
     '<li>Плохой сценарий: продажа на 10% дешевле, срок на 3 месяца дольше, ремонт на 20% дороже.</li></ul></details>' +
     '</div><p class="note">Расчёты и справка — ориентир, а не гарантия прибыли и не юридическая консультация. Перед сделкой сверьтесь с юристом и бухгалтером.</p>' +
-    '<p class="note">Флипология · прототип v0.4</p>';
+    '<p class="note">Флипология · прототип v0.5</p>';
 }
 
 /* ===== Раздел «Главная» ===== */
@@ -1622,7 +1790,7 @@ const ICO = {
   torgi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 12.5l-8 8a2.1 2.1 0 1 1-3-3l8-8"/><path d="M16 16l6-6"/><path d="M8 8l6-6"/><path d="M9 7l8 8"/><path d="M21 11l-8-8"/></svg>',
   parse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 12h6M9 16h4"/></svg>'
 };
-const QUICK = [['price', 'Покупка', '₽'], ['sale', 'Продажа', '₽'], ['repair', 'Ремонт', '₽'], ['months', 'Срок', 'мес']];
+const QUICK = [['price', 'Покупка', '₽'], ['sale', 'Продажа', '₽'], ['repair', 'Ремонт', '₽', 'repair'], ['months', 'Срок', 'мес', 'months']];
 // Экспресс-оценка покупки работает с теми же цифрами, что и «Расчёт»
 function quickHeroHtml(c) {
   const a = analyse(c), b = a.base;
@@ -1633,21 +1801,21 @@ function homeDealHtml(d) {
   const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
   const f = p ? dealForecast(d, p, c) : null;
   const moved = f && Math.round(f.fore) !== Math.round(p.net);
-  return '<button class="hdeal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + esc(d.stage) + '</span></div>' +
+  return '<button class="hdeal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
     '<div class="small muted">' + (p ? 'План ' + rub(p.net) + (moved ? ' · прогноз <b class="' + (f.fore < p.net ? 'neg' : 'pos') + '">' + rub(f.fore) + '</b>' : '') : 'Расчёта ещё нет') + '</div>' + lateLine(d) + '</button>';
 }
 function renderHome() {
   const c = S.calc, linked = S.calcDeal && S.deals.find(d => d.id === S.calcDeal);
   let h = '<div class="card"><h3>Экспресс-оценка покупки</h3><div class="grid2">' +
-    QUICK.map(([k, l, suf]) => '<label class="f">' + l + '<div class="inwrap"><input type="text" inputmode="decimal" data-q="' + k + '" value="' + (k === 'months' ? String(c[k]).replace('.', ',') : num(c[k])) + '"><span>' + suf + '</span></div></label>').join('') +
-    '</div>' + (linked ? '<div class="row" style="justify-content:space-between;margin-top:12px"><span class="small">Сейчас здесь расчёт сделки <b>' + esc(linked.name) + '</b></span><button class="btn" data-a="calc-detach">Новый расчёт</button></div>' : '') +
+    QUICK.map(([k, l, suf, term]) => '<label class="f"><span>' + l + hintBtn(term) + '</span><div class="inwrap"><input type="text" inputmode="decimal" data-q="' + k + '" value="' + (k === 'months' ? String(c[k]).replace('.', ',') : num(c[k])) + '"><span>' + suf + '</span></div></label>').join('') +
+    '</div><button class="btn" style="margin-top:10px" data-a="home-repair">Не знаете, сколько стоит ремонт? Подсказать</button>' + (linked ? '<div class="row" style="justify-content:space-between;margin-top:12px"><span class="small">Сейчас здесь расчёт сделки <b>' + esc(linked.name) + '</b></span><button class="btn" data-a="calc-detach">Новый расчёт</button></div>' : '') +
     '<div id="homeHero" style="margin-top:12px">' + quickHeroHtml(c) + '</div>' +
     '<p class="small muted" style="margin:10px 2px">Те же цифры, что в «Расчёте»: налог, ипотека и остальное — там.</p>' +
     '<button class="btn pri block" data-a="go-tab" data-v="calc">Открыть полный расчёт</button></div>';
   const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
   h += '<div class="card"><h3>Мои сделки</h3>' +
-    (deals.length ? deals.slice(0, 3).map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Сделок пока нет. Посчитайте объект и создайте сделку или добавьте её сразу.</p>') +
-    '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="deal-new">+ Новая сделка</button>' +
+    (deals.length ? deals.slice(0, 3).map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Сделок пока нет. Посчитайте объект и создайте сделку или добавьте её сразу. Хотите увидеть, как выглядит готовая сделка, — откройте пример.</p>') +
+    '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="deal-new">+ Новая сделка</button>' + (S.deals.some(x => x.demo) ? '' : '<button class="btn" data-a="demo-open">Пример сделки</button>') +
     (deals.length > 3 ? '<button class="btn" data-a="go-tab" data-v="deals">Все (' + deals.length + ')</button>' : '') + '</div></div>';
   h += portfolioHtml(S.deals);
   h += '<h3 class="hh">Инструменты</h3><div class="tiles">' +
@@ -1659,6 +1827,7 @@ function renderHome() {
     '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
     '<button data-a="home-push" data-v="kursy"><span>Курсы и ставки</span><i>›</i></button>' +
     '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
+    '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button>' +
     '<a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
   const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
   if (S.deals.length && (days < 0 || days > 14)) {
@@ -1834,7 +2003,7 @@ function navWrite(method, st, depth) {
   try { window.history[method](Object.assign({nav: 1}, st, {depth, y: st.y || 0}), ''); } catch (e) {}
 }
 function navShow(st, cls, y) {
-  closeReport();
+  closeReport(); closeSheet();
   openDeal = st.deal; rayonView = st.rayon; rayonFrom = st.from;
   go(st.tab, cls, y);
 }
@@ -1931,6 +2100,10 @@ view.addEventListener('input', e => {
   } else if (t.dataset.q) {
     let v = parseNum(t.value); if (INT_KEYS.includes(t.dataset.q)) v = Math.max(1, Math.round(v) || 1);
     S.calc[t.dataset.q] = v; save(); $('#homeHero').innerHTML = quickHeroHtml(S.calc);
+  } else if (t.dataset.ra) {
+    S.smeta.area = Math.min(10000, Math.max(0, parseNum(t.value))); save();
+    const ro = $('#rpOpts'); if (ro) ro.innerHTML = repairOptsHtml();
+    updateSmetaHint();
   } else if (t.dataset.sm) {
     let v = parseNum(t.value); if (t.dataset.sm !== 'area' && t.dataset.sm !== 'contingency') v = Math.max(0, Math.round(v));
     S.smeta[t.dataset.sm] = v; save(); updateSmetaTableKeepFocus();
@@ -2057,6 +2230,32 @@ view.addEventListener('click', e => {
   const a = b.dataset.a;
   const d = S.deals.find(x => x.id === openDeal);
   switch (a) {
+    case 'term': openSheet(b.dataset.t); break;
+    case 'home-gloss': openGlossary(); break;
+    case 'demo-open': { const dd = demoDeal(); if (S.tab === 'home') navTab('deals'); openDealView(dd.id); break; }
+    case 'home-repair': { navTab('calc'); const rp = $('#rpBox'); if (rp) rp.scrollIntoView({block: 'start'}); break; }
+    case 'repair-preset': {
+      const i = Number(b.dataset.v), area = S.smeta.area;
+      if (!(i >= 0 && i < REPAIR_PLAN.length)) break;
+      if (!(area > 0)) { toast('Впишите площадь квартиры'); break; }
+      S.smeta.level = i; S.calc.repair = Math.round(repairCost(area, i) / 10000) * 10000; S.calc.months = presetMonths(i, S.calc); save();
+      const fr = view.querySelector('input[data-k="repair"]'), fm = view.querySelector('input[data-k="months"]');
+      if (fr) fr.value = num(S.calc.repair); if (fm) fm.value = String(S.calc.months);
+      updateCalcResults(); updateSmetaHint();
+      toast('Ремонт ' + rub(S.calc.repair) + ' и срок ' + S.calc.months + ' мес. — поправьте, если нужно'); break;
+    }
+    case 'sample': {
+      Object.assign(S.calc, DEMO_CALC, {torgiExtra: 0, torgiDelay: 0}); S.calcDeal = null; save();
+      if (S.tab === 'home') renderHome(); else renderCalc();
+      toast('Подставлен пример цифр — замените на свои'); break;
+    }
+    case 'next-calc': navTab('calc'); break;
+    case 'next-save': {
+      if (S.tab !== 'calc') navTab('calc');
+      const el = $('#newDealName') || $('[data-a="calc-save-deal"]');
+      if (el) { el.scrollIntoView({block: 'center'}); if (el.focus) el.focus(); }
+      break;
+    }
     case 'repair-from-smeta': {
       S.calc.repair = Math.round(smetaTotal().total); save(); renderCalc(); toast('Ремонт взят из сметы'); break;
     }

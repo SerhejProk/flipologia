@@ -27,6 +27,7 @@ let pass = 0, fail = 0;
 ctx.check = (name, ok, got) => {
   if (ok) pass++; else { fail++; console.log('ОШИБКА: ' + name + (got !== undefined ? ' — получено: ' + JSON.stringify(got) : '')); }
 };
+ctx.SRC = code;
 ctx.near = (a, b, tol) => Math.abs(a - b) <= tol;
 
 vm.runInContext(`
@@ -588,6 +589,87 @@ vm.runInContext(`
   check('главная: без резерва и расходов прогноза нет', !/прогноз/.test(homeDealHtml(cleanDeal({id: 'r2', name: 'Р', calc: DEFAULT_CALC}))));
   check('итоги: пусто — блока нет', portfolioHtml([]) === '' && portfolioHtml([cleanDeal({id: 'z', name: 'Пустая'})]) === '');
   check('итоги: закрытая без цены продажи не считается вложенной', portfolio([cleanDeal({id: 'q', name: 'К', calc: DEFAULT_CALC, stage: 'Закрыта'})]).invested === 0);
+}
+
+/* --- Пример сделки, вердикт простыми словами, подбор ремонта, словарь --- */
+{
+  const before = S.deals.length;
+  const d = demoDeal();
+  check('пример: создана одна сделка с пометкой', S.deals.length === before + 1 && d.demo === true && d.stage === 'Ремонт', d.stage);
+  check('пример: второй вызов не плодит копии', demoDeal() === d && S.deals.length === before + 1);
+  check('пример: расчёт, график, расходы, проверка заполнены', !!d.calc && !!d.works && d.expenses.length === 3 && Object.keys(d.checks).length > 0 && d.risks.debts === 30000);
+  const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc), f = dealForecast(d, p, c);
+  check('пример: вердикт «Брать» и прибыль в плюсе', analyse(c).kind === 'take' && p.net > 0, [analyse(c).kind, p.net]);
+  check('пример: срок ремонта сдвинут, прогноз считается', f.wp && f.wp.shift === 2 && isFinite(f.fore), f.wp && f.wp.shift);
+  check('пример: переживает очистку данных', cleanDeal(JSON.parse(JSON.stringify(d))).demo === true);
+  check('пример: обычная сделка не помечается', cleanDeal({id: 'n', name: 'Н', demo: 'yes'}).demo === false && newDeal('Моя', null).demo === undefined);
+  const real = cleanDeal({id: 'real', name: 'Моя', stage: 'Ремонт', calc: DEFAULT_CALC, expenses: [{cat: 'Ремонт', sum: 100000}]});
+  check('пример: в итоги не входит', portfolio([d]).n === 0 && portfolioHtml([d]) === '' && portfolio([d, real]).n === 1 && portfolio([d, real]).invested === portfolio([real]).invested);
+  check('пример: на главной есть пометка', /Пример/.test(homeDealHtml(d)));
+  S.deals = S.deals.filter(x => !x.demo && x.name !== 'Моя');
+}
+{
+  const base = Object.assign({}, DEFAULT_CALC, DEMO_CALC);
+  const kinds = {
+    empty: Object.assign({}, base, {price: 0, sale: 0}),
+    take: base,
+    bargain: Object.assign({}, base, {price: 10500000}),
+    skip: Object.assign({}, base, {sale: 900000})
+  };
+  Object.keys(kinds).forEach(k => {
+    const a = analyse(kinds[k]), h = heroHtml(kinds[k], a, a.base);
+    check('вердикт «' + k + '»: kind верный', a.kind === k, a.kind);
+    check('вердикт «' + k + '»: есть простая фраза и «Что дальше?»', h.includes(PLAIN[k]) && /Что дальше\\?/.test(h) && /<ol><li>/.test(h), h.slice(0, 200));
+  });
+  const bar = analyse(kinds.bargain);
+  check('торг: в «Что дальше» названа предельная цена', nextHtml(kinds.bargain, bar).includes(rub(round10k(bar.maxBuy))));
+  check('пусто: кнопка «Подставить пример цифр»', /data-a="sample"/.test(nextHtml(kinds.empty, analyse(kinds.empty))));
+  const oneSide = Object.assign({}, base, {sale: 0});
+  check('пусто с одной ценой: примера не предлагаем', !/data-a="sample"/.test(nextHtml(oneSide, analyse(oneSide))));
+  check('«Брать»: кнопка создать сделку', /data-a="next-save"[^>]*>Создать сделку/.test(nextHtml(base, analyse(base))));
+  const skip = analyse(kinds.skip);
+  check('«Не брать»: нет подсказки цены, если до цели не дотянуть', skip.kind === 'skip' && !/заработала бы/.test(nextHtml(kinds.skip, skip)), skip.maxBuy);
+  check('«Что дальше»: нет посторонней разметки', !/<script/.test(nextHtml(base, analyse(base))));
+  let risky = null;
+  for (let sale = 10000000; sale <= 12500000 && !risky; sale += 50000) {
+    const c2 = Object.assign({}, base, {sale, target: 5}); const a2 = analyse(c2);
+    if (a2.kind === 'risky') risky = {c2, a2};
+  }
+  check('«Рискованно»: вердикт находится и ведёт к стресс-тесту', !!risky && /Стресс-тест/.test(nextHtml(risky.c2, risky.a2)), !!risky);
+}
+{
+  const area = 54;
+  const r = [0, 1, 2].map(i => repairCost(area, i));
+  check('ремонт: дороже по уровням', r[0] < r[1] && r[1] < r[2], r);
+  const sm = S.smeta, prev = sm.level, prevArea = sm.area;
+  sm.area = area; sm.level = 1;
+  check('ремонт: совпадает со сметой', near(repairCost(area, 1), smetaTotal().total, 0.5), [repairCost(area, 1), smetaTotal().total]);
+  sm.level = prev; sm.area = prevArea;
+  check('ремонт: месяцы торгов не теряются при выборе варианта', presetMonths(0, {torgiDelay: 2}) === REPAIR_PLAN[0].months + 2 && torgiBase(Object.assign({}, DEFAULT_CALC, {months: presetMonths(0, {torgiDelay: 2}), torgiDelay: 2})).months === REPAIR_PLAN[0].months);
+  check('ремонт: без торгов срок равен варианту', presetMonths(1, {torgiDelay: 0}) === REPAIR_PLAN[1].months);
+  check('ремонт: срок проекта растёт с уровнем', REPAIR_PLAN[0].months < REPAIR_PLAN[1].months && REPAIR_PLAN[1].months < REPAIR_PLAN[2].months);
+  S.smeta.area = 0;
+  check('ремонт: без площади — просьба указать площадь, кнопок нет', /Впишите площадь/.test(repairOptsHtml()) && !/rp-opt/.test(repairOptsHtml()));
+  S.smeta.area = 60;
+  check('ремонт: три варианта с ценой и сроком', (repairOptsHtml().match(/data-a="repair-preset"/g) || []).length === 3 && /проект целиком/.test(repairOptsHtml()));
+  S.smeta.area = prevArea;
+  const keep = S.smeta.custom; S.smeta.custom = {demo_0: 1000000};
+  check('ремонт: учитывает свои цены из сметы', repairCost(50, 0) > 50000000, repairCost(50, 0));
+  S.smeta.custom = keep;
+}
+{
+  const keys = Object.keys(TERMS);
+  check('словарь: у каждого термина заголовок и текст', keys.length >= 25 && keys.every(k => TERMS[k].length === 2 && TERMS[k][0].length > 2 && TERMS[k][1].length > 30), keys.length);
+  check('словарь: подсказка «?» для известного термина', /data-t="maxprice"/.test(hintBtn('maxprice')) && /aria-label=/.test(hintBtn('maxprice')));
+  check('словарь: неизвестные и служебные ключи не дают кнопку', hintBtn('nope') === '' && hintBtn(undefined) === '' && hintBtn('constructor') === '' && hintBtn('__proto__') === '' && hintBtn('toString') === '');
+  const used = [...new Set([...SRC.matchAll(/hintBtn\\('([a-z]+)'\\)/g)].map(m => m[1]))];
+  const bad = used.filter(k => !Object.prototype.hasOwnProperty.call(TERMS, k));
+  check('словарь: каждая подсказка в коде ссылается на существующий термин', used.length >= 10 && bad.length === 0, [used.length, bad]);
+  check('словарь: термины, передаваемые в поля, существуют', ['buycosts', 'cadastral', 'repair', 'staging', 'months', 'utilities', 'commission', 'down', 'rate', 'termloan', 'target', 'minprofit', 'deposit', 'drop', 'step'].every(k => Object.prototype.hasOwnProperty.call(TERMS, k)));
+  check('словарь: тексты не ломают разметку', keys.every(k => !/[<>]/.test(TERMS[k][0] + TERMS[k][1])));
+  const fh = field('price', 'Цена', '₽', '', 100, 'maxprice');
+  check('поле с подсказкой: кнопка внутри подписи, поле на месте', /<span>Цена<button/.test(fh) && /data-k="price"/.test(fh));
+  check('поле без подсказки: кнопки нет', !/hint/.test(field('price', 'Цена', '₽', '', 100)));
 }
 `, ctx);
 
