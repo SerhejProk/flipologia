@@ -525,5 +525,71 @@ vm.runInContext(`
   ctx.check('главная: заголовок «Экспресс-оценка покупки»', /Экспресс-оценка покупки/.test(html) && !/<h3>Быстрая оценка<\/h3>/.test(html));
 }
 
+
+/* --- Стресс-тест, риски объекта, итоги по сделкам --- */
+vm.runInContext(`
+{
+  const c = Object.assign({}, DEFAULT_CALC);
+  const g = stressGrid(c);
+  check('стресс: ячейка «ваш срок / по плану» равна расчёту', near(g.rows.find(r => r.plan).cells[0].net, 605800, 1));
+  check('стресс: в списке есть срок 6 и он помечен', g.rows.filter(r => r.plan).length === 1 && g.rows.find(r => r.plan).m === 6);
+  check('стресс: дешевле продажа — меньше прибыль', g.rows[2].cells[1].net < g.rows[2].cells[0].net && g.rows[2].cells[2].net < g.rows[2].cells[1].net);
+  check('стресс: дольше срок — меньше прибыль', g.rows[g.rows.length - 1].cells[0].net < g.rows[0].cells[0].net);
+  check('стресс: предельный срок — последний без убытка', g.maxMonths > 6 && compute(Object.assign({}, c, {months: g.maxMonths})).net >= 0 && compute(Object.assign({}, c, {months: g.maxMonths + 1})).net < 0, g.maxMonths);
+  check('стресс: цена в ноль даёт нулевую прибыль', near(compute(Object.assign({}, c, {sale: g.beSale})).net, 0, 50), g.beSale);
+  check('стресс: процент снижения сходится', near(g.beCut, (1 - g.beSale / c.sale) * 100, 1e-9) && g.beCut > 0);
+  const loss = stressGrid(Object.assign({}, c, {sale: 5500000}));
+  check('стресс: убыточная сделка — «уже в минусе»', loss.maxMonths === -1, loss.maxMonths);
+  check('стресс: без расходов в месяц срок не влияет', stressGrid(Object.assign({}, c, {utilities: 0})).flat === true && stressGrid(c).flat === false);
+  check('стресс: «срок не влияет» в тексте', /срок не влияет/.test(stressGridHtml(Object.assign({}, c, {utilities: 0}))));
+  check('стресс: пустые цены — блока нет', stressGridHtml(Object.assign({}, c, {price: 0})) === '' && stressGridHtml(Object.assign({}, c, {sale: 0})) === '');
+  check('стресс: блок строится', /Срок и цена продажи/.test(stressGridHtml(c)) && /ваш срок/.test(stressGridHtml(c)));
+  const mort = Object.assign({}, c, {fin: 'mortgage', months: 30, term: 2});
+  check('стресс: ипотека короче срока проекта не ломается', isFinite(stressGrid(mort).rows[0].cells[0].net));
+}
+{
+  const r = cleanRisks({egrn: '500000', fssp: 'abc', debts: -5, 'Bad Key': 1, '__proto__': 7, kids: 1e15});
+  check('риски: сумма разобрана', r.egrn === 500000, r);
+  check('риски: мусор в сумме — 0, минус — 0', r.fssp === 0 && r.debts === 0, r);
+  check('риски: чужой ключ отброшен', !('Bad Key' in r) && Object.keys(r).length === 4, Object.keys(r));
+  check('риски: потолок суммы', r.kids === 1e10, r.kids);
+  check('риски: не объект — пусто', Object.keys(cleanRisks(null)).length === 0 && Object.keys(cleanRisks('x')).length === 0);
+  const old = cleanDeal({id: 'a', name: 'Старая', calc: DEFAULT_CALC});
+  check('риски: старая сделка без поля открывается', old && typeof old.risks === 'object' && Object.keys(old.risks).length === 0);
+  const d = cleanDeal({id: 'b', name: 'Н', calc: DEFAULT_CALC, risks: {egrn: 100000, matcap: 50000, zzz: 999}});
+  check('риски: сумма только по пунктам списка', riskTotal(d) === 150000, riskTotal(d));
+  const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc);
+  const f = dealForecast(d, p, c);
+  check('риски: прогноз уменьшен ровно на резерв', near(f.fore, p.net - 150000, 0.5), [f.fore, p.net]);
+  check('риски: строка в «План / факт»', /Резерв на риски объекта/.test(planFactCardHtml(d, p, c)));
+  check('риски: в отчёте инвестору', /Резерв на риски объекта/.test(reportHtml(d)));
+  check('риски: без резерва строки нет', !/Резерв на риски объекта/.test(reportHtml(cleanDeal({id: 'c', name: 'Н', calc: DEFAULT_CALC}))));
+  check('риски: карточка со ссылками и подсказкой', /Где проверить/.test(checkCardHtml(d)) && /Проблем: <b>2/.test(checkCardHtml(d)));
+  check('риски: ссылки только https', CHECK_LINKS.every(x => x[1].startsWith('https://')));
+}
+{
+  const act = cleanDeal({id: 'x', name: 'Активная <b>', stage: 'Ремонт', calc: DEFAULT_CALC, expenses: [{cat: 'Ремонт', sum: 100000}]});
+  const sold = cleanDeal({id: 'y', name: 'Проданная', calc: DEFAULT_CALC, stage: 'Закрыта', saleFact: 7000000, expenses: [{cat: 'Ремонт', sum: 900000}]});
+  const t = portfolio([act, sold]);
+  check('итоги: счётчики', t.n === 2 && t.active === 1 && t.sold === 1, t);
+  check('итоги: вложено = покупка + расходы', t.invested === 5100000, t.invested);
+  check('итоги: факт проданной до налога', near(t.factProfit, 7000000 - 140000 - 5000000 - 900000, 1), t.factProfit);
+  check('итоги: прогноз активной равен плану минус перерасход', t.forecast < compute(DEFAULT_CALC).net + 1 && isFinite(t.forecast), t.forecast);
+  check('итоги: лучшая и слабая найдены', t.best && t.worst && t.best.res >= t.worst.res);
+  check('итоги: имя экранируется', /&lt;b&gt;/.test(portfolioHtml([act, sold])) && !/Активная <b>/.test(portfolioHtml([act, sold])));
+  const look = cleanDeal({id: 'w', name: 'Присмотрел', stage: 'Поиск', calc: DEFAULT_CALC});
+  const t2 = portfolio([act, look]);
+  check('итоги: присмотренный не куплен — не вложено и не в прогнозе', t2.watch === 1 && t2.active === 1 && t2.invested === 5100000 && near(t2.forecast, portfolio([act]).forecast, 0.5), t2);
+  const noCalc = portfolio([cleanDeal({id: 'v', name: 'Без расчёта', stage: 'Закрыта', saleFact: 3000000})]);
+  check('итоги: проданная без расчёта не даёт выдуманный факт', noCalc.sold === 0 && noCalc.factProfit === 0, noCalc);
+  check('итоги: средняя доходность только по работающим', near(portfolio([act, sold, look]).annualAvg, compute(DEFAULT_CALC).annual, 0.01));
+  const rk = cleanDeal({id: 'r', name: 'Р', calc: DEFAULT_CALC, risks: {egrn: 800000}});
+  check('главная: прогноз с резервом виден и без расходов', /прогноз/.test(homeDealHtml(rk)), homeDealHtml(rk));
+  check('главная: без резерва и расходов прогноза нет', !/прогноз/.test(homeDealHtml(cleanDeal({id: 'r2', name: 'Р', calc: DEFAULT_CALC}))));
+  check('итоги: пусто — блока нет', portfolioHtml([]) === '' && portfolioHtml([cleanDeal({id: 'z', name: 'Пустая'})]) === '');
+  check('итоги: закрытая без цены продажи не считается вложенной', portfolio([cleanDeal({id: 'q', name: 'К', calc: DEFAULT_CALC, stage: 'Закрыта'})]).invested === 0);
+}
+`, ctx);
+
 console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
 process.exit(fail ? 1 : 0);

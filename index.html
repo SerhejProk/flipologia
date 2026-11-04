@@ -94,6 +94,13 @@ textarea{min-height:90px;resize:vertical}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .chk{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:15px;cursor:pointer}
 .chk input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:var(--gold)}
+.chkrow{display:flex;align-items:flex-start;gap:8px}
+.chkrow .chk{flex:1;min-width:0}
+.riskbtn{flex:none;width:36px;height:36px;margin-top:2px;border-radius:50%;border:1.5px solid var(--line);background:none;color:var(--muted);font:inherit;font-weight:800;cursor:pointer}
+.riskbtn.on{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.riskin{margin:0 0 8px 32px}
+.stg th,.stg td{padding:9px 6px}
+.stg .planrow td{background:var(--input)}
 .verdict{text-align:center;padding:18px 8px 6px;margin-bottom:6px}
 .verdict .v{display:inline-block;font-size:13px;font-weight:600;letter-spacing:.02em;line-height:1.2;padding:7px 16px;border-radius:999px;background:var(--card);box-shadow:var(--shadow)}
 .verdict.good .v{color:var(--good)}
@@ -460,6 +467,21 @@ function cleanRayony(r) {
   });
   return out;
 }
+// Проблемы по проверке объекта: ключ пункта списка → резерв в рублях (0 — проблема есть, сумма не оценена)
+function cleanRisks(r) {
+  const out = {};
+  if (!r || typeof r !== 'object') return out;
+  Object.keys(r).forEach(k => {
+    if (!/^[a-z]{1,20}$/.test(k)) return;
+    const n = Number(r[k]);
+    out[k] = isFinite(n) ? Math.min(1e10, Math.max(0, n)) : 0;
+  });
+  return out;
+}
+function hasRisk(d, k) { return !!(d.risks && Object.prototype.hasOwnProperty.call(d.risks, k)); }
+function riskTotal(d) {
+  return CHECKLIST.reduce((s, [k]) => s + (hasRisk(d, k) ? (Number(d.risks[k]) || 0) : 0), 0);
+}
 function cleanDeal(d) {
   if (!d || typeof d !== 'object') return null;
   const str = v => v == null ? '' : String(v);
@@ -471,6 +493,7 @@ function cleanDeal(d) {
     expenses: Array.isArray(d.expenses) ? d.expenses.filter(e => e && typeof e === 'object').map(e =>
       ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note)})) : [],
     checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
+    risks: cleanRisks(d.risks),
     notes: str(d.notes), saleFact: Number(d.saleFact) || 0, works: cleanWorks(d.works),
     created: Number(d.created) || Date.now(), updated: Number(d.updated) || Date.now()
   };
@@ -594,6 +617,90 @@ function analyse(c) {
       : 'Доходность ниже цели даже при сильном торге.';
   }
   return {base, scen, breakeven, maxBuy, maxBuyYield, maxBuyProfit, idle, verdict, cls, why};
+}
+
+/* ===== Стресс-тест: срок × цена продажи ===== */
+const STRESS_MONTHS = [2, 4, 6, 9, 12], STRESS_CUTS = [0, 5, 10];
+function stressGrid(c) {
+  const m0 = Math.max(1, Math.round(c.months));
+  const at = (m, cut) => compute(Object.assign({}, c, {months: m, sale: c.sale * (1 - cut / 100)}));
+  const months = [...new Set(STRESS_MONTHS.concat(m0))].sort((a, b) => a - b);
+  const rows = months.map(m => ({m, plan: m === m0, cells: STRESS_CUTS.map(cut => at(m, cut))}));
+  // Предельный срок без убытка при плановой цене: -1 — уже в минусе, null — не наступает и за 120 месяцев
+  let maxMonths;
+  if (at(m0, 0).net < 0) maxMonths = -1;
+  else {
+    maxMonths = null;
+    for (let m = m0 + 1; m <= 120; m++) { if (at(m, 0).net < 0) { maxMonths = m - 1; break; } }
+  }
+  // Цена продажи, при которой прибыль нулевая, и на сколько процентов она ниже плановой
+  const be = solve(s => compute(Object.assign({}, c, {sale: s})).net, 0, Math.max(c.sale, compute(c).costs) * 3 + 1e6, 0);
+  const cut = be != null && c.sale > 0 ? (1 - be / c.sale) * 100 : null;
+  // Если лишний месяц ничего не стоит (нет коммуналки и процентов), срок на прибыль не влияет
+  const flat = at(120, 0).net === at(m0, 0).net;
+  return {m0, rows, maxMonths, flat, beSale: be, beCut: cut};
+}
+function stressGridHtml(c) {
+  if (!(c.price > 0 && c.sale > 0)) return '';
+  const g = stressGrid(c);
+  let h = '<div class="card"><h3>Срок и цена продажи</h3><p class="small muted" style="margin-top:0">Чистая прибыль, если квартира продастся за другой срок или дешевле плана.</p>' +
+    '<table class="stg"><tr><th>Срок</th>' + STRESS_CUTS.map(x => '<th class="n">' + (x ? 'Цена −' + x + '%' : 'По плану') + '</th>').join('') + '</tr>' +
+    g.rows.map(r => '<tr' + (r.plan ? ' class="planrow"' : '') + '><td>' + r.m + ' мес.' + (r.plan ? '<br><span class="small muted">ваш срок</span>' : '') + '</td>' +
+      r.cells.map(x => '<td class="n ' + (x.net < 0 ? 'neg' : '') + '">' + rub(x.net) + '</td>').join('') + '</tr>').join('') + '</table>';
+  h += '<div class="kpis" style="margin:12px 0 0">' +
+    '<div class="kpi"><span>Прибыль в ноль при сроке</span><b>' + (g.maxMonths === -1 ? 'уже в минусе' : g.flat ? 'срок не влияет' : g.maxMonths == null ? 'дольше 10 лет' : g.maxMonths + ' мес.') + '</b></div>' +
+    '<div class="kpi"><span>Прибыль в ноль при цене продажи</span><b>' + (g.beSale != null ? rub(g.beSale) + (g.beCut != null && g.beCut > 0 ? ' (−' + g.beCut.toFixed(1).replace('.', ',') + '%)' : '') : '—') + '</b></div></div>';
+  return h + '<p class="note">Ориентир по рынку: на вторичке Москвы в 2026 году квартиры продаются за 1–1,5 месяца, а торг в среднем около 5% (по новостным данным, не официальная статистика). Свой срок и цену задавайте по объявлениям рядом.</p></div>';
+}
+
+/* ===== Итоги по всем сделкам ===== */
+function portfolio(deals) {
+  const out = {n: 0, watch: 0, active: 0, sold: 0, invested: 0, forecast: 0, factProfit: 0, annualAvg: null, best: null, worst: null};
+  const annuals = [];
+  deals.forEach(d => {
+    const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
+    const spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
+    const sold = d.saleFact > 0 && !!d.calc;   // без расчёта цену покупки не знаем: факт был бы выдуманным
+    if (!p && !sold && !spent) return;
+    out.n++;
+    let res = null;
+    if (sold) {
+      out.sold++;
+      res = d.saleFact - d.saleFact * c.commission / 100 - c.price - spent;
+      out.factProfit += res;
+    } else if (d.stage === 'Закрыта') {
+      return;
+    } else if (STAGES.indexOf(d.stage) < STAGES.indexOf('Покупка')) {
+      // Поиск и проверка: объект не куплен, деньги не вложены, прибыль не ждём; считаем только траты
+      out.watch++;
+      out.invested += spent;
+    } else {
+      out.active++;
+      out.invested += (p ? c.price : 0) + spent;
+      if (p) { res = dealForecast(d, p, c).fore; out.forecast += res; annuals.push(p.annual); }
+    }
+    if (res != null) {
+      if (!out.best || res > out.best.res) out.best = {name: d.name, res};
+      if (!out.worst || res < out.worst.res) out.worst = {name: d.name, res};
+    }
+  });
+  if (annuals.length) out.annualAvg = annuals.reduce((a, b) => a + b, 0) / annuals.length;
+  return out;
+}
+function portfolioHtml(deals) {
+  const t = portfolio(deals);
+  if (!t.n) return '';
+  const row = (l, v, cls) => '<div class="kpi"><span>' + l + '</span><b' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</b></div>';
+  const both = t.best && t.worst && t.best.name !== t.worst.name;
+  return '<div class="card"><h3>Итоги по сделкам</h3><div class="kpis" style="margin:0">' +
+    row('Сделок в работе', t.active) +
+    (t.watch ? row('Присматриваем (не куплены)', t.watch) : '') +
+    row('Вложено в работающие', rub(t.invested)) +
+    row('Ждём прибыли с работающих', rub(t.forecast), t.forecast < 0 ? 'neg' : '') +
+    (t.sold ? row('Получено с проданных (' + t.sold + ')', rub(t.factProfit), t.factProfit < 0 ? 'neg' : '') : '') +
+    (t.annualAvg != null ? row('Доходность работающих по плану', pct(t.annualAvg) + ' годовых') : '') +
+    (both ? row('Лучшая', esc(t.best.name || 'Без названия') + ' · ' + rub(t.best.res)) + row('Слабая', esc(t.worst.name || 'Без названия') + ' · ' + rub(t.worst.res), t.worst.res < 0 ? 'neg' : '') : '') +
+    '</div><p class="note">Работающие — прогноз после налога по расчёту; проданные — факт до налога, с комиссией.</p></div>';
 }
 
 /* ===== Раздел «Расчёт» ===== */
@@ -728,6 +835,7 @@ function updateCalcResults() {
   h += '<div class="card"><h3>Стресс-тест</h3><table><tr><th>Сценарий</th><th class="n">Прибыль</th><th class="n">Годовых</th></tr>' +
     a.scen.map(s => '<tr><td>' + s.name + '</td><td class="n ' + (s.r.net < 0 ? 'neg' : '') + '">' + rub(s.r.net) + '</td><td class="n">' + pct(s.r.annual) + '</td></tr>').join('') +
     '</table><p class="note">Минус в сценарии — значит, при таком повороте сделка убыточна.</p></div>';
+  h += stressGridHtml(c);
   $('#calcRes').innerHTML = h;
 }
 
@@ -1063,12 +1171,38 @@ function renderDeals() {
         '<div class="small" style="margin-top:6px">План: ' + (p ? '<b>' + rub(p.net) + '</b> · ' + pct(p.annual) + ' годовых' : 'нет расчёта') + ' · Потрачено: ' + rub(spent) + '</div>' + lateLine(d) + '</button>';
     });
   }
+  h = portfolioHtml(S.deals) + h;
   const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
   const stale = S.deals.length && (days < 0 || days > 14);
   h += '<div class="card"><h3>Резервная копия</h3><p class="small ' + (stale ? '' : 'muted') + '" style="margin-top:0">Данные хранятся только в этом телефоне. ' +
     (days < 0 ? 'Копию ещё не делали.' : 'Последняя копия — ' + (days === 0 ? 'сегодня' : days + ' дн. назад') + '.') + (stale ? (days < 0 ? ' <b>Скачайте копию.</b>' : ' <b>Скачайте свежую копию.</b>') : '') + '</p>' +
     '<div class="row"><button class="btn" data-a="backup-save">Скачать копию</button><label class="btn">Загрузить копию<input type="file" accept="application/json,.json" id="backupFile" class="hide"></label></div></div>';
   $('#view').innerHTML = h;
+}
+const CHECK_LINKS = [
+  ['Росреестр: выписка из ЕГРН', 'https://rosreestr.gov.ru/'],
+  ['ФССП: долги у приставов', 'https://fssp.gov.ru/iss/ip'],
+  ['ЕФРСБ: банкротство', 'https://fedresurs.ru/'],
+  ['Картотека арбитражных дел', 'https://kad.arbitr.ru/'],
+  ['ГИС ЖКХ: дом и долги за услуги', 'https://dom.gosuslugi.ru/']
+];
+function riskSumHtml(d) {
+  const n = Object.keys(d.risks || {}).filter(k => CHECKLIST.some(x => x[0] === k)).length, sum = riskTotal(d);
+  return n ? 'Проблем: <b>' + n + '</b>' + (sum > 0 ? ' · резерв <b class="neg">' + rub(sum) + '</b> вычтен из прогноза прибыли' : ' · сумма пока не указана') : 'Проблем не отмечено. Если нашли — нажмите «!» у пункта и впишите, сколько это может стоить.';
+}
+function checkCardHtml(d) {
+  const checks = d.checks || {};
+  const done = CHECKLIST.filter(([k]) => checks[k]).length;
+  return '<div class="card"><h3>Проверка объекта · ' + done + ' из ' + CHECKLIST.length + '</h3>' +
+    CHECKLIST.map(([k, l]) => {
+      const risk = hasRisk(d, k);
+      return '<div class="chkrow"><label class="chk"><input type="checkbox" data-check="' + k + '"' + (checks[k] ? ' checked' : '') + '><span>' + esc(l) + '</span></label>' +
+        '<button class="riskbtn' + (risk ? ' on' : '') + '" data-a="risk-toggle" data-k="' + k + '" aria-pressed="' + risk + '" aria-label="Проблема: ' + esc(l) + '">!</button></div>' +
+        (risk ? '<label class="f riskin">Резерв на эту проблему<div class="inwrap"><input type="text" inputmode="decimal" data-risk="' + k + '" value="' + (d.risks[k] ? num(d.risks[k]) : '') + '" placeholder="0"><span>₽</span></div></label>' : '');
+    }).join('') +
+    '<p class="note" id="riskSum">' + riskSumHtml(d) + '</p>' +
+    '<details style="margin-top:8px"><summary>Где проверить</summary><div class="hlist" style="padding:0">' +
+    CHECK_LINKS.map(([l, u]) => '<a href="' + u + '" target="_blank" rel="noopener"><span>' + esc(l) + '</span><i>↗</i></a>').join('') + '</div></details></div>';
 }
 function renderDeal(d) {
   const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
@@ -1109,8 +1243,7 @@ function renderDeal(d) {
   h += '<div id="pfBox">' + planFactCardHtml(d, p, c) + '</div>';
   h += '<div class="card"><h3>Факт после продажи</h3><div class="grid2"><label class="f">Продали за<div class="inwrap"><input type="text" inputmode="decimal" data-d="saleFact" value="' + (d.saleFact ? num(d.saleFact) : '') + '"><span>₽</span></div></label></div>' +
     '<div id="dealFact">' + dealFactHtml(d) + '</div></div>';
-  h += '<div class="card"><h3>Проверка объекта · ' + done + ' из ' + CHECKLIST.length + '</h3>' +
-    CHECKLIST.map(([k, l]) => '<label class="chk"><input type="checkbox" data-check="' + k + '"' + (checks[k] ? ' checked' : '') + '><span>' + esc(l) + '</span></label>').join('') + '</div>';
+  h += checkCardHtml(d);
   h += '<div class="card"><h3>Заметки</h3><textarea data-d="notes" placeholder="Контакты продавца, прораба, договорённости">' + esc(d.notes || '') + '</textarea></div>';
   h += '<button class="btn pri block" style="margin-bottom:10px" data-a="deal-report">Отчёт инвестору</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-share">Поделиться сделкой</button>';
@@ -1160,19 +1293,21 @@ function dealForecast(d, p, c) {
   const wp = d.works ? worksPlan(d.works, today()) : null;
   const pf = planFact(c, p, d.expenses || [], !!(wp && wp.shift > 0));
   const sched = wp ? wp.shift * monthIdle(c) / 30 : 0;
-  return {wp, pf, sched, fore: p.net - pf.over - sched};
+  const risk = riskTotal(d);
+  return {wp, pf, sched, risk, fore: p.net - pf.over - sched - risk};
 }
 function planFactCardHtml(d, p, c) {
   const exp = d.expenses || [];
   if (!p) return '';
-  const {wp, pf, sched, fore} = dealForecast(d, p, c);
+  const {wp, pf, sched, risk, fore} = dealForecast(d, p, c);
   let h = '<div class="card"><h3>План / факт</h3>';
-  if (!exp.length && !wp) return h + '<p class="muted" style="margin-bottom:0">Добавьте расходы, и здесь появится сравнение с планом и прогноз прибыли.</p></div>';
+  if (!exp.length && !wp && !risk) return h + '<p class="muted" style="margin-bottom:0">Добавьте расходы, и здесь появится сравнение с планом и прогноз прибыли.</p></div>';
   h += '<table><tr><th>Статья</th><th class="n">Факт</th><th class="n">Разница</th></tr>' + pf.rows.map(r =>
     '<tr><td>' + esc(r.name) + '<br><span class="small muted">план ' + rub(r.plan) + '</span></td><td class="n">' + rub(r.fact) + '</td><td class="n ' + (r.diff > 0 ? 'neg' : r.fact > 0 ? 'pos' : 'muted') + '">' + (r.fact > 0 || r.plan > 0 ? (r.diff > 0 ? '+' : '') + rub(r.diff) : '—') + '</td></tr>').join('') + '</table>';
   h += '<table style="margin-top:10px"><tr><td>Чистая прибыль по плану</td><td class="n">' + rub(p.net) + '</td></tr>' +
     '<tr><td>Перерасход по статьям</td><td class="n ' + (pf.over > 0 ? 'neg' : '') + '">' + rub(-pf.over) + '</td></tr>' +
     (wp ? '<tr><td>' + (wp.shift < 0 ? 'Экономия от срока' : 'Потери от срока') + '</td><td class="n ' + (sched > 0 ? 'neg' : 'pos') + '">' + rub(-sched) + '</td></tr>' : '') +
+    (risk > 0 ? '<tr><td>Резерв на риски объекта</td><td class="n neg">' + rub(-risk) + '</td></tr>' : '') +
     '<tr class="total"><td>Прогноз чистой прибыли</td><td class="n ' + (fore < 0 ? 'neg' : 'pos') + '">' + rub(fore) + '</td></tr></table>' +
     '<p class="note">Прогноз приблизительный: перерасход считается по статьям, где факт уже выше плана. ' + (pf.skipped > 0 ? 'Платежи по ипотеке и налоги (' + rub(pf.skipped) + ') в сравнение не входят. ' : '') + 'Срок учитывается, если составлен график ремонта' + (wp && wp.shift > 0 ? '; коммуналка за лишние дни уже входит в потери от срока, поэтому перерасход по ней отдельно не вычитается' : '') + '.</p></div>';
   return h;
@@ -1211,7 +1346,8 @@ function reportHtml(d) {
         '<div class="rbar"><i style="width:' + w.toFixed(1) + '%;background:' + (r.diff > 0 ? '#D6343B' : '#0A63FF') + '"></i></div>';
     }).join('');
     h += '<table style="margin-top:12px"><tr><td>Перерасход по статьям</td><td class="n ' + (f.pf.over > 0 ? 'bad' : '') + '">' + rub(-f.pf.over) + '</td></tr>' +
-      (f.wp ? '<tr><td>' + (f.wp.shift < 0 ? 'Экономия от срока' : 'Потери от срока') + '</td><td class="n ' + (f.sched > 0 ? 'bad' : 'good') + '">' + rub(-f.sched) + '</td></tr>' : '') + '</table>';
+      (f.wp ? '<tr><td>' + (f.wp.shift < 0 ? 'Экономия от срока' : 'Потери от срока') + '</td><td class="n ' + (f.sched > 0 ? 'bad' : 'good') + '">' + rub(-f.sched) + '</td></tr>' : '') +
+      (f.risk > 0 ? '<tr><td>Резерв на риски объекта</td><td class="n bad">' + rub(-f.risk) + '</td></tr>' : '') + '</table>';
   }
   // Структура вложений
   const parts = [['Покупка', c.price]];
@@ -1275,7 +1411,7 @@ function dealFactHtml(d) {
       (p ? '<p class="note">План до налога был ' + rub(p.pbt) + '.</p>' : '') : '<p class="note">Впишите цену продажи, чтобы увидеть фактическую прибыль. Расходы на сделку при покупке вносите в «Расходы» со статьёй «Оформление сделки».</p>';
 }
 function newDeal(name, calc) {
-  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', rayon: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], checks: {}, notes: '', saleFact: 0, works: null, created: Date.now(), updated: Date.now()};
+  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', rayon: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], checks: {}, risks: {}, notes: '', saleFact: 0, works: null, created: Date.now(), updated: Date.now()};
   S.deals.push(d); save(); return d;
 }
 
@@ -1496,7 +1632,7 @@ function quickHeroHtml(c) {
 function homeDealHtml(d) {
   const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
   const f = p ? dealForecast(d, p, c) : null;
-  const moved = f && ((d.expenses || []).length || d.works) && Math.round(f.fore) !== Math.round(p.net);
+  const moved = f && Math.round(f.fore) !== Math.round(p.net);
   return '<button class="hdeal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + esc(d.stage) + '</span></div>' +
     '<div class="small muted">' + (p ? 'План ' + rub(p.net) + (moved ? ' · прогноз <b class="' + (f.fore < p.net ? 'neg' : 'pos') + '">' + rub(f.fore) + '</b>' : '') : 'Расчёта ещё нет') + '</div>' + lateLine(d) + '</button>';
 }
@@ -1513,6 +1649,7 @@ function renderHome() {
     (deals.length ? deals.slice(0, 3).map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Сделок пока нет. Посчитайте объект и создайте сделку или добавьте её сразу.</p>') +
     '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="deal-new">+ Новая сделка</button>' +
     (deals.length > 3 ? '<button class="btn" data-a="go-tab" data-v="deals">Все (' + deals.length + ')</button>' : '') + '</div></div>';
+  h += portfolioHtml(S.deals);
   h += '<h3 class="hh">Инструменты</h3><div class="tiles">' +
     '<button class="tile" data-a="go-tab" data-v="calc">' + ICO.calc + '<b>Расчёт сделки</b><span>Прибыль и предел цены</span></button>' +
     '<button class="tile" data-a="home-push" data-v="smeta">' + ICO.smeta + '<b>Смета ремонта</b><span>По площади и уровню</span></button>' +
@@ -1799,6 +1936,11 @@ view.addEventListener('input', e => {
     S.smeta[t.dataset.sm] = v; save(); updateSmetaTableKeepFocus();
   } else if (t.dataset.price) {
     S.smeta.custom[t.dataset.price + '_' + S.smeta.level] = parseNum(t.value); save(); updateSmetaTableKeepFocus(t.dataset.price);
+  } else if (t.dataset.risk) {
+    const d = S.deals.find(x => x.id === openDeal); if (!d || !hasRisk(d, t.dataset.risk)) return;
+    d.risks[t.dataset.risk] = Math.min(1e10, Math.max(0, parseNum(t.value))); d.updated = Date.now(); save();
+    const rs = $('#riskSum'); if (rs) rs.innerHTML = riskSumHtml(d);
+    const pf = $('#pfBox'); if (pf) pf.innerHTML = planFactCardHtml(d, dealPlan(d), Object.assign({}, DEFAULT_CALC, d.calc || {}));
   } else if (t.dataset.d) {
     const d = S.deals.find(x => x.id === openDeal); if (!d) return;
     d[t.dataset.d] = t.dataset.d === 'saleFact' ? parseNum(t.value) : t.value; d.updated = Date.now(); save();
@@ -1865,7 +2007,12 @@ view.addEventListener('change', e => {
   }
   else if (t.dataset.check) {
     const d = S.deals.find(x => x.id === openDeal); if (!d) return;
-    d.checks = d.checks || {}; d.checks[t.dataset.check] = t.checked; d.updated = Date.now(); save(); renderDeal(d);
+    d.checks = d.checks || {}; d.checks[t.dataset.check] = t.checked;
+    if (t.checked && hasRisk(d, t.dataset.check)) {   // «всё в порядке» снимает отметку проблемы
+      if (d.risks[t.dataset.check] > 0 && !confirm('Снять проблему и резерв ' + rub(d.risks[t.dataset.check]) + '? Прогноз прибыли вырастет на эту сумму.')) { t.checked = false; return; }
+      delete d.risks[t.dataset.check];
+    }
+    d.updated = Date.now(); save(); renderDeal(d);
   } else if (t.id === 'backupFile' && t.files[0]) {
     const r = new FileReader();
     r.onload = () => {
@@ -2002,6 +2149,12 @@ view.addEventListener('click', e => {
     case 'deal-close': closeDeal(); break;
     case 'deal-share': if (d) shareDeal(d); break;
     case 'deal-report': if (d) { navRecord(Object.assign(navNow(), {rep: 1})); openReport(d); } break;
+    case 'risk-toggle': if (d) {
+      const k = b.dataset.k; if (!CHECKLIST.some(x => x[0] === k)) break;
+      d.risks = d.risks || {};
+      if (hasRisk(d, k)) delete d.risks[k]; else { d.risks[k] = 0; d.checks = d.checks || {}; d.checks[k] = false; }
+      d.updated = Date.now(); save(); renderDeal(d);
+    } break;
     case 'deal-stage': if (d) { d.stage = b.dataset.v; d.updated = Date.now(); save(); renderDeal(d); } break;
     case 'deal-to-calc':
       if (d) { S.calc = Object.assign({}, DEFAULT_CALC, d.calc || {}); S.calcDeal = d.id; save(); navPush(navRoot('calc'), 'anim-up'); }
