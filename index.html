@@ -131,6 +131,18 @@ tr.total td{font-weight:700;border-bottom:0}
 .pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--input);color:var(--muted)}
 .pill.st{background:var(--warn-bg);color:var(--warn);border-color:transparent}
 .deal{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;border:0}
+.hh{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:18px 4px 8px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 12px}
+.tile{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:16px;text-align:left;border:0;font:inherit;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:112px}
+.tile svg{width:26px;height:26px;color:var(--gold);margin-bottom:6px}
+.tile b{font-size:15px;font-weight:600}
+.tile span{font-size:12.5px;color:var(--muted);line-height:1.3}
+.hdeal{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:12px 0;border-top:1px solid var(--line)}
+.hdeal:first-of-type{border-top:0;padding-top:0}
+.hlist{padding:4px 18px}
+.hlist button,.hlist a{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px 0;border:0;border-bottom:1px solid var(--line);background:none;font:inherit;color:var(--ink);text-decoration:none;cursor:pointer;text-align:left}
+.hlist :last-child{border-bottom:0}
+.hlist i{font-style:normal;color:var(--muted);font-size:18px}
 .deal .t{font-weight:700;font-size:16px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{font:inherit;font-size:13px;padding:7px 14px;border-radius:999px;border:0;background:var(--card);box-shadow:var(--shadow);color:var(--muted);cursor:pointer;min-height:36px}
@@ -192,9 +204,8 @@ button,summary,.tabs,.top,.chips,.seg,.lt{-webkit-user-select:none;user-select:n
 <main><div class="lt"><div><button class="back hide" id="ltBack" data-a="deal-close">‹ Сделки</button><h1 id="lt"></h1></div><span id="ltAct"></span></div><div id="view"></div></main>
 <div class="install hide" id="install"></div>
 <nav class="tabs" id="tabs">
+  <button data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>Главная</button>
   <button data-tab="calc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg>Расчёт</button>
-  <button data-tab="smeta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Смета</button>
-  <button data-tab="torgi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 12.5l-8 8a2.1 2.1 0 1 1-3-3l8-8"/><path d="M16 16l6-6"/><path d="M8 8l6-6"/><path d="M9 7l8 8"/><path d="M21 11l-8-8"/></svg>Торги</button>
   <button data-tab="deals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Сделки</button>
   <button data-tab="ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h6M8 12h6"/></svg>Справка</button>
 </nav>
@@ -290,7 +301,7 @@ function load() {
     sellM2: Math.max(0, Number(s.sellM2) || 0),
     rayony: cleanRayony(s.rayony),
     lastBackup: Number(s.lastBackup) || 0,
-    tab: ['calc', 'smeta', 'torgi', 'deals', 'ref'].includes(s.tab) ? s.tab : 'calc'
+    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref'].includes(s.tab) ? s.tab : 'home'
   };
 }
 // Приводит сохранённые данные к ожидаемым типам: числа — к числам, варианты — к допустимым.
@@ -544,11 +555,15 @@ function heroNumbers(c, b) {
 function updateSmetaHint() {
   const el = $('#smetaHint'); if (el) el.textContent = 'Смета сейчас: ' + rub(smetaTotal().total);
 }
-function updateCalcResults() {
-  const c = S.calc, a = analyse(c), b = a.base, hn = heroNumbers(c, b), filled = hn.net !== '—';
-  const hero = '<div class="verdict ' + a.cls + '"><div class="v">' + esc(a.verdict) + '</div>' +
+function heroHtml(c, a, b) {
+  const hn = heroNumbers(c, b), filled = hn.net !== '—';
+  return '<div class="verdict ' + a.cls + '"><div class="v">' + esc(a.verdict) + '</div>' +
     '<div class="lbl">Чистая прибыль</div><div class="big' + (filled && b.net < 0 ? ' neg' : '') + '">' + hn.net + '</div>' +
     '<div class="sub2"><b class="' + (filled && b.annual < 0 ? 'neg' : '') + '">' + hn.annual + '</b> годовых на свои деньги</div><p>' + esc(a.why) + '</p></div>';
+}
+function updateCalcResults() {
+  const c = S.calc, a = analyse(c), b = a.base, hn = heroNumbers(c, b), filled = hn.net !== '—';
+  const hero = heroHtml(c, a, b);
   const heroEl = $('#calcHero'); if (heroEl) heroEl.innerHTML = hero;
   const lim = a.maxBuy != null && c.price > 0 && c.sale > 0 ? round10k(a.maxBuy) : null;
   const over = lim != null && a.maxBuy < c.price;
@@ -1009,13 +1024,17 @@ function refreshWorks(d) {
   const sum = $('#worksSum'); if (sum) sum.innerHTML = worksSumHtml(wp, c);
   const pf = $('#pfBox'); if (pf) pf.innerHTML = planFactCardHtml(d, dealPlan(d), c);
 }
+// Прогноз чистой прибыли: план − перерасход по статьям − потери от сдвига срока
+function dealForecast(d, p, c) {
+  const wp = d.works ? worksPlan(d.works, today()) : null;
+  const pf = planFact(c, p, d.expenses || [], !!(wp && wp.shift > 0));
+  const sched = wp ? wp.shift * monthIdle(c) / 30 : 0;
+  return {wp, pf, sched, fore: p.net - pf.over - sched};
+}
 function planFactCardHtml(d, p, c) {
   const exp = d.expenses || [];
   if (!p) return '';
-  const wp = d.works ? worksPlan(d.works, today()) : null;
-  const pf = planFact(c, p, exp, !!(wp && wp.shift > 0));
-  const sched = wp ? wp.shift * monthIdle(c) / 30 : 0;
-  const fore = p.net - pf.over - sched;
+  const {wp, pf, sched, fore} = dealForecast(d, p, c);
   let h = '<div class="card"><h3>План / факт</h3>';
   if (!exp.length && !wp) return h + '<p class="muted" style="margin-bottom:0">Добавьте расходы, и здесь появится сравнение с планом и прогноз прибыли.</p></div>';
   h += '<table><tr><th>Статья</th><th class="n">Факт</th><th class="n">Разница</th></tr>' + pf.rows.map(r =>
@@ -1255,8 +1274,59 @@ function renderRef() {
     '<p class="note">Флипология · прототип v0.4</p>';
 }
 
+/* ===== Раздел «Главная» ===== */
+const ICO = {
+  calc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg>',
+  smeta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>',
+  torgi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 12.5l-8 8a2.1 2.1 0 1 1-3-3l8-8"/><path d="M16 16l6-6"/><path d="M8 8l6-6"/><path d="M9 7l8 8"/><path d="M21 11l-8-8"/></svg>',
+  parse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 12h6M9 16h4"/></svg>'
+};
+const QUICK = [['price', 'Покупка', '₽'], ['sale', 'Продажа', '₽'], ['repair', 'Ремонт', '₽'], ['months', 'Срок', 'мес']];
+// Быстрая оценка работает с теми же цифрами, что и «Расчёт»
+function quickHeroHtml(c) {
+  const a = analyse(c), b = a.base;
+  const lim = a.maxBuy != null && c.price > 0 && c.sale > 0 ? round10k(a.maxBuy) : null;
+  return heroHtml(c, a, b) + (lim != null ? '<p class="small muted" style="margin:8px 2px 0">Предельная цена покупки: <b>' + rub(lim) + '</b></p>' : '');
+}
+function homeDealHtml(d) {
+  const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
+  const f = p ? dealForecast(d, p, c) : null;
+  const moved = f && ((d.expenses || []).length || d.works) && Math.round(f.fore) !== Math.round(p.net);
+  return '<button class="hdeal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + esc(d.stage) + '</span></div>' +
+    '<div class="small muted">' + (p ? 'План ' + rub(p.net) + (moved ? ' · прогноз <b class="' + (f.fore < p.net ? 'neg' : 'pos') + '">' + rub(f.fore) + '</b>' : '') : 'Расчёта ещё нет') + '</div>' + lateLine(d) + '</button>';
+}
+function renderHome() {
+  const c = S.calc, linked = S.calcDeal && S.deals.find(d => d.id === S.calcDeal);
+  let h = '<div class="card"><h3>Быстрая оценка</h3><div class="grid2">' +
+    QUICK.map(([k, l, suf]) => '<label class="f">' + l + '<div class="inwrap"><input type="text" inputmode="decimal" data-q="' + k + '" value="' + (k === 'months' ? String(c[k]).replace('.', ',') : num(c[k])) + '"><span>' + suf + '</span></div></label>').join('') +
+    '</div>' + (linked ? '<div class="row" style="justify-content:space-between;margin-top:12px"><span class="small">Сейчас здесь расчёт сделки <b>' + esc(linked.name) + '</b></span><button class="btn" data-a="calc-detach">Новый расчёт</button></div>' : '') +
+    '<div id="homeHero" style="margin-top:12px">' + quickHeroHtml(c) + '</div>' +
+    '<p class="small muted" style="margin:10px 2px">Те же цифры, что в «Расчёте»: налог, ипотека и остальное — там.</p>' +
+    '<button class="btn pri block" data-a="go-tab" data-v="calc">Открыть полный расчёт</button></div>';
+  const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
+  h += '<div class="card"><h3>Мои сделки</h3>' +
+    (deals.length ? deals.slice(0, 3).map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Сделок пока нет. Посчитайте объект и создайте сделку или добавьте её сразу.</p>') +
+    '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="deal-new">+ Новая сделка</button>' +
+    (deals.length > 3 ? '<button class="btn" data-a="go-tab" data-v="deals">Все (' + deals.length + ')</button>' : '') + '</div></div>';
+  h += '<h3 class="hh">Инструменты</h3><div class="tiles">' +
+    '<button class="tile" data-a="go-tab" data-v="calc">' + ICO.calc + '<b>Расчёт сделки</b><span>Прибыль и предел цены</span></button>' +
+    '<button class="tile" data-a="home-push" data-v="smeta">' + ICO.smeta + '<b>Смета ремонта</b><span>По площади и уровню</span></button>' +
+    '<button class="tile" data-a="home-push" data-v="torgi">' + ICO.torgi + '<b>Торги</b><span>Предел ставки на лоте</span></button>' +
+    '<button class="tile" data-a="home-parse">' + ICO.parse + '<b>Из объявления</b><span>Вставить текст Авито, ЦИАН</span></button></div>';
+  h += '<h3 class="hh">Справочник</h3><div class="card hlist">' +
+    '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
+    '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
+    '<a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
+  const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
+  if (S.deals.length && (days < 0 || days > 14)) {
+    h += '<div class="card"><h3>Резервная копия</h3><p class="small" style="margin-top:0">Данные хранятся только в этом телефоне. ' + (days < 0 ? 'Копию ещё не делали.' : 'Последней копии ' + days + ' дн.') + '</p>' +
+      '<button class="btn block" data-a="backup-save">Скачать копию</button></div>';
+  }
+  $('#view').innerHTML = h;
+}
+
 /* ===== Навигация ===== */
-const TITLES = {calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник'};
+const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
 function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
@@ -1277,20 +1347,22 @@ function go(tab, cls, y) {
   S.tab = tab; save();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
-  ({calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef})[tab]();
+  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef})[tab]();
+  // «Смета» и «Торги» открываются с главной: у них своя кнопка «назад»
+  if (tab === 'smeta' || tab === 'torgi') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   window.scrollTo(0, y || 0); animate(cls || 'anim-up'); onScroll();
 }
 /* ===== История: системная кнопка «назад», кнопка «‹» и свайп идут одним путём =====
-   Стопка: «Расчёт» (глубина 0) → другая вкладка (1) → экраны вглубь (2, 3…).
-   Вкладки записи не копят: со вкладки «назад» ведёт в «Расчёт», а из него — выход из приложения. */
-const NAV_TABS = ['calc', 'smeta', 'torgi', 'deals', 'ref'];
+   Стопка: «Главная» (глубина 0) → другая вкладка (1) → экраны вглубь (2, 3…).
+   Вкладки записи не копят: со вкладки «назад» ведёт на «Главную», а из неё — выход из приложения. */
+const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref'];
 let navDepth = 0;       // глубина текущего экрана в стопке
 let navPending = null;  // вкладка, которую запишем, когда история вернётся к началу стопки
 const navRoot = tab => ({tab, deal: null, rayon: null, from: null});
 // Запись истории может устареть (сделку удалили) или быть подделанной: оставляем только то, что существует
 function navClean(st) {
   const s = st && typeof st === 'object' ? st : {};
-  const tab = NAV_TABS.includes(s.tab) ? s.tab : 'calc';
+  const tab = NAV_TABS.includes(s.tab) ? s.tab : 'home';
   const deal = typeof s.deal === 'string' && S.deals.some(d => d.id === s.deal) ? s.deal : null;
   const rayon = tab === 'ref' && (s.rayon === 'list' || (typeof s.rayon === 'string' && rayonById(s.rayon))) ? s.rayon : null;
   const from = s.from === 'deal' && deal && rayon && rayon !== 'list' ? 'deal' : null;
@@ -1302,7 +1374,7 @@ function navClean(st) {
 function navParent(st) {
   if (st.from === 'deal') return {tab: 'deals', deal: st.deal, rayon: null, from: null};
   if (st.rayon && st.rayon !== 'list') return {tab: 'ref', deal: null, rayon: 'list', from: null};
-  return navRoot(st.tab === 'calc' || st.deal || st.rayon ? st.tab : 'calc');
+  return navRoot(st.deal || st.rayon ? st.tab : 'home');
 }
 function navNow() { return {tab: S.tab, deal: openDeal, rayon: rayonView, from: rayonFrom}; }
 function navWrite(method, st, depth) {
@@ -1325,7 +1397,7 @@ function navBack() {
   navShow(navParent(navNow()), 'anim-left');
 }
 function navCommitTab(st) {
-  if (st.tab === 'calc') navWrite('replaceState', st, 0);
+  if (st.tab === 'home') navWrite('replaceState', st, 0);
   else navWrite('pushState', st, 1);
 }
 // Нижнее меню: экран меняем сразу, стопку приводим к виду «Расчёт → вкладка»
@@ -1334,12 +1406,12 @@ function navTab(tab) {
   navShow(st, 'anim-up');
   if (navPending) { navPending = st; return; }
   if (navDepth === 0) navCommitTab(st);
-  else if (navDepth === 1 && tab !== 'calc') navWrite('replaceState', st, 1);
+  else if (navDepth === 1 && tab !== 'home') navWrite('replaceState', st, 1);
   else {
     navPending = st;
     try { window.history.go(-navDepth); } catch (e) {}
     // Если браузер не вернулся (стопка оказалась короче), не зависаем: просто фиксируем вкладку
-    setTimeout(() => { if (navPending) { const p = navPending; navPending = null; navWrite('replaceState', p, p.tab === 'calc' ? 0 : 1); } }, 600);
+    setTimeout(() => { if (navPending) { const p = navPending; navPending = null; navWrite('replaceState', p, p.tab === 'home' ? 0 : 1); } }, 600);
   }
 }
 window.addEventListener('popstate', e => {
@@ -1349,7 +1421,7 @@ window.addEventListener('popstate', e => {
   navDepth = st.depth;
   navShow(st, cls, st.y);
 });
-// Запуск: после перезагрузки остаёмся на том же экране, при новом открытии — на сохранённой вкладке
+// Запуск: после перезагрузки остаёмся на том же экране, при новом открытии — на «Главной»
 function navInit() {
   try { window.history.scrollRestoration = 'manual'; } catch (e) {}
   const h = window.history && window.history.state;
@@ -1359,10 +1431,8 @@ function navInit() {
     navShow(st, 'anim-up');
     return;
   }
-  const tab = S.tab;
-  navWrite('replaceState', navRoot('calc'), 0);
-  if (tab !== 'calc') navWrite('pushState', navRoot(tab), 1);
-  navShow(navRoot(tab), 'anim-up');
+  navWrite('replaceState', navRoot('home'), 0);
+  navShow(navRoot('home'), 'anim-up');
 }
 function openDealView(id) { navPush({tab: 'deals', deal: id, rayon: null, from: null}); }
 function closeDeal() { navBack(); }
@@ -1370,7 +1440,7 @@ function closeDeal() { navBack(); }
 let swipe = null;
 document.addEventListener('touchstart', e => {
   const p = e.touches[0];
-  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView)) && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
 }, {passive: true});
 document.addEventListener('touchend', e => {
   if (!swipe) return;
@@ -1395,6 +1465,9 @@ view.addEventListener('input', e => {
     let v = parseNum(t.value); if (INT_KEYS.includes(t.dataset.k)) v = Math.max(1, Math.round(v) || 1);
     S.calc[t.dataset.k] = v; save(); updateCalcResults();
     if (t.dataset.k === 'price') { const sl = $('#priceSlide'), pv = $('#priceVal'); if (sl) sl.value = v; if (pv) pv.textContent = rub(v); }
+  } else if (t.dataset.q) {
+    let v = parseNum(t.value); if (INT_KEYS.includes(t.dataset.q)) v = Math.max(1, Math.round(v) || 1);
+    S.calc[t.dataset.q] = v; save(); $('#homeHero').innerHTML = quickHeroHtml(S.calc);
   } else if (t.dataset.sm) {
     let v = parseNum(t.value); if (t.dataset.sm !== 'area' && t.dataset.sm !== 'contingency') v = Math.max(0, Math.round(v));
     S.smeta[t.dataset.sm] = v; save(); updateSmetaTableKeepFocus();
@@ -1479,6 +1552,7 @@ view.addEventListener('focusout', e => {
     t.value = pctLike ? String(v).replace('.', ',') : num(v);
     if (t.dataset.k === 'price') syncPriceSlide();
   }
+  if (t.dataset.q) t.value = t.dataset.q === 'months' ? String(S.calc.months).replace('.', ',') : num(S.calc[t.dataset.q]);
   if (t.dataset.price) t.value = num(parseNum(t.value));
   if (t.id === 'expSum' && t.value) t.value = num(parseNum(t.value));
   if (t.dataset.t && t.type === 'text') { const v = S.torgi[t.dataset.t]; t.value = ['start', 'extra'].includes(t.dataset.t) ? num(v) : String(v).replace('.', ','); }
@@ -1504,7 +1578,7 @@ view.addEventListener('click', e => {
     case 'repair-from-smeta': {
       S.calc.repair = Math.round(smetaTotal().total); save(); renderCalc(); toast('Ремонт взят из сметы'); break;
     }
-    case 'calc-detach': S.calcDeal = null; save(); renderCalc(); break;
+    case 'calc-detach': S.calcDeal = null; save(); if (S.tab === 'home') renderHome(); else renderCalc(); break;
     case 'calc-new-deal': {
       const name = ($('#newDealName').value || '').trim();
       if (!name) { toast('Впишите название сделки'); $('#newDealName').focus(); break; }
@@ -1575,8 +1649,13 @@ view.addEventListener('click', e => {
     case 'smeta-reset':
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
       break;
-    case 'deal-new': { const nd = newDeal('Новая сделка', null); openDealView(nd.id); break; }
-    case 'deal-open': openDealView(b.dataset.id); break;
+    case 'go-tab': if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
+    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi') navPush(navRoot(b.dataset.v), 'anim-right'); break;
+    case 'home-parse': { navTab('calc'); const pb = $('#parseBox'); if (pb) { pb.open = true; pb.scrollIntoView({block: 'center'}); } break; }
+    case 'home-rayony': navTab('ref'); navPush({tab: 'ref', deal: null, rayon: 'list', from: null}); break;
+    case 'home-tax': { navTab('ref'); const dt = [...document.querySelectorAll('#view details')].find(x => /^Налог при продаже/.test(x.textContent.trim())); if (dt) { dt.open = true; dt.scrollIntoView({block: 'start'}); } break; }
+    case 'deal-new': { if (S.tab === 'home') navTab('deals'); const nd = newDeal('Новая сделка', null); openDealView(nd.id); break; }
+    case 'deal-open': if (S.tab === 'home') navTab('deals'); openDealView(b.dataset.id); break;
     case 'deal-close': closeDeal(); break;
     case 'deal-share': if (d) shareDeal(d); break;
     case 'deal-stage': if (d) { d.stage = b.dataset.v; d.updated = Date.now(); save(); renderDeal(d); } break;
@@ -1619,7 +1698,7 @@ view.addEventListener('click', e => {
       const url = URL.createObjectURL(blob), link = document.createElement('a');
       link.href = url; link.download = 'flipologia-kopiya-' + today() + '.json';
       document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-      renderDeals();
+      if (S.tab === 'home') renderHome(); else renderDeals();
       break;
     }
   }

@@ -194,7 +194,7 @@ vm.runInContext(`
   check('копия: этапов не больше 30', s.torgi.periods === 30 && s.torgi.kind === 'auction' && typeof s.torgi.start === 'number');
   check('копия: мусорные сделки отброшены', s.deals.length === 1, s.deals.length);
   check('копия: числа сделки — числа', typeof s.deals[0].calc.commission === 'number' && s.deals[0].calc.fin === 'own' && s.deals[0].expenses[0].sum === 0 && s.deals[0].stage === 'Поиск');
-  check('копия: вкладка и цена м²', s.tab === 'calc' && s.sellM2 === 0 && s.calcDeal === null);
+  check('копия: вкладка (мусор — «Главная») и цена м²', s.tab === 'home' && s.sellM2 === 0 && s.calcDeal === null);
   check('копия: id экранируется при выводе', !/<img/.test(esc(s.deals[0].id)));
 }
 
@@ -321,11 +321,29 @@ vm.runInContext(`
   check('при сдвиге коммуналка не вычитается дважды', planFact(w, b2, e, true).over === 100000, planFact(w, b2, e, true).over);
 }
 
+/* --- Главная --- */
+{
+  S.deals = [{id: 'h1', name: 'Однушка <b>', stage: 'Ремонт', calc: Object.assign({}, DEFAULT_CALC), expenses: [{id: 'e', cat: 'Ремонт', sum: 900000, date: '2026-11-01', note: ''}], works: null},
+             {id: 'h2', name: 'Без расчёта', stage: 'Поиск', calc: null, expenses: [], works: null}];
+  const h1 = homeDealHtml(S.deals[0]), h2 = homeDealHtml(S.deals[1]);
+  check('главная: сделка с перерасходом показывает прогноз ниже плана', /прогноз <b class="neg">/.test(h1) && h1.includes(rub(compute(DEFAULT_CALC).net - 100000)), h1);
+  check('главная: название сделки экранировано', !h1.includes('Однушка <b>') && h1.includes('&lt;b&gt;'), h1);
+  check('главная: сделка без расчёта — без падения', /Расчёта ещё нет/.test(h2));
+  const q = quickHeroHtml(DEFAULT_CALC);
+  check('главная: быстрая оценка показывает вердикт и предел цены', /verdict/.test(q) && /Предельная цена покупки/.test(q), q.slice(0, 80));
+  check('главная: без цен — прочерк и нет предела', !/Предельная цена/.test(quickHeroHtml(Object.assign({}, DEFAULT_CALC, {price: 0}))) && /—/.test(quickHeroHtml(Object.assign({}, DEFAULT_CALC, {price: 0}))));
+  let err = null; try { renderHome(); } catch (e) { err = String(e); }
+  check('главная: рисуется без ошибок', err === null, err);
+  const f = dealForecast(S.deals[0], dealPlan(S.deals[0]), Object.assign({}, DEFAULT_CALC));
+  check('прогноз сделки = план − перерасход', near(f.fore, compute(DEFAULT_CALC).net - 100000, 1), f.fore);
+  S.deals = [];
+}
+
 /* --- История: кнопка «назад» --- */
 {
   S.deals = [{id: 'd1', name: 'Сделка', expenses: []}];
   const c = navClean;
-  check('история: мусор — Расчёт', c('x').tab === 'calc' && c(null).tab === 'calc' && c({tab: '<img>'}).tab === 'calc');
+  check('история: мусор — Главная', c('x').tab === 'home' && c(null).tab === 'home' && c({tab: '<img>'}).tab === 'home' && c({tab: 'calc'}).tab === 'calc' && c({tab: 'home'}).tab === 'home');
   check('история: сделка на месте', c({tab: 'deals', deal: 'd1'}).deal === 'd1');
   check('история: удалённая сделка — список', c({tab: 'deals', deal: 'нет'}).deal === null);
   check('история: подделанный id сделки', c({tab: 'deals', deal: {a: 1}}).deal === null);
@@ -342,7 +360,8 @@ vm.runInContext(`
   check('родитель: район — список', p({tab: 'ref', rayon: 'perovo', deal: null, from: null}).rayon === 'list');
   check('родитель: список — справочник', (s => s.tab === 'ref' && s.rayon === null)(p({tab: 'ref', rayon: 'list', deal: null, from: null})));
   check('родитель: сделка — список', (s => s.tab === 'deals' && s.deal === null)(p({tab: 'deals', deal: 'd1', rayon: null, from: null})));
-  check('родитель: вкладка — Расчёт', p({tab: 'smeta', deal: null, rayon: null, from: null}).tab === 'calc');
+  check('родитель: смета — Главная', p({tab: 'smeta', deal: null, rayon: null, from: null}).tab === 'home');
+  check('родитель: расчёт, торги, сделки, справка — Главная', ['calc', 'torgi', 'deals', 'ref'].every(t => p({tab: t, deal: null, rayon: null, from: null}).tab === 'home'));
   S.deals = [];
 }
 
