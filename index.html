@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F6F7FA">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.cbr-xml-daily.ru; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="description" content="Флипология — калькулятор сделки, смета ремонта и учёт сделок для флиперов недвижимости">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -225,6 +225,22 @@ button,summary,.tabs,.top,.chips,.seg,.lt{-webkit-user-select:none;user-select:n
 .install svg{width:16px;height:16px;vertical-align:-3px;color:#fff}
 .install .x{position:absolute;top:6px;right:6px;width:36px;height:36px;border:0;background:none;color:var(--dark-ink);font-size:22px;line-height:1;cursor:pointer;opacity:.7}
 .install .btn{margin-top:8px;min-height:38px;padding:6px 14px;background:var(--gold);color:#fff}
+/* курсы и ставки */
+.kz-hero{text-align:center;padding:22px 18px}
+.kz-big{font-size:56px;font-weight:800;letter-spacing:-2px;line-height:1.05;font-variant-numeric:tabular-nums;margin:6px 0 2px}
+.kz-pill{display:inline-block;font-size:13px;font-weight:600;padding:6px 14px;border-radius:999px;background:var(--acc-soft);color:var(--gold-ink)}
+.kz-pill.warn{background:var(--warn-bg);color:var(--warn)}
+.kz-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.kz-row:first-child{border-top:0}
+.kz-flag{width:38px;height:38px;border-radius:12px;background:var(--acc-soft);color:var(--gold-ink);display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+.kz-n{flex:1;min-width:0}.kz-n b{display:block;font-weight:600}.kz-n span{color:var(--muted);font-size:13px}
+.kz-v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.kz-v i{display:block;font-style:normal;font-weight:400;font-size:13px}
+.kz-up{color:var(--good)}.kz-dn{color:var(--bad)}.kz-eq{color:var(--muted)}
+.kz-sum{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:15px}
+.kz-sum b{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.kz-conv{display:grid;grid-template-columns:1fr 104px;gap:8px;margin-bottom:8px}
+.kz-out{min-height:46px;display:flex;align-items:center;background:var(--input);border-radius:12px;padding:10px 12px;font-weight:600;font-size:18px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 /* раздел «Районы» */
 .place{padding:12px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
 .place:first-of-type{border-top:0;padding-top:2px}
@@ -311,6 +327,66 @@ const CHECKLIST = [
 ];
 // Торги: аукцион (цена растёт шагами) или публичное предложение (цена снижается по этапам)
 const DEFAULT_TORGI = {kind: 'auction', start: 4000000, deposit: 20, step: 5, drop: 10, periods: 8, extra: 50000, delay: 2};
+/* ===== Курсы и ставки: данные ===== */
+// Ключевая ставка ЦБ РФ: открытого адреса для приложения нет, поэтому значение записано здесь с датой.
+// Источник: cbr.ru/hd_base/KeyRate. Обновлять при смене ставки вместе с номером версии кэша в sw.js.
+const KEY_RATE = {v: 14, date: '2026-11-03'};
+const KEY_STALE_DAYS = 60;
+const CURRENCIES = [['USD', '$', 'Доллар США', 1], ['EUR', '€', 'Евро', 1], ['CNY', '¥', 'Юань', 1], ['BYN', 'Br', 'Белорусский рубль', 1], ['KZT', '₸', 'Казахстанский тенге', 100]];
+const CUR_CODES = ['RUB'].concat(CURRENCIES.map(c => c[0]));
+const CBR_URL = 'https://www.cbr-xml-daily.ru/daily_json.js';
+const DEFAULT_KURSY = {spread: 2, amount: 1000000, from: 'RUB', to: 'USD'};
+// Разбор ответа ЦБ: курс за 1 единицу валюты и вчерашний; любая неполнота — null
+function parseCbr(j) {
+  if (!j || typeof j !== 'object' || !j.Valute || typeof j.Valute !== 'object') return null;
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(j.Date || ''));
+  if (!m) return null;
+  const r = {};
+  for (const c of CURRENCIES) {
+    const x = Object.prototype.hasOwnProperty.call(j.Valute, c[0]) ? j.Valute[c[0]] : null;
+    if (!x || typeof x !== 'object') return null;
+    const nom = Number(x.Nominal), v = Number(x.Value), p = Number(x.Previous);
+    if (!(nom > 0) || !(v > 0) || !(p > 0) || !isFinite(v) || !isFinite(p) || !isFinite(nom)) return null;
+    r[c[0]] = {v: v / nom, p: p / nom};
+  }
+  return {date: m[1], r};
+}
+function cleanKursy(k) {
+  const o = clean(DEFAULT_KURSY, k);
+  o.spread = Math.min(30, Math.max(-5, o.spread));
+  o.amount = Math.min(1e13, Math.max(0, o.amount));
+  o.from = CUR_CODES.includes(k && k.from) ? k.from : DEFAULT_KURSY.from;
+  o.to = CUR_CODES.includes(k && k.to) ? k.to : DEFAULT_KURSY.to;
+  o.key = null;
+  if (k && k.key && typeof k.key === 'object') {
+    const v = Number(k.key.v);
+    if (isFinite(v) && v >= 0 && v <= 100 && /^\d{4}-\d{2}-\d{2}$/.test(String(k.key.date))) o.key = {v, date: String(k.key.date)};
+  }
+  o.cache = null;
+  const c = k && k.cache;
+  if (c && typeof c === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(String(c.date)) && c.r && typeof c.r === 'object') {
+    const r = {};
+    let ok = true;
+    for (const cc of CURRENCIES) {
+      const x = c.r[cc[0]];
+      if (!x || !(Number(x.v) > 0) || !(Number(x.p) > 0) || !isFinite(Number(x.v)) || !isFinite(Number(x.p))) { ok = false; break; }
+      r[cc[0]] = {v: Number(x.v), p: Number(x.p)};
+    }
+    if (ok) o.cache = {date: String(c.date), ts: Math.min(Math.max(0, Number(c.ts) || 0), Date.now()), r};
+  }
+  return o;
+}
+// Ключевая ставка: своя правка действует, пока в приложении нет более свежей даты
+function keyRateNow(k) { return k.key && k.key.date >= KEY_RATE.date ? k.key : KEY_RATE; }
+function rubPer(code, rates) {
+  if (code === 'RUB') return 1;
+  const x = rates && CUR_CODES.includes(code) && rates[code];
+  return x ? x.v : NaN;
+}
+function convertCur(amount, from, to, rates) {
+  const a = rubPer(from, rates), b = rubPer(to, rates);
+  return isFinite(a) && isFinite(b) && b > 0 ? amount * a / b : NaN;
+}
 const TORGI_LINKS = [
   ['https://fedresurs.ru/biddings', 'Федресурс', 'торги по банкротству: все сообщения о торгах'],
   ['https://torgi.gov.ru/new/public', 'ГИС Торги', 'арестованное, государственное и муниципальное имущество'],
@@ -351,8 +427,9 @@ function load() {
     smeta, torgi,
     sellM2: Math.max(0, Number(s.sellM2) || 0),
     rayony: cleanRayony(s.rayony),
+    kursy: cleanKursy(s.kursy),
     lastBackup: Number(s.lastBackup) || 0,
-    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref'].includes(s.tab) ? s.tab : 'home'
+    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy'].includes(s.tab) ? s.tab : 'home'
   };
 }
 // Приводит сохранённые данные к ожидаемым типам: числа — к числам, варианты — к допустимым.
@@ -1367,6 +1444,7 @@ function renderRef() {
   setTitle(TITLES.ref);
   $('#view').innerHTML = '' +
     '<button class="card deal" data-a="rayon-list"><span class="t">Районы</span><br><span class="small muted">Нотариусы, МФЦ, строймагазины, супермаркеты, рынки и цена м² по районам Москвы</span></button>' +
+    '<button class="card deal" data-a="home-push" data-v="kursy"><span class="t">Курсы и ставки</span><br><span class="small muted">Ключевая ставка ЦБ, курсы валют, конвертер и цена объекта в других валютах</span></button>' +
     '<a class="card deal" href="https://t.me/flipologia" target="_blank" rel="noopener" style="text-decoration:none"><span class="t">Новости и лоты недели</span><br><span class="small muted">Свежие новости рынка, цены м² и лоты с дисконтом — в Telegram-канале «Флипология»</span></a>' +
     '<div class="card">' +
     '<details open><summary>Налог при продаже квартиры (физлицо)</summary><ul>' +
@@ -1440,6 +1518,7 @@ function renderHome() {
     '<button class="tile" data-a="home-parse">' + ICO.parse + '<b>Из объявления</b><span>Вставить текст Авито, ЦИАН</span></button></div>';
   h += '<h3 class="hh">Справочник</h3><div class="card hlist">' +
     '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
+    '<button data-a="home-push" data-v="kursy"><span>Курсы и ставки</span><i>›</i></button>' +
     '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
     '<a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
   const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
@@ -1450,8 +1529,116 @@ function renderHome() {
   $('#view').innerHTML = h;
 }
 
+/* ===== Раздел «Курсы и ставки» ===== */
+const fmtD = (v, d) => isFinite(v) ? new Intl.NumberFormat('ru-RU', {minimumFractionDigits: d, maximumFractionDigits: d}).format(v) : '—';
+const fmtPct = v => String(Math.round(v * 100) / 100).replace('.', ',') + '%';
+const isoRu = s => String(s).split('-').reverse().join('.');
+let kzStatus = '';
+const kzMort = k => Math.max(0, keyRateNow(k).v + k.spread);
+function kzDaysOld(iso) { const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? 0 : Math.floor((Date.now() - d.getTime()) / 864e5); }
+function kzRates() { return S.kursy.cache ? S.kursy.cache.r : null; }
+function kzHeroHtml() {
+  const k = S.kursy, kr = keyRateNow(k), mort = kzMort(k), own = kr !== KEY_RATE;
+  const stale = kzDaysOld(kr.date) > KEY_STALE_DAYS;
+  return '<span class="kz-pill' + (stale ? ' warn' : '') + '">' + (stale ? 'Могла измениться — проверьте на cbr.ru' : 'Ключевая ставка ЦБ') + '</span>' +
+    '<div class="kz-big">' + fmtPct(kr.v) + '</div>' +
+    '<div class="small muted">' + (own ? 'ваше значение' : 'по данным ЦБ') + ' на ' + isoRu(kr.date) + ' · <a href="https://www.cbr.ru/hd_base/KeyRate/" target="_blank" rel="noopener">проверить</a></div>' +
+    '<div class="small muted" style="margin-top:16px">Ставка ипотеки на вторичку (оценка)</div>' +
+    '<div style="font-size:26px;font-weight:800;font-variant-numeric:tabular-nums">≈ ' + fmtPct(mort) + '</div>' +
+    '<button class="btn pri block" data-a="kz-apply" style="margin-top:12px">Подставить в расчёт сделки</button>';
+}
+function kzImpactHtml() {
+  const k = S.kursy, c = S.calc, mort = kzMort(k);
+  if (!(c.price > 0 && c.sale > 0)) return '<p class="small muted" style="margin:0">Заполните цену покупки и продажи в «Расчёте сделки» — покажем, как ставка меняет прибыль.</p>';
+  const a = compute(Object.assign({}, c, {fin: 'mortgage', rate: mort})), b = compute(Object.assign({}, c, {fin: 'mortgage', rate: mort + 2}));
+  const row = (l, v) => '<div class="kz-sum"><span>' + l + '</span><b>' + v + '</b></div>';
+  return '<p class="small muted" style="margin:0 0 8px">По вашему расчёту: покупка ' + rub(c.price) + ', продажа ' + rub(c.sale) + ', срок ' + a.m + ' мес., взнос ' + fmtD(c.down, 0) + '%' +
+    (c.fin === 'own' ? '. Сейчас в расчёте без кредита — ниже, как было бы с ипотекой.' : '.') + '</p>' +
+    row('Проценты банку за срок проекта', rub(a.interest)) +
+    row('Чистая прибыль при ставке ' + fmtPct(mort), rub(a.net)) +
+    row('При ставке ' + fmtPct(mort + 2) + ' (на 2 п.п. выше)', rub(b.net)) +
+    row('Разница', rub(b.net - a.net));
+}
+function kzRatesHtml() {
+  const r = kzRates(), cache = S.kursy.cache;
+  let st;
+  if (kzStatus === 'loading') st = 'Обновляем…';
+  else if (!r) st = kzStatus === 'err' ? 'Курсы не загрузились. Проверьте интернет и нажмите «Обновить».' : 'Загружаем курсы…';
+  else st = 'Курс ЦБ РФ на ' + isoRu(cache.date) + (kzStatus === 'err' ? ' · нет связи, показан сохранённый' : '');
+  let h = '<p class="small muted" style="margin:0 0 6px">' + esc(st) + '</p>';
+  if (r) {
+    h += CURRENCIES.map(c => {
+      const x = r[c[0]], ch = (x.v - x.p) / x.p * 100, nom = c[3];
+      return '<div class="kz-row"><div class="kz-flag">' + esc(c[1]) + '</div><div class="kz-n"><b>' + nom + ' ' + c[0] + '</b><span>' + esc(c[2]) + '</span></div>' +
+        '<div class="kz-v">' + fmtD(x.v * nom, 2) + ' ₽<i class="kz-eq">' + (ch > 0 ? '+' : ch < 0 ? '−' : '') + fmtD(Math.abs(ch), 2) + '% к вчера</i></div></div>';
+    }).join('');
+  }
+  return h;
+}
+function kzConvHtml() {
+  const k = S.kursy, r = kzRates();
+  if (!r) return {out: '—', line: 'Нужны курсы: подключитесь к интернету и нажмите «Обновить».'};
+  const res = convertCur(k.amount, k.from, k.to, r), one = convertCur(1, k.from, k.to, r);
+  return {out: fmtD(res, 2), line: '1 ' + k.from + ' = ' + fmtD(one, 4) + ' ' + k.to};
+}
+function kzPricesHtml() {
+  const r = kzRates(), sale = S.calc.sale;
+  if (!(sale > 0)) return '<p class="small muted" style="margin:0">Укажите цену продажи в «Расчёте сделки».</p>';
+  let h = '<div class="kz-sum"><span>Цена продажи</span><b>' + rub(sale) + '</b></div>';
+  if (!r) return h + '<p class="small muted" style="margin:6px 0 0">Появится после загрузки курсов.</p>';
+  return h + [['BYN', 'Br'], ['KZT', '₸'], ['USD', '$']].map(c => '<div class="kz-sum"><span>В ' + c[0] + '</span><b>' + fmtD(convertCur(sale, 'RUB', c[0], r), 0) + ' ' + c[1] + '</b></div>').join('');
+}
+function kzPaint() {
+  if (S.tab !== 'kursy') return;
+  const set = (id, h) => { const e = document.getElementById(id); if (e) e.innerHTML = h; };
+  set('kzHero', kzHeroHtml()); set('kzImpact', kzImpactHtml()); set('kzRates', kzRatesHtml()); set('kzPrices', kzPricesHtml());
+  const cv = kzConvHtml(), o = document.getElementById('kzOut'), l = document.getElementById('kzLine');
+  if (o) o.textContent = cv.out; if (l) l.textContent = cv.line;
+}
+async function kzLoad(force) {
+  const c = S.kursy.cache, age = c ? Date.now() - c.ts : -1;
+  if (kzStatus === 'loading') return;
+  if (!force && c && age >= 0 && age < 36e5) { if (kzStatus === 'err') { kzStatus = 'ok'; kzPaint(); } return; }
+  kzStatus = 'loading'; kzPaint();
+  // Таймаут на весь запрос вместе с телом ответа, иначе статус «Обновляем…» может зависнуть
+  let ctl = null, timer = 0;
+  try {
+    ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    timer = setTimeout(() => { if (ctl) ctl.abort(); }, 10000);
+    const r = await fetch(CBR_URL, {cache: 'no-store', signal: ctl ? ctl.signal : undefined});
+    if (!r.ok) throw new Error('http ' + r.status);
+    const p = parseCbr(await r.json());
+    if (!p) throw new Error('format');
+    S.kursy.cache = {date: p.date, ts: Date.now(), r: p.r}; save(); kzStatus = 'ok';
+  } catch (e) { kzStatus = 'err'; }
+  clearTimeout(timer);
+  kzPaint();
+}
+function renderKursy() {
+  const k = S.kursy, kr = keyRateNow(k), opt = sel => CUR_CODES.map(c => '<option' + (c === sel ? ' selected' : '') + '>' + c + '</option>').join('');
+  const cv = kzConvHtml();
+  $('#view').innerHTML =
+    '<div class="card kz-hero" id="kzHero">' + kzHeroHtml() + '</div>' +
+    '<h3 class="hh">Как ставка влияет на сделку</h3><div class="card" id="kzImpact">' + kzImpactHtml() + '</div>' +
+    '<div class="card"><h3>Поправить вручную</h3><div class="grid2">' +
+    '<label class="f">Ключевая ставка<div class="inwrap"><input type="text" inputmode="decimal" data-kz="key" value="' + esc(String(kr.v).replace('.', ',')) + '"><span>%</span></div></label>' +
+    '<label class="f">Надбавка банка<div class="inwrap"><input type="text" inputmode="decimal" data-kz="spread" value="' + esc(String(k.spread).replace('.', ',')) + '"><span>п.п.</span></div></label></div>' +
+    '<p class="small muted" style="margin:10px 0 0">Ставка ипотеки = ключевая + надбавка банка. Узнайте реальную в банке или у брокера.' +
+    (k.key ? ' <button class="btn" data-a="kz-key-reset" style="min-height:38px;padding:6px 12px">Вернуть данные ЦБ</button>' : '') + '</p></div>' +
+    '<h3 class="hh">Курсы валют ЦБ РФ</h3><div class="card" id="kzRates">' + kzRatesHtml() + '</div>' +
+    '<h3 class="hh">Конвертер</h3><div class="card">' +
+    '<div class="kz-conv"><input type="text" inputmode="decimal" data-kz="amt" aria-label="Сумма" value="' + esc(num(k.amount)) + '"><select data-kz="from" aria-label="Из валюты">' + opt(k.from) + '</select></div>' +
+    '<div style="text-align:center;margin:0 0 8px"><button class="btn" data-a="kz-swap" aria-label="Поменять валюты" style="min-height:38px;padding:6px 16px">⇅</button></div>' +
+    '<div class="kz-conv"><div class="kz-out" id="kzOut">' + esc(cv.out) + '</div><select data-kz="to" aria-label="В валюту">' + opt(k.to) + '</select></div>' +
+    '<p class="small muted" id="kzLine" style="margin:0">' + esc(cv.line) + '</p></div>' +
+    '<h3 class="hh">Цена объекта в других валютах</h3><div class="card"><p class="small muted" style="margin:0 0 6px">Для покупателей и инвесторов из РБ, КЗ и СНГ. Берётся цена продажи из расчёта сделки.</p><div id="kzPrices">' + kzPricesHtml() + '</div></div>' +
+    '<p class="small muted" style="margin:4px 4px 12px">Курсы ЦБ справочные, это не курс обмена в банке. Данные ЦБ РФ загружаются через cbr-xml-daily.ru. В расчёте сделки все суммы остаются в рублях. Без сети показывается последний сохранённый курс с датой.</p>' +
+    '<button class="btn block" data-a="kz-refresh">Обновить курсы</button>';
+  kzLoad(false);
+}
+
 /* ===== Навигация ===== */
-const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник'};
+const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
 function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
@@ -1472,15 +1659,16 @@ function go(tab, cls, y) {
   S.tab = tab; save();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
-  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef})[tab]();
+  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy})[tab]();
   // «Смета» и «Торги» открываются с главной: у них своя кнопка «назад»
   if (tab === 'smeta' || tab === 'torgi') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
+  if (tab === 'kursy') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   window.scrollTo(0, y || 0); animate(cls || 'anim-up'); onScroll();
 }
 /* ===== История: системная кнопка «назад», кнопка «‹» и свайп идут одним путём =====
    Стопка: «Главная» (глубина 0) → другая вкладка (1) → экраны вглубь (2, 3…).
    Вкладки записи не копят: со вкладки «назад» ведёт на «Главную», а из неё — выход из приложения. */
-const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref'];
+const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy'];
 let navDepth = 0;       // глубина текущего экрана в стопке
 let navPending = null;  // вкладка, которую запишем, когда история вернётся к началу стопки
 const navRoot = tab => ({tab, deal: null, rayon: null, from: null});
@@ -1576,7 +1764,7 @@ function closeDeal() { navBack(); }
 let swipe = null;
 document.addEventListener('touchstart', e => {
   const p = e.touches[0];
-  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
 }, {passive: true});
 document.addEventListener('touchend', e => {
   if (!swipe) return;
@@ -1633,6 +1821,14 @@ view.addEventListener('input', e => {
     save();
   } else if (t.id === 'sellM2') {
     S.sellM2 = Math.max(0, parseNum(t.value)); save();
+  } else if (t.dataset.kz) {
+    const k = S.kursy;
+    if (t.dataset.kz === 'amt') k.amount = Math.min(1e13, Math.max(0, parseNum(t.value)));
+    else if (!/\d/.test(t.value)) return;
+    else if (t.dataset.kz === 'key') k.key = {v: Math.min(100, Math.max(0, parseNum(t.value))), date: today()};
+    else if (t.dataset.kz === 'spread') k.spread = Math.min(30, Math.max(-5, parseNum(t.value)));
+    save(); kzPaint();
+    if (t.dataset.kz === 'key' && !view.querySelector('[data-a="kz-key-reset"]')) { const hp = view.querySelector('[data-kz="spread"]'); const note = hp && hp.closest('.card').querySelector('p.small'); if (note) note.insertAdjacentHTML('beforeend', ' <button class="btn" data-a="kz-key-reset" style="min-height:38px;padding:6px 12px">Вернуть данные ЦБ</button>'); }
   }
 });
 // Пересчёт таблицы сметы без потери курсора в поле цены
@@ -1647,6 +1843,7 @@ view.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset.k === 'tax') { S.calc.tax = t.value; save(); $('#repDedBox').classList.toggle('hide', t.value !== 'ndfl'); updateCalcResults(); }
   else if (t.dataset.k === 'repairDed') { S.calc.repairDed = t.checked; save(); updateCalcResults(); }
+  else if (t.dataset.kz === 'from' || t.dataset.kz === 'to') { if (CUR_CODES.includes(t.value)) { S.kursy[t.dataset.kz] = t.value; save(); kzPaint(); } }
   else if (t.dataset.w) {
     const d = S.deals.find(x => x.id === openDeal); if (!d || !d.works) return;
     if (t.dataset.w === 'start') { if (isoDay(t.value) != null) d.works.start = t.value; else t.value = d.works.start; }
@@ -1713,6 +1910,14 @@ view.addEventListener('click', e => {
   switch (a) {
     case 'repair-from-smeta': {
       S.calc.repair = Math.round(smetaTotal().total); save(); renderCalc(); toast('Ремонт взят из сметы'); break;
+    }
+    case 'kz-refresh': kzLoad(true); break;
+    case 'kz-swap': { const k = S.kursy, x = k.from; k.from = k.to; k.to = x; save(); renderKursy(); break; }
+    case 'kz-key-reset': S.kursy.key = null; save(); renderKursy(); break;
+    case 'kz-apply': {
+      const mort = Math.round(kzMort(S.kursy) * 100) / 100, linked = S.calcDeal && S.deals.find(x => x.id === S.calcDeal);
+      if (linked && !confirm('Сейчас в расчёте сделка «' + linked.name + '». Поменять ставку в этом расчёте на ' + fmtPct(mort) + '? В саму сделку она попадёт, когда вы сохраните расчёт.')) break;
+      S.calc.rate = mort; save(); toast('Ставка ' + fmtPct(mort) + ' перенесена в расчёт' + (S.calc.fin === 'own' ? '. Включите ипотеку в «Расчёте»' : '')); break;
     }
     case 'calc-detach': S.calcDeal = null; save(); if (S.tab === 'home') renderHome(); else renderCalc(); break;
     case 'calc-new-deal': {
@@ -1786,7 +1991,7 @@ view.addEventListener('click', e => {
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
       break;
     case 'go-tab': if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
-    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi') navPush(navRoot(b.dataset.v), 'anim-right'); break;
+    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy') navPush(navRoot(b.dataset.v), 'anim-right'); break;
     case 'home-parse': { navTab('calc'); const pb = $('#parseBox'); if (pb) { pb.open = true; pb.scrollIntoView({block: 'center'}); } break; }
     case 'home-rayony': navTab('ref'); navPush({tab: 'ref', deal: null, rayon: 'list', from: null}); break;
     case 'home-tax': { navTab('ref'); const dt = [...document.querySelectorAll('#view details')].find(x => /^Налог при продаже/.test(x.textContent.trim())); if (dt) { dt.open = true; dt.scrollIntoView({block: 'start'}); } break; }

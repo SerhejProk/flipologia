@@ -454,6 +454,37 @@ vm.runInContext(`
   check('ТЭЦ-11 есть в минусах Перово', rayonById('perovo').items.some(it => it.c === 'prom' && /ТЭЦ-11/.test(it.n)));
   check('Кузьминки: общая цена помечена', rayonById('kuzminki').shared && rayonById('tekstilshchiki').shared);
 }
+/* --- Курсы и ставки --- */
+{
+  const mk = (o) => Object.assign({Date: '2026-11-04T11:30:00+03:00', Valute: {
+    USD: {Nominal: 1, Value: 81.6699, Previous: 80.9734}, EUR: {Nominal: 1, Value: 91.601, Previous: 90.4635},
+    CNY: {Nominal: 1, Value: 12.1816, Previous: 12.1714}, BYN: {Nominal: 1, Value: 27.4253, Previous: 27.4031},
+    KZT: {Nominal: 100, Value: 18.0032, Previous: 17.8407}}}, o || {});
+  const p = parseCbr(mk());
+  check('курсы: разбор настоящего ответа ЦБ', !!p && p.date === '2026-11-04' && near(p.r.USD.v, 81.6699, 1e-9) && near(p.r.USD.p, 80.9734, 1e-9), p);
+  check('курсы: тенге пересчитан на 1 единицу (номинал 100)', !!p && near(p.r.KZT.v, 0.180032, 1e-9), p && p.r.KZT);
+  check('курсы: нет валюты — отказ', parseCbr(mk({Valute: {USD: {Nominal: 1, Value: 80, Previous: 80}}})) === null);
+  check('курсы: нулевой/мусорный курс — отказ', parseCbr(mk({Valute: Object.assign({}, mk().Valute, {EUR: {Nominal: 1, Value: 0, Previous: 90}})})) === null && parseCbr(mk({Valute: Object.assign({}, mk().Valute, {EUR: {Nominal: 0, Value: 90, Previous: 90}})})) === null && parseCbr(mk({Valute: Object.assign({}, mk().Valute, {EUR: {Nominal: 1, Value: 'abc', Previous: 90}})})) === null);
+  check('курсы: без даты, null, строка — отказ', parseCbr(mk({Date: 'вчера'})) === null && parseCbr(null) === null && parseCbr('x') === null && parseCbr({}) === null);
+  const rt = p.r;
+  check('конвертер: 1 000 000 ₽ → USD', near(convertCur(1e6, 'RUB', 'USD', rt), 1e6 / 81.6699, 1e-6));
+  check('конвертер: USD → BYN через рубль', near(convertCur(100, 'USD', 'BYN', rt), 100 * 81.6699 / 27.4253, 1e-6));
+  check('конвертер: туда и обратно возвращает сумму', near(convertCur(convertCur(12345, 'RUB', 'KZT', rt), 'KZT', 'RUB', rt), 12345, 1e-6));
+  check('конвертер: одинаковые валюты', convertCur(500, 'EUR', 'EUR', rt) === 500);
+  check('конвертер: неизвестная валюта и пустые курсы — NaN', isNaN(convertCur(1, 'RUB', 'XXX', rt)) && isNaN(convertCur(1, 'RUB', 'toString', rt)) && isNaN(convertCur(1, 'RUB', 'USD', null)));
+  check('ставка: по умолчанию данные ЦБ', keyRateNow(cleanKursy(null)).v === KEY_RATE.v);
+  check('ставка: своя правка с более поздней датой действует', keyRateNow(cleanKursy({key: {v: 12.5, date: '2099-01-01'}})).v === 12.5);
+  check('ставка: старая правка не перебивает свежие данные', keyRateNow(cleanKursy({key: {v: 99, date: '2000-01-01'}})).v === KEY_RATE.v);
+  const bad = cleanKursy({spread: 'x', amount: -5, from: '__proto__', to: 'EVIL', key: {v: 500, date: 'сегодня'}, cache: {date: '2026-11-04', r: {USD: {v: 'a', p: 1}}}});
+  check('чистка: мусор приведён к допустимому', bad.spread === 2 && bad.amount === 0 && bad.from === 'RUB' && bad.to === 'USD' && bad.key === null && bad.cache === null, bad);
+  const good = cleanKursy({spread: 99, amount: 1e20, cache: {date: '2026-11-04', ts: 5, r: p.r}});
+  check('чистка: границы и верный кэш сохраняются', good.spread === 30 && good.amount === 1e13 && good.cache && good.cache.date === '2026-11-04' && near(good.cache.r.EUR.v, 91.601, 1e-9), good);
+  const imp = compute(Object.assign({}, DEFAULT_CALC, {fin: 'mortgage', rate: 16})).net, imp2 = compute(Object.assign({}, DEFAULT_CALC, {fin: 'mortgage', rate: 18})).net;
+  check('ставка выше — прибыль ниже', imp2 < imp, [imp, imp2]);
+  check('ставка ипотеки не бывает ниже нуля', kzMort(cleanKursy({key: {v: 0, date: '2099-01-01'}, spread: -5})) === 0);
+  check('ставка ипотеки = ключевая + надбавка', near(kzMort(cleanKursy({spread: 2})), KEY_RATE.v + 2, 1e-9));
+  check('кэш курсов: время из будущего обрезается', cleanKursy({cache: {date: '2026-11-04', ts: 1e15, r: p.r}}).cache.ts <= Date.now());
+}
 `, ctx);
 
 /* --- Запуск приложения с уже сохранёнными данными (ловит порядок объявлений при старте) --- */
