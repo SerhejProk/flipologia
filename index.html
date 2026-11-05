@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F6F7FA">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.cbr-xml-daily.ru; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://www.cbr-xml-daily.ru https://nominatim.openstreetmap.org; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="description" content="Флипология — калькулятор сделки, смета ремонта и учёт сделок для флиперов недвижимости">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -191,6 +191,31 @@ tr.total td{font-weight:700;border-bottom:0}
 .tile span{font-size:12.5px;color:var(--muted);line-height:1.3}
 .hdeal{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:12px 0;border-top:1px solid var(--line)}
 .hdeal:first-of-type{border-top:0;padding-top:0}
+.bigbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:64px;border:0;border-radius:20px;background:var(--gold);color:#fff;font:inherit;font-size:17px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);margin:0 0 12px}
+.bigbtn svg{width:28px;height:28px;flex:none}
+.bigbtn.voice{background:var(--dark);color:var(--dark-ink);margin:18px 0 12px}
+.soon{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:99px;background:var(--acc-soft);color:var(--gold-ink);font-size:12px;font-weight:600;vertical-align:middle;letter-spacing:0}
+.fbtn{position:relative;overflow:hidden;flex:1 1 150px}
+.fbtn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+.fbtn svg,.btn.block svg{width:20px;height:20px;flex:none}
+.ph-big{display:block;width:100%;height:auto;border-radius:14px;margin-top:12px}
+.ph-act{display:grid;gap:8px;margin-top:12px}
+.ph-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ph-it{display:flex;flex-direction:column;gap:2px;text-align:left;font:inherit;color:var(--ink);background:none;border:0;padding:0;cursor:pointer;min-width:0}
+.ph-it img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;background:var(--acc-soft);margin-bottom:4px}
+.ph-it b{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+.ph-it span{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.nb-ph{position:relative}
+.nb-ph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px}
+.nb-x{position:absolute;top:6px;right:6px;width:32px;height:32px;border:0;border-radius:99px;background:rgba(0,0,0,.6);color:#fff;font-size:16px;line-height:1;cursor:pointer}
+.ph-it .ph-note{color:var(--ink);font-style:italic}
+.btn.rec{background:var(--bad-bg);color:var(--bad)}
+#pview{display:none;position:fixed;inset:0;z-index:95;background:rgba(8,10,14,.96);overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+#pview.on{display:block}
+.pv-box{max-width:720px;margin:0 auto;padding:16px;color:#fff}
+.pv-box img{display:block;width:100%;height:auto;border-radius:14px}
+.pv-box .muted{color:#C9CED6}
+.pv-box .btn svg{width:20px;height:20px;flex:none}
 .hlist{padding:4px 18px}
 .hlist button,.hlist a{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px 0;border:0;border-bottom:1px solid var(--line);background:none;font:inherit;color:var(--ink);text-decoration:none;cursor:pointer;text-align:left}
 .hlist :last-child{border-bottom:0}
@@ -310,6 +335,7 @@ try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splas
 
 <div id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetT"><div class="sh-back" data-a="sheet-close"></div><div class="sh-box"><h3 id="sheetT"></h3><p id="sheetP"></p><div class="row"><button type="button" class="btn pri" data-a="sheet-close" id="sheetOk">Понятно</button><button type="button" class="btn" data-a="term-all">Все термины</button></div></div></div>
 <div id="report" role="dialog" aria-modal="true" aria-label="Отчёт инвестору"></div>
+<div id="pview" role="dialog" aria-modal="true" aria-label="Фото объекта"></div>
 <script src="rayony-data.js"></script>
 <script>
 'use strict';
@@ -1788,7 +1814,10 @@ const ICO = {
   calc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg>',
   smeta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>',
   torgi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 12.5l-8 8a2.1 2.1 0 1 1-3-3l8-8"/><path d="M16 16l6-6"/><path d="M8 8l6-6"/><path d="M9 7l8 8"/><path d="M21 11l-8-8"/></svg>',
-  parse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 12h6M9 16h4"/></svg>'
+  parse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 12h6M9 16h4"/></svg>',
+  cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.800 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'
 };
 const QUICK = [['price', 'Покупка', '₽'], ['sale', 'Продажа', '₽'], ['repair', 'Ремонт', '₽', 'repair'], ['months', 'Срок', 'мес', 'months']];
 // Экспресс-оценка покупки работает с теми же цифрами, что и «Расчёт»
@@ -1804,37 +1833,56 @@ function homeDealHtml(d) {
   return '<button class="hdeal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
     '<div class="small muted">' + (p ? 'План ' + rub(p.net) + (moved ? ' · прогноз <b class="' + (f.fore < p.net ? 'neg' : 'pos') + '">' + rub(f.fore) + '</b>' : '') : 'Расчёта ещё нет') + '</div>' + lateLine(d) + '</button>';
 }
+// Ключевая ставка и курсы на главной (курсы берутся из сохранённого кэша, обновляются в фоне)
+function homeRatesHtml() {
+  const r = kzRates(), c = S.kursy.cache;
+  if (!r) return '<p class="small muted" style="margin:0">' + (kzStatus === 'loading' ? 'Загружаем курсы…' : kzStatus === 'err' ? 'Курсы не загрузились. Проверьте интернет: откройте «Все курсы» и нажмите «Обновить».' : 'Курсы ЦБ загрузятся при подключении к интернету.') + '</p>';
+  const rows = CURRENCIES.filter(x => x[0] === 'USD' || x[0] === 'EUR' || x[0] === 'CNY').map(x => {
+    const v = r[x[0]];
+    return v && isFinite(v.v) ? '<div class="kz-sum"><span>' + esc(x[2]) + ' (' + x[0] + ')</span><b>' + fmtD(v.v * x[3], 2) + ' ₽</b></div>' : '';
+  }).join('');
+  return '<p class="small muted" style="margin:0 0 6px">Курс ЦБ РФ на ' + esc(isoRu(c.date)) + (kzStatus === 'err' ? ' · нет связи, показан сохранённый' : '') + '</p>' + rows;
+}
 function renderHome() {
   const c = S.calc, linked = S.calcDeal && S.deals.find(d => d.id === S.calcDeal);
-  let h = '<div class="card"><h3>Экспресс-оценка покупки</h3><div class="grid2">' +
+  let h = '<button class="bigbtn" data-a="home-push" data-v="photo">' + ICO.cam + '<span>Сделать фото</span></button>';
+  const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
+  h += '<div class="card"><h3>Мои проекты</h3>' +
+    (deals.length ? deals.slice(0, 3).map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Проектов пока нет. Посчитайте объект и создайте проект или добавьте его сразу. Хотите увидеть, как выглядит готовый проект, — откройте пример.</p>') +
+    '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="deal-new">+ Новый проект</button>' + (S.deals.some(x => x.demo) ? '' : '<button class="btn" data-a="demo-open">Пример проекта</button>') +
+    (deals.length > 3 ? '<button class="btn" data-a="go-tab" data-v="deals">Все (' + deals.length + ')</button>' : '') + '</div></div>';
+  h += '<div class="card"><h3>Экспресс-расчёт</h3><div class="grid2">' +
     QUICK.map(([k, l, suf, term]) => '<label class="f"><span>' + l + hintBtn(term) + '</span><div class="inwrap"><input type="text" inputmode="decimal" data-q="' + k + '" value="' + (k === 'months' ? String(c[k]).replace('.', ',') : num(c[k])) + '"><span>' + suf + '</span></div></label>').join('') +
     '</div><button class="btn" style="margin-top:10px" data-a="home-repair">Не знаете, сколько стоит ремонт? Подсказать</button>' + (linked ? '<div class="row" style="justify-content:space-between;margin-top:12px"><span class="small">Сейчас здесь расчёт сделки <b>' + esc(linked.name) + '</b></span><button class="btn" data-a="calc-detach">Новый расчёт</button></div>' : '') +
     '<div id="homeHero" style="margin-top:12px">' + quickHeroHtml(c) + '</div>' +
     '<p class="small muted" style="margin:10px 2px">Те же цифры, что в «Расчёте»: налог, ипотека и остальное — там.</p>' +
     '<button class="btn pri block" data-a="go-tab" data-v="calc">Открыть полный расчёт</button></div>';
-  const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
-  h += '<div class="card"><h3>Мои сделки</h3>' +
-    (deals.length ? deals.slice(0, 3).map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Сделок пока нет. Посчитайте объект и создайте сделку или добавьте её сразу. Хотите увидеть, как выглядит готовая сделка, — откройте пример.</p>') +
-    '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="deal-new">+ Новая сделка</button>' + (S.deals.some(x => x.demo) ? '' : '<button class="btn" data-a="demo-open">Пример сделки</button>') +
-    (deals.length > 3 ? '<button class="btn" data-a="go-tab" data-v="deals">Все (' + deals.length + ')</button>' : '') + '</div></div>';
   h += portfolioHtml(S.deals);
-  h += '<h3 class="hh">Инструменты</h3><div class="tiles">' +
+  h += '<h3 class="hh">Справочники</h3><div class="card hlist">' +
+    '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
+    '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
+    '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button></div>';
+  h += '<h3 class="hh">Календарь</h3><div class="card"><p class="small muted" style="margin:0">Визиты на объекты и встречи за день, с голосовым вводом. Появится в одном из следующих обновлений <span class="soon">скоро</span></p></div>';
+  const kr = keyRateNow(S.kursy), stale = kzDaysOld(kr.date) > KEY_STALE_DAYS;
+  h += '<h3 class="hh">Ставки и курсы</h3><div class="card"><div class="kz-sum"><span>Ключевая ставка ЦБ</span><b>' + fmtPct(kr.v) + '</b></div>' +
+    '<div class="kz-sum"><span>Ставка рефинансирования</span><b>' + fmtPct(kr.v) + '</b></div>' +
+    '<p class="small muted" style="margin:6px 0 12px">' + (stale ? 'Ставка на ' + esc(isoRu(kr.date)) + ' могла измениться — проверьте на cbr.ru. ' : 'На ' + esc(isoRu(kr.date)) + '. ') + 'Ставка рефинансирования с 2016 года равна ключевой.</p>' +
+    '<div id="homeRates">' + homeRatesHtml() + '</div>' +
+    '<button class="btn block" data-a="home-push" data-v="kursy" style="margin-top:12px">Все курсы и конвертер</button></div>';
+  h += '<h3 class="hh">Калькуляторы</h3><div class="tiles">' +
     '<button class="tile" data-a="go-tab" data-v="calc">' + ICO.calc + '<b>Расчёт сделки</b><span>Прибыль и предел цены</span></button>' +
     '<button class="tile" data-a="home-push" data-v="smeta">' + ICO.smeta + '<b>Смета ремонта</b><span>По площади и уровню</span></button>' +
     '<button class="tile" data-a="home-push" data-v="torgi">' + ICO.torgi + '<b>Торги</b><span>Предел ставки на лоте</span></button>' +
     '<button class="tile" data-a="home-parse">' + ICO.parse + '<b>Из объявления</b><span>Вставить текст Авито, ЦИАН</span></button></div>';
-  h += '<h3 class="hh">Справочник</h3><div class="card hlist">' +
-    '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
-    '<button data-a="home-push" data-v="kursy"><span>Курсы и ставки</span><i>›</i></button>' +
-    '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
-    '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button>' +
-    '<a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
+  h += '<h3 class="hh">Новости</h3><div class="card hlist"><a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
   const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
   if (S.deals.length && (days < 0 || days > 14)) {
     h += '<div class="card"><h3>Резервная копия</h3><p class="small" style="margin-top:0">Данные хранятся только в этом телефоне. ' + (days < 0 ? 'Копию ещё не делали.' : 'Последней копии ' + days + ' дн.') + '</p>' +
       '<button class="btn block" data-a="backup-save">Скачать копию</button></div>';
   }
+  h += '<button class="bigbtn voice" data-a="soon" data-v="voice">' + ICO.mic + '<span>Голосовой помощник</span></button>';
   $('#view').innerHTML = h;
+  kzLoad(false);
 }
 
 /* ===== Раздел «Курсы и ставки» ===== */
@@ -1897,6 +1945,7 @@ function kzPricesHtml() {
   return h + [['BYN', 'Br'], ['KZT', '₸'], ['USD', '$']].map(c => '<div class="kz-sum"><span>В ' + c[0] + '</span><b>' + fmtD(convertCur(sale, 'RUB', c[0], r), 0) + ' ' + c[1] + '</b></div>').join('');
 }
 function kzPaint() {
+  if (S.tab === 'home') { const e = document.getElementById('homeRates'); if (e) e.innerHTML = homeRatesHtml(); return; }
   if (S.tab !== 'kursy') return;
   const set = (id, h) => { const e = document.getElementById(id); if (e) e.innerHTML = h; };
   set('kzHero', kzHeroHtml()); set('kzImpact', kzImpactHtml()); set('kzRates', kzRatesHtml()); set('kzPrices', kzPricesHtml());
@@ -1945,8 +1994,438 @@ function renderKursy() {
   kzLoad(false);
 }
 
+/* ===== Голосовой ввод =====
+   Распознавание речи делает сам браузер (Web Speech API). Там, где его нет, подсказываем микрофон на клавиатуре. */
+const VOICE = {rec: null, el: null, btn: null, st: null, closing: null, flush: null};
+const speechApi = () => (typeof window !== 'undefined' && window && (window.SpeechRecognition || window.webkitSpeechRecognition)) || null;
+function voiceErr(code) {
+  if (code === 'aborted') return '';
+  if (code === 'not-allowed' || code === 'service-not-allowed') return 'Нет доступа к микрофону. Разрешите его для сайта в настройках браузера.';
+  if (code === 'no-speech') return 'Речь не слышно. Нажмите «Диктовать» и скажите ещё раз.';
+  if (code === 'audio-capture') return 'Микрофон не найден.';
+  if (code === 'network') return 'Для распознавания речи нужен интернет.';
+  return 'Не получилось распознать речь. Попробуйте ещё раз.';
+}
+function voiceUi(on, msg) {
+  const b = VOICE.btn;
+  if (b) { b.classList.toggle('rec', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); const sp = b.querySelector('span'); if (sp) sp.textContent = on ? 'Остановить' : 'Диктовать'; }
+  if (VOICE.st) VOICE.st.textContent = msg || '';
+}
+// Остановка: кнопку возвращаем сразу, но последнюю фразу ещё принимаем — браузер присылает её уже после stop(), до события onend
+function voiceStop() {
+  const r = VOICE.rec; VOICE.rec = null;
+  if (r) { VOICE.closing = r; try { r.stop(); } catch (e) { VOICE.closing = null; } }
+  voiceUi(false, '');
+}
+// Перед чтением текста из поля (сохранение) ждём последнюю фразу, но не дольше 0,8 с
+function voiceFlush() {
+  if (!VOICE.closing) return Promise.resolve();
+  return new Promise(res => {
+    const done = () => { clearTimeout(t); VOICE.flush = null; VOICE.closing = null; res(); };
+    const t = setTimeout(done, 800);
+    VOICE.flush = done;
+  });
+}
+// Нажатие на кнопку «Диктовать»: включает или выключает запись в поле el (st — строка статуса)
+function voiceToggle(el, btn, st) {
+  if (VOICE.rec && VOICE.btn === btn) { voiceStop(); return; }
+  voiceStop();
+  const R = speechApi();
+  if (!R) { toast('Голосовой ввод не работает в этом браузере. Нажмите значок микрофона на клавиатуре телефона.'); return; }
+  let rec;
+  try { rec = new R(); } catch (e) { toast('Не удалось включить микрофон'); return; }
+  rec.lang = 'ru-RU'; rec.continuous = true; rec.interimResults = true;
+  VOICE.rec = rec; VOICE.el = el; VOICE.btn = btn; VOICE.st = st;
+  rec.onresult = ev => {
+    const live = VOICE.rec === rec;
+    if (!live && VOICE.closing !== rec) return;
+    let fin = '', interim = '';
+    for (let i = ev.resultIndex || 0; i < ev.results.length; i++) {
+      const r = ev.results[i], t = (r && r[0] && r[0].transcript) || '';
+      if (r && r.isFinal) fin += t; else interim += t;
+    }
+    if (fin.trim()) {
+      el.value = (String(el.value).replace(/\s+$/, '') + ' ' + fin.trim()).trim().slice(0, 2000);
+      el.dispatchEvent(new Event('input', {bubbles: true}));
+    }
+    if (st && live) st.textContent = interim ? 'Слышу: ' + interim : 'Говорите…';
+  };
+  rec.onerror = ev => { if (VOICE.rec !== rec) return; VOICE.rec = null; voiceUi(false, voiceErr(ev && ev.error)); };
+  rec.onend = () => {
+    if (VOICE.rec === rec) { VOICE.rec = null; voiceUi(false, ''); }
+    if (VOICE.closing === rec) { VOICE.closing = null; if (VOICE.flush) VOICE.flush(); }
+  };
+  try { rec.start(); voiceUi(true, 'Говорите…'); }
+  catch (e) { VOICE.rec = null; voiceUi(false, 'Не удалось включить микрофон'); }
+}
+
+/* ===== Раздел «Фото объекта» =====
+   Снимок + геолокация + адрес. Адрес и дата вписываются в само изображение.
+   Фото хранятся в IndexedDB (в localStorage они не помещаются), в резервную копию не входят. */
+const PH_MAX = 1600, PH_FILE_LIMIT = 30 * 1024 * 1024, PH_SHOW = 60;
+const PH = {lat: null, lon: null, acc: null, address: '', note: '', geoMsg: '', geoBusy: false, base: null, blob: null, prevUrl: '', ts: 0, busy: false, pick: false, q: '', list: [], listErr: '', loaded: false, thumbs: []};
+const two = n => String(n).padStart(2, '0');
+const isBlob = v => typeof Blob !== 'undefined' && v instanceof Blob;
+function fmtDT(ts) { const d = new Date(ts); return isNaN(d) ? '' : two(d.getDate()) + '.' + two(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + two(d.getHours()) + ':' + two(d.getMinutes()); }
+const hasCoord = (lat, lon) => typeof lat === 'number' && typeof lon === 'number' && isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+const coordText = (lat, lon) => hasCoord(lat, lon) ? lat.toFixed(5) + ', ' + lon.toFixed(5) : '';
+// Адрес из ответа OpenStreetMap: «Город, улица, дом»; если улицы нет — первые три части полного названия
+function nomAddress(j) {
+  const s = v => typeof v === 'string' ? v.trim() : '';
+  if (!j || typeof j !== 'object') return '';
+  const a = j.address && typeof j.address === 'object' ? j.address : {};
+  const road = s(a.road) || s(a.pedestrian) || s(a.footway) || s(a.residential) || s(a.square);
+  const city = s(a.city) || s(a.town) || s(a.village) || s(a.hamlet) || s(a.municipality) || s(a.state);
+  const house = s(a.house_number);
+  const parts = [city, road ? (house ? road + ', ' + house : road) : ''].filter(Boolean);
+  if (road) return parts.join(', ').slice(0, 200);
+  const dn = s(j.display_name);
+  return dn ? dn.split(',').slice(0, 3).map(x => x.trim()).join(', ').slice(0, 200) : parts.join(', ');
+}
+// Что вписать в снимок: адрес (или координаты, если адреса нет) и дата со временем
+function stampLines(address, lat, lon, ts) {
+  const addr = String(address || '').trim(), cc = coordText(lat, lon);
+  return [addr || cc || 'Адрес не указан', fmtDT(ts) + (addr && cc ? ' · ' + cc : '')];
+}
+function phWrap(ctx, text, maxW) {
+  const out = []; let cur = '';
+  String(text).split(/\s+/).filter(Boolean).forEach(w => {
+    const t = cur ? cur + ' ' + w : w;
+    if (cur && ctx.measureText(t).width > maxW) { out.push(cur); cur = w; } else cur = t;
+  });
+  if (cur) out.push(cur);
+  return out.slice(0, 4);
+}
+function phStamp(base, lines) {
+  const w = base.width, h = base.height, fs = Math.max(14, Math.round(w / 30)), pad = Math.round(fs * 0.6), lh = Math.round(fs * 1.25);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); x.drawImage(base, 0, 0);
+  x.font = '600 ' + fs + 'px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const rows = []; lines.forEach(t => phWrap(x, t, w - pad * 2).forEach(l => rows.push(l)));
+  const bh = rows.length * lh + pad * 2;
+  x.fillStyle = 'rgba(0,0,0,.55)'; x.fillRect(0, h - bh, w, bh);
+  x.fillStyle = '#fff'; x.textBaseline = 'top';
+  rows.forEach((l, i) => x.fillText(l, pad, h - bh + pad + i * lh));
+  return c;
+}
+function photoMatches(p, q, dealName) {
+  const w = normRu(q).trim();
+  return !w || normRu([p.address, p.note, dealName, fmtDT(p.ts)].join(' ')).includes(w);
+}
+function geoErrText(e) {
+  if (e && e.message === 'nogeo') return 'Это устройство не даёт определить место. Впишите адрес вручную.';
+  const c = e && e.code;
+  if (c === 1) return 'Нет доступа к геолокации. Разрешите её для сайта в настройках браузера или впишите адрес вручную.';
+  if (c === 3) return 'Геолокация отвечает слишком долго. Попробуйте ещё раз или впишите адрес вручную.';
+  return 'Не удалось определить место. Впишите адрес вручную.';
+}
+// IndexedDB
+let phDbP = null;
+function phDb() {
+  if (phDbP) return phDbP;
+  phDbP = new Promise((res, rej) => {
+    if (typeof indexedDB === 'undefined' || !indexedDB) { rej(new Error('noidb')); return; }
+    const q = indexedDB.open('flipologia-photos', 1);
+    q.onupgradeneeded = () => { q.result.createObjectStore('photos', {keyPath: 'id'}); };
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error || new Error('idb'));
+  });
+  phDbP.catch(() => { phDbP = null; });
+  return phDbP;
+}
+const phTx = (mode, fn) => phDb().then(db => new Promise((res, rej) => {
+  const tx = db.transaction('photos', mode), r = fn(tx.objectStore('photos'));
+  tx.oncomplete = () => res(r && r.result); tx.onerror = tx.onabort = () => rej(tx.error || new Error('tx'));
+}));
+const phDealName = id => { const d = id && S.deals.find(x => x.id === id); return d ? (d.name || 'Без названия') : ''; };
+function phGeo() {
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) { rej(new Error('nogeo')); return; }
+    navigator.geolocation.getCurrentPosition(p => res(p.coords), e => rej(e), {enableHighAccuracy: true, timeout: 15000, maximumAge: 30000});
+  });
+}
+async function phReverse(lat, lon) {
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null, t = setTimeout(() => { if (ctl) ctl.abort(); }, 10000);
+  try {
+    const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=ru&lat=' + lat.toFixed(6) + '&lon=' + lon.toFixed(6), {signal: ctl ? ctl.signal : undefined});
+    if (!r.ok) throw new Error('http ' + r.status);
+    return nomAddress(await r.json());
+  } finally { clearTimeout(t); }
+}
+// Геолокация: T — любая запись с полями lat, lon, acc, address, geoMsg, geoBusy
+function geoPaint(T, gid, aid, tab) {
+  if (S.tab !== tab) return;
+  const g = document.getElementById(gid), a = document.getElementById(aid);
+  if (g) g.textContent = T.geoMsg + (hasCoord(T.lat, T.lon) ? ' Координаты: ' + coordText(T.lat, T.lon) + (T.acc > 0 ? ' (точность ±' + Math.round(T.acc) + ' м)' : '') + '.' : '');
+  if (a && a.value !== T.address) a.value = T.address;
+}
+async function geoLocate(T, paint) {
+  if (T.geoBusy) return;
+  const gen = T.gen;   // черновик могли сбросить («Отмена», создание проекта): тогда запоздалый ответ ему не принадлежит
+  T.geoBusy = true; T.geoMsg = 'Определяем место…'; paint();
+  const typed = T.address;
+  try {
+    const c = await phGeo();
+    if (T.gen !== gen) return;
+    T.lat = c.latitude; T.lon = c.longitude; T.acc = c.accuracy;
+    T.geoMsg = 'Место определено, ищем адрес…'; paint();
+    let addr = ''; try { addr = await phReverse(T.lat, T.lon); } catch (e) {}
+    if (T.gen !== gen) return;
+    if (addr && T.address !== typed) T.geoMsg = 'Адрес найден, но вы уже вписали свой, он оставлен: ' + addr;
+    else if (addr) { T.address = addr; T.geoMsg = 'Адрес найден: проверьте и поправьте, если нужно.'; }
+    else T.geoMsg = 'Место определено, но адрес найти не удалось (нет сети или сервис не ответил). Впишите адрес вручную.';
+  } catch (e) { if (T.gen !== gen) return; T.geoMsg = geoErrText(e); }
+  T.geoBusy = false; paint();
+}
+const phPaintGeo = () => geoPaint(PH, 'phGeo', 'phAddr', 'photo');
+async function phLocate() { await geoLocate(PH, phPaintGeo); phRestamp(); }
+async function phDecode(file) {
+  let src = null, url = '';
+  try { src = await createImageBitmap(file, {imageOrientation: 'from-image'}); }
+  catch (e) { try { src = await createImageBitmap(file); } catch (e2) { src = null; } }
+  if (!src) {
+    url = URL.createObjectURL(file);
+    try { src = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('img')); im.src = url; }); }
+    finally { URL.revokeObjectURL(url); }
+  }
+  const sw = src.width || src.naturalWidth, sh = src.height || src.naturalHeight;
+  if (!sw || !sh) throw new Error('size');
+  const k = Math.min(1, PH_MAX / Math.max(sw, sh)), c = document.createElement('canvas');
+  c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+  if (src.close) src.close();
+  return c;
+}
+let phTok = 0;
+// Снимок с подписью по текущему адресу и дате
+const phMakeBlob = () => new Promise(res => phStamp(PH.base, stampLines(PH.address, PH.lat, PH.lon, PH.ts)).toBlob(b => res(b), 'image/jpeg', 0.85));
+function phRestamp() {
+  if (!PH.base) return;
+  const tok = ++phTok;
+  phMakeBlob().then(b => {
+    if (tok !== phTok || !b) return;
+    PH.blob = b; if (PH.prevUrl) URL.revokeObjectURL(PH.prevUrl);
+    PH.prevUrl = URL.createObjectURL(b); phPaintPrev();
+  });
+}
+async function phPick(file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type)) { toast('Нужен файл-картинка'); return; }
+  if (file.size > PH_FILE_LIMIT) { toast('Фото слишком большое: больше 30 МБ'); return; }
+  voiceStop(); PH.busy = true; PH.pick = false; phPaintPrev();
+  try { PH.base = await phDecode(file); PH.ts = Date.now(); PH.note = ''; const nt = document.getElementById('phNote'); if (nt) nt.value = ''; }
+  catch (e) { PH.busy = false; phPaintPrev(); toast('Не получилось открыть это фото. Попробуйте формат JPEG или PNG'); return; }
+  PH.busy = false; phRestamp();
+  if (!hasCoord(PH.lat, PH.lon) && !PH.geoBusy) phLocate();
+}
+function phDrop() {
+  voiceStop(); phTok++; PH.base = null; PH.blob = null; PH.pick = false; PH.note = '';
+  const nt = document.getElementById('phNote'); if (nt) nt.value = '';
+  if (PH.prevUrl) { URL.revokeObjectURL(PH.prevUrl); PH.prevUrl = ''; }
+  phPaintPrev();
+}
+function phPaintPrev() {
+  const p = document.getElementById('phPrev'), a = document.getElementById('phAct');
+  if (S.tab !== 'photo' || !p || !a) return;
+  const nb = document.getElementById('phNoteBox'); if (nb) nb.classList.toggle('hide', !PH.blob || PH.busy);
+  if (PH.busy) { p.innerHTML = '<p class="small muted" style="margin:12px 0 0">Обрабатываем фото…</p>'; a.innerHTML = ''; return; }
+  if (!PH.blob) { p.innerHTML = '<p class="small muted" style="margin:12px 0 0">Снимите объект или выберите фото из галереи: адрес и дата впишутся прямо в снимок.</p>'; a.innerHTML = ''; return; }
+  p.innerHTML = '<img class="ph-big" alt="Снимок с адресом и датой" src="' + PH.prevUrl + '">';
+  a.innerHTML = '<div class="ph-act"><button class="btn pri block" data-a="ph-new">Создать новый проект</button>' +
+    '<button class="btn block" data-a="ph-pick" aria-expanded="' + PH.pick + '">Добавить в проект</button>' +
+    (PH.pick ? '<div class="card hlist" style="margin:0">' + (S.deals.length ? S.deals.map(d => '<button data-a="ph-add" data-id="' + esc(d.id) + '"><span>' + esc(d.name || 'Без названия') + '</span><i>›</i></button>').join('') : '<p class="small muted" style="margin:10px 0">Проектов пока нет. Создайте новый.</p>') + '</div>' : '') +
+    '<button class="btn block" data-a="ph-save">Сохранить без проекта</button>' +
+    '<button class="btn danger block" data-a="ph-drop">Отменить снимок</button></div>';
+}
+let phSaving = false;
+async function phCommit(dealId, makeNew) {
+  if (phSaving) return;
+  voiceStop(); await voiceFlush();
+  if (!PH.blob || !PH.base) { toast('Сначала снимите или выберите фото'); return; }
+  let deal = null;
+  if (dealId) { deal = S.deals.find(x => x.id === dealId); if (!deal) { toast('Этот проект не найден'); return; } }
+  phSaving = true;
+  try {
+    // Подпись пересобираем сейчас: адрес могли поправить за мгновение до нажатия, а предпросмотр ещё не успел обновиться
+    const addr = String(PH.address || '').trim(), blob = await phMakeBlob();
+    if (!blob) { toast('Не получилось подготовить снимок'); return; }
+    await phCommitSave(dealId, makeNew, deal, addr, blob);
+  } finally { phSaving = false; }
+}
+async function phCommitSave(dealId, makeNew, deal, addr, blob) {
+  const rec = {id: uid(), ts: PH.ts || Date.now(), lat: hasCoord(PH.lat, PH.lon) ? PH.lat : null, lon: hasCoord(PH.lat, PH.lon) ? PH.lon : null, address: addr, note: String(PH.note || '').trim().slice(0, 2000), dealId: makeNew ? uid() : (dealId || ''), blob};
+  try { await phTx('readwrite', s => s.put(rec)); }
+  catch (e) { toast('Фото не сохранилось: хранилище браузера недоступно или заполнено'); return; }
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  // Проект создаём только после того, как фото записано: иначе при сбое остался бы пустой проект
+  if (makeNew) { deal = newDeal(addr || 'Новый объект', null); deal.id = rec.dealId; deal.address = addr; save(); }
+  phDrop();
+  toast(deal ? 'Фото сохранено в проект «' + (deal.name || 'Без названия') + '»' : 'Фото сохранено');
+  phReload();
+}
+async function phReload() {
+  try { PH.list = (await phTx('readonly', s => s.getAll())) || []; PH.listErr = ''; }
+  catch (e) { PH.list = []; PH.listErr = 'Хранилище фото недоступно в этом браузере (например, в приватном режиме). Снимки не сохранятся.'; }
+  PH.loaded = true; phPaintList();
+}
+function phPaintList() {
+  const el = document.getElementById('phList');
+  if (S.tab !== 'photo' || !el) return;
+  PH.thumbs.forEach(u => URL.revokeObjectURL(u)); PH.thumbs = [];
+  if (PH.listErr) { el.innerHTML = '<p class="small muted" style="margin:0">' + esc(PH.listErr) + '</p>'; return; }
+  if (!PH.loaded) { el.innerHTML = '<p class="small muted" style="margin:0">Загружаем…</p>'; return; }
+  const all = PH.list.filter(p => p && isBlob(p.blob) && typeof p.id === 'string').sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  const items = all.filter(p => photoMatches(p, PH.q, phDealName(p.dealId)));
+  if (!all.length) { el.innerHTML = '<p class="small muted" style="margin:0">Фото пока нет. Первый снимок появится здесь.</p>'; return; }
+  if (!items.length) { el.innerHTML = '<p class="small muted" style="margin:0">По запросу ничего не найдено.</p>'; return; }
+  el.innerHTML = '<div class="ph-grid">' + items.slice(0, PH_SHOW).map(p => {
+    const u = URL.createObjectURL(p.blob), dn = phDealName(p.dealId); PH.thumbs.push(u);
+    return '<button class="ph-it" data-a="ph-open" data-id="' + esc(p.id) + '"><img alt="" loading="lazy" src="' + u + '"><b>' + esc(p.address || 'Без адреса') + '</b><span>' + esc(fmtDT(p.ts)) + (dn ? ' · ' + esc(dn) : '') + '</span>' + (p.note ? '<span class="ph-note">' + esc(String(p.note).slice(0, 70)) + (String(p.note).length > 70 ? '…' : '') + '</span>' : '') + '</button>';
+  }).join('') + '</div>' + (items.length > PH_SHOW ? '<p class="small muted" style="margin:10px 0 0">Показаны последние ' + PH_SHOW + ' из ' + items.length + '. Уточните поиск.</p>' : '');
+}
+let pvUrl = '', pvId = '';
+function closePView() { const el = $('#pview'); if (el && el.classList.contains('on')) voiceStop(); if (pvUrl) { URL.revokeObjectURL(pvUrl); pvUrl = ''; } if (el) { el.classList.remove('on'); el.innerHTML = ''; } }
+function phOpen(id) {
+  const p = PH.list.find(x => x && x.id === id), el = $('#pview');
+  if (!p || !isBlob(p.blob) || !el) return;
+  closePView(); pvUrl = URL.createObjectURL(p.blob); pvId = p.id;
+  const dn = phDealName(p.dealId), map = hasCoord(p.lat, p.lon) ? 'https://yandex.ru/maps/?pt=' + p.lon.toFixed(6) + ',' + p.lat.toFixed(6) + '&z=17&l=map' : '';
+  el.innerHTML = '<div class="pv-box"><img src="' + pvUrl + '" alt="Фото объекта"><p style="margin:12px 0 4px"><b>' + esc(p.address || 'Без адреса') + '</b></p><p class="small muted" style="margin:0 0 12px">' + esc(fmtDT(p.ts)) + (dn ? ' · проект «' + esc(dn) + '»' : '') + '</p>' +
+    '<label class="f" style="margin-bottom:8px"><span style="color:#C9CED6">Отметки</span><textarea id="pvNote" rows="3" maxlength="2000" placeholder="Что на фото, замечания">' + esc(p.note || '') + '</textarea></label>' +
+    '<div class="row" style="margin-bottom:6px"><button type="button" class="btn" data-a="pv-voice" aria-pressed="false">' + ICO.mic + '<span>Диктовать</span></button><button type="button" class="btn pri" data-a="ph-note-save" data-id="' + esc(p.id) + '">Сохранить отметки</button></div>' +
+    '<p class="small muted" id="pvSt" role="status" style="margin:0 0 12px"></p>' +
+    '<div class="row">' + (map ? '<a class="btn" href="' + map + '" target="_blank" rel="noopener">Открыть на карте</a>' : '') +
+    '<button class="btn danger" data-a="ph-del" data-id="' + esc(p.id) + '">Удалить</button><button class="btn pri" data-a="ph-close">Закрыть</button></div></div>';
+  el.classList.add('on');
+}
+// Закрытие окна по кнопке, фону или Esc: если отметки изменены и не сохранены — спрашиваем
+function pvTryClose() {
+  const el = $('#pview'); if (!el || !el.classList.contains('on')) return;
+  const p = PH.list.find(x => x && x.id === pvId), t = $('#pvNote');
+  if (p && t && t.value.trim() !== String(p.note || '').trim() && !confirm('Отметки не сохранены. Закрыть без сохранения?')) return;
+  closePView();
+}
+async function phNoteSave(id) {
+  const p = PH.list.find(x => x && x.id === id), t = $('#pvNote');
+  if (!p || !t) return;
+  voiceStop(); await voiceFlush();
+  const old = p.note || '', note = t.value.trim().slice(0, 2000);
+  p.note = note;
+  try { await phTx('readwrite', s => s.put(p)); }
+  catch (e) { p.note = old; toast('Не получилось сохранить отметки'); return; }
+  toast(note ? 'Отметки сохранены' : 'Отметки очищены'); phPaintList();
+}
+async function phDelete(id) {
+  if (!confirm('Удалить это фото? Вернуть его будет нельзя.')) return;
+  try { await phTx('readwrite', s => s.delete(id)); } catch (e) { toast('Не получилось удалить фото'); return; }
+  closePView(); toast('Фото удалено'); phReload();
+}
+function renderPhoto() {
+  $('#view').innerHTML =
+    '<div class="card"><h3>Где вы</h3><button class="btn pri block" data-a="ph-geo">' + ICO.pin + 'Геолокация</button>' +
+    '<p class="small muted" id="phGeo" role="status" style="margin:10px 0 0"></p>' +
+    '<label class="f" style="margin-top:10px"><span>Адрес</span><input type="text" id="phAddr" data-ph="addr" maxlength="200" autocomplete="off" placeholder="Город, улица, дом" value="' + esc(PH.address) + '"></label>' +
+    '<p class="small muted" style="margin:8px 0 0">Адрес вписывается в фото и помогает потом его искать. Чтобы найти адрес, координаты отправляются в сервис OpenStreetMap.</p></div>' +
+    '<div class="card"><h3>Фото</h3><div class="row"><label class="btn pri fbtn">' + ICO.cam + 'Снять фото<input type="file" accept="image/*" capture="environment" data-ph="file" aria-label="Снять фото"></label>' +
+    '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" data-ph="file" aria-label="Выбрать фото из галереи"></label></div>' +
+    '<div id="phPrev"></div>' +
+    '<div id="phNoteBox" class="hide" style="margin-top:12px"><label class="f"><span>Отметки к фото</span><textarea id="phNote" data-ph="note" rows="3" maxlength="2000" placeholder="Что на фото: состояние, замечания, что сделать">' + esc(PH.note) + '</textarea></label>' +
+    '<button type="button" class="btn block" data-a="voice-note" aria-pressed="false" style="margin-top:8px">' + ICO.mic + '<span>Диктовать</span></button>' +
+    '<p class="small muted" id="phNoteSt" role="status" style="margin:8px 0 0"></p>' +
+    '<p class="small muted" style="margin:4px 0 0">Голос распознаёт браузер; в Chrome звук обрабатывают серверы Google.</p></div>' +
+    '<div id="phAct"></div></div>' +
+    '<h3 class="hh">Мои фото</h3><div class="card"><label class="f"><span>Поиск по адресу, отметкам, дате или проекту</span><input type="text" enterkeyhint="search" data-ph="q" autocomplete="off" value="' + esc(PH.q) + '" placeholder="Например: Арбат"></label><div id="phList" style="margin-top:12px"></div></div>';
+  phPaintGeo(); phPaintPrev(); phPaintList(); phReload();
+}
+
+/* ===== Бланк нового объекта =====
+   Открывается по «Новый проект»: название, адрес с геолокацией и фото. Проект и фото создаются кнопкой «Создать проект». */
+const NB_MAX = 8;
+const NB = {name: '', address: '', lat: null, lon: null, acc: null, geoMsg: '', geoBusy: false, photos: [], busy: false, creating: false, gen: 0};
+const newObjName = (name, address) => String(name || '').trim() || String(address || '').trim() || 'Новый объект';
+function nbReset() { NB.gen++; NB.name = ''; NB.address = ''; NB.lat = NB.lon = NB.acc = null; NB.geoMsg = ''; NB.geoBusy = false; NB.photos = []; NB.busy = false; }
+const nbPaintGeo = () => geoPaint(NB, 'nbGeo', 'nbAddr', 'newobj');
+function nbPaintPhotos() {
+  const el = document.getElementById('nbPhotos');
+  if (S.tab !== 'newobj' || !el) return;
+  el.innerHTML = (NB.busy ? '<p class="small muted" style="margin:12px 0 0">Обрабатываем фото…</p>' : '') +
+    (NB.photos.length ? '<div class="ph-grid" style="margin-top:12px">' + NB.photos.map((p, i) =>
+      '<div class="nb-ph"><img alt="Фото ' + (i + 1) + '" src="' + p.thumb + '"><button type="button" class="nb-x" data-a="nb-del" data-id="' + esc(p.id) + '" aria-label="Убрать фото ' + (i + 1) + '">✕</button></div>').join('') + '</div>' +
+      '<p class="small muted" style="margin:8px 0 0">Фото: ' + NB.photos.length + ' из ' + NB_MAX + '</p>' : '');
+}
+// Файлы обрабатываем по очереди (иначе счётчик и лимит расходятся); если черновик сбросили, остаток очереди отбрасывается
+let nbQ = Promise.resolve();
+function nbPick(files) { const gen = NB.gen; nbQ = nbQ.then(() => nbPickRun(files, gen)).catch(() => {}); return nbQ; }
+async function nbPickRun(files, gen) {
+  for (const f of files) {
+    if (NB.gen !== gen) return;
+    if (NB.photos.length >= NB_MAX) { toast('В бланке не больше ' + NB_MAX + ' фото. Остальные добавите в проекте'); break; }
+    if (!/^image\//.test(f.type)) { toast('Нужен файл-картинка'); continue; }
+    if (f.size > PH_FILE_LIMIT) { toast('Фото слишком большое: больше 30 МБ'); continue; }
+    NB.busy = true; nbPaintPhotos();
+    try {
+      const base = await phDecode(f);
+      if (NB.gen !== gen) return;
+      const t = document.createElement('canvas'), k = Math.min(1, 320 / Math.max(base.width, base.height));
+      t.width = Math.round(base.width * k); t.height = Math.round(base.height * k); t.getContext('2d').drawImage(base, 0, 0, t.width, t.height);
+      NB.photos.push({id: uid(), base, ts: Date.now(), thumb: t.toDataURL('image/jpeg', 0.7)});
+    } catch (e) { if (NB.gen !== gen) return; toast('Не получилось открыть это фото. Попробуйте формат JPEG или PNG'); }
+    NB.busy = false; nbPaintPhotos();
+  }
+  if (NB.gen === gen && NB.photos.length && !hasCoord(NB.lat, NB.lon) && !NB.geoBusy) geoLocate(NB, nbPaintGeo);
+}
+// После создания открываем проект так, чтобы «назад» вёл в список сделок, а не в пустой бланк
+function nbOpenDeal(id) {
+  const st = {tab: 'deals', deal: id, rayon: null, from: null};
+  if (navDepth === 1) { navWrite('replaceState', navRoot('deals'), navDepth); navShow(navRoot('deals'), 'anim-right'); openDealView(id); }
+  else { navWrite('replaceState', st, navDepth); navShow(st, 'anim-right'); }
+}
+async function nbCreate() {
+  if (NB.creating) return;
+  if (NB.busy) { toast('Подождите: фото ещё обрабатываются'); return; }
+  NB.creating = true;
+  try {
+    const addr = NB.address.trim(), name = newObjName(NB.name, addr), dealId = uid(), recs = [];
+    for (const p of NB.photos) {
+      // Подпись собираем сейчас: адрес могли вписать или поправить уже после съёмки
+      const blob = await new Promise(res => phStamp(p.base, stampLines(addr, NB.lat, NB.lon, p.ts)).toBlob(b => res(b), 'image/jpeg', 0.85));
+      if (!blob) { toast('Не получилось подготовить снимок'); return; }
+      recs.push({id: uid(), ts: p.ts, lat: hasCoord(NB.lat, NB.lon) ? NB.lat : null, lon: hasCoord(NB.lat, NB.lon) ? NB.lon : null, address: addr, note: '', dealId, blob});
+    }
+    if (recs.length) {
+      try { await phTx('readwrite', st => { recs.forEach(r => st.put(r)); }); }
+      catch (e) { toast('Фото не сохранились: хранилище браузера недоступно или заполнено. Проект не создан'); return; }
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+    }
+    // Проект создаём только после записи фото: при сбое не остаётся проекта без снимков
+    const nd = newDeal(name, null); nd.id = dealId; nd.address = addr; save();
+    const n = recs.length;
+    const here = S.tab === 'newobj';
+    nbReset();
+    toast('Проект создан' + (n ? ', фото: ' + n : ''));
+    if (here) nbOpenDeal(dealId);
+    if (n) phReload();
+  } finally { NB.creating = false; }
+}
+function renderNewObj() {
+  $('#view').innerHTML =
+    '<div class="card"><h3>Данные объекта</h3>' +
+    '<label class="f"><span>Название</span><input type="text" data-nb="name" maxlength="80" autocomplete="off" placeholder="Например: однушка на Арбате" value="' + esc(NB.name) + '"></label>' +
+    '<p class="small muted" style="margin:6px 0 12px">Если название не писать, проект назовётся по адресу.</p>' +
+    '<button class="btn pri block" data-a="nb-geo">' + ICO.pin + 'Геолокация</button>' +
+    '<p class="small muted" id="nbGeo" role="status" style="margin:10px 0 0"></p>' +
+    '<label class="f" style="margin-top:10px"><span>Адрес</span><input type="text" id="nbAddr" data-nb="addr" maxlength="200" autocomplete="off" placeholder="Город, улица, дом" value="' + esc(NB.address) + '"></label>' +
+    '<p class="small muted" style="margin:8px 0 0">Чтобы найти адрес, координаты отправляются в сервис OpenStreetMap.</p></div>' +
+    '<div class="card"><h3>Фото объекта</h3><div class="row"><label class="btn pri fbtn">' + ICO.cam + 'Снять фото<input type="file" accept="image/*" capture="environment" data-nb="file" aria-label="Снять фото"></label>' +
+    '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" multiple data-nb="file" aria-label="Выбрать фото из галереи"></label></div>' +
+    '<div id="nbPhotos"></div><p class="small muted" style="margin:10px 0 0">Адрес и дата вписываются в каждый снимок при создании проекта. До ' + NB_MAX + ' фото.</p></div>' +
+    '<button class="btn pri block" data-a="nb-create">Создать проект</button>' +
+    '<button class="btn block" data-a="nb-cancel" style="margin-top:8px">Отмена</button>';
+  nbPaintGeo(); nbPaintPhotos();
+}
+
 /* ===== Навигация ===== */
-const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки'};
+const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', photo: 'Фото объекта', newobj: 'Новый объект'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
 function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
@@ -1964,19 +2443,22 @@ function animate(cls) {
   const v = $('#view'); v.classList.remove('anim-up', 'anim-right', 'anim-left'); void v.offsetWidth; v.classList.add(cls);
 }
 function go(tab, cls, y) {
+  voiceStop();
   S.tab = tab; save();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
-  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy})[tab]();
+  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, photo: renderPhoto, newobj: renderNewObj})[tab]();
   // «Смета» и «Торги» открываются с главной: у них своя кнопка «назад»
   if (tab === 'smeta' || tab === 'torgi') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'kursy') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
+  if (tab === 'photo') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
+  if (tab === 'newobj') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   window.scrollTo(0, y || 0); animate(cls || 'anim-up'); onScroll();
 }
 /* ===== История: системная кнопка «назад», кнопка «‹» и свайп идут одним путём =====
    Стопка: «Главная» (глубина 0) → другая вкладка (1) → экраны вглубь (2, 3…).
    Вкладки записи не копят: со вкладки «назад» ведёт на «Главную», а из неё — выход из приложения. */
-const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy'];
+const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'photo', 'newobj'];
 let navDepth = 0;       // глубина текущего экрана в стопке
 let navPending = null;  // вкладка, которую запишем, когда история вернётся к началу стопки
 const navRoot = tab => ({tab, deal: null, rayon: null, from: null});
@@ -2003,7 +2485,7 @@ function navWrite(method, st, depth) {
   try { window.history[method](Object.assign({nav: 1}, st, {depth, y: st.y || 0}), ''); } catch (e) {}
 }
 function navShow(st, cls, y) {
-  closeReport(); closeSheet();
+  closeReport(); closeSheet(); closePView();
   openDeal = st.deal; rayonView = st.rayon; rayonFrom = st.from;
   go(st.tab, cls, y);
 }
@@ -2072,7 +2554,7 @@ function closeDeal() { navBack(); }
 let swipe = null;
 document.addEventListener('touchstart', e => {
   const p = e.touches[0];
-  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'photo' || S.tab === 'newobj') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
 }, {passive: true});
 document.addEventListener('touchend', e => {
   if (!swipe) return;
@@ -2232,6 +2714,15 @@ view.addEventListener('click', e => {
   switch (a) {
     case 'term': openSheet(b.dataset.t); break;
     case 'home-gloss': openGlossary(); break;
+    case 'soon': toast('Голосовой помощник появится в следующем обновлении'); break;
+    case 'ph-geo': phLocate(); break;
+    case 'ph-pick': PH.pick = !PH.pick; phPaintPrev(); break;
+    case 'ph-add': phCommit(b.dataset.id, false); break;
+    case 'ph-new': phCommit('', true); break;
+    case 'ph-save': phCommit('', false); break;
+    case 'ph-drop': phDrop(); break;
+    case 'ph-open': phOpen(b.dataset.id); break;
+    case 'voice-note': voiceToggle($('#phNote'), b, $('#phNoteSt')); break;
     case 'demo-open': { const dd = demoDeal(); if (S.tab === 'home') navTab('deals'); openDealView(dd.id); break; }
     case 'home-repair': { navTab('calc'); const rp = $('#rpBox'); if (rp) rp.scrollIntoView({block: 'start'}); break; }
     case 'repair-preset': {
@@ -2339,11 +2830,15 @@ view.addEventListener('click', e => {
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
       break;
     case 'go-tab': if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
-    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy') navPush(navRoot(b.dataset.v), 'anim-right'); break;
+    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo') navPush(navRoot(b.dataset.v), 'anim-right'); break;
     case 'home-parse': { navTab('calc'); const pb = $('#parseBox'); if (pb) { pb.open = true; pb.scrollIntoView({block: 'center'}); } break; }
     case 'home-rayony': navTab('ref'); navPush({tab: 'ref', deal: null, rayon: 'list', from: null}); break;
     case 'home-tax': { navTab('ref'); const dt = [...document.querySelectorAll('#view details')].find(x => /^Налог при продаже/.test(x.textContent.trim())); if (dt) { dt.open = true; dt.scrollIntoView({block: 'start'}); } break; }
-    case 'deal-new': { if (S.tab === 'home') navTab('deals'); const nd = newDeal('Новая сделка', null); openDealView(nd.id); break; }
+    case 'deal-new': navPush(navRoot('newobj'), 'anim-right'); break;
+    case 'nb-geo': geoLocate(NB, nbPaintGeo); break;
+    case 'nb-del': NB.photos = NB.photos.filter(x => x.id !== b.dataset.id); nbPaintPhotos(); break;
+    case 'nb-create': nbCreate(); break;
+    case 'nb-cancel': nbReset(); navBack(); break;
     case 'deal-open': if (S.tab === 'home') navTab('deals'); openDealView(b.dataset.id); break;
     case 'deal-close': closeDeal(); break;
     case 'deal-share': if (d) shareDeal(d); break;
@@ -2429,6 +2924,30 @@ $('#install').addEventListener('click', e => {
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; showInstall(); });
 setTimeout(showInstall, 1500);
 
+/* Фото: ввод адреса и поиска, выбор файла, окно просмотра */
+view.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.ph === 'addr') PH.address = t.value.slice(0, 200);
+  else if (t.dataset.ph === 'note') PH.note = t.value.slice(0, 2000);
+  else if (t.dataset.nb === 'name') NB.name = t.value.slice(0, 80);
+  else if (t.dataset.nb === 'addr') NB.address = t.value.slice(0, 200);
+  else if (t.dataset.ph === 'q') { PH.q = t.value.slice(0, 100); phPaintList(); }
+});
+view.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.ph === 'addr') phRestamp();
+  else if (t.dataset.ph === 'file') { const f = t.files && t.files[0]; t.value = ''; phPick(f); }
+  else if (t.dataset.nb === 'file') { const fs = t.files ? Array.from(t.files) : []; t.value = ''; nbPick(fs); }
+});
+$('#pview').addEventListener('click', e => {
+  const b = e.target.closest('[data-a]');
+  if (b && b.dataset.a === 'ph-close') pvTryClose();
+  else if (b && b.dataset.a === 'ph-del') phDelete(b.dataset.id);
+  else if (b && b.dataset.a === 'pv-voice') voiceToggle($('#pvNote'), b, $('#pvSt'));
+  else if (b && b.dataset.a === 'ph-note-save') phNoteSave(b.dataset.id);
+  else if (e.target.id === 'pview') pvTryClose();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') pvTryClose(); });
 navInit();
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});

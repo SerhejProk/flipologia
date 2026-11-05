@@ -523,7 +523,7 @@ vm.runInContext(`
   ctx.check('сохранение: расчёт не пишется в память', !('calc' in saved) && !('calcDeal' in saved) && saved.deals.length === 1, Object.keys(saved));
   const q = vm.runInContext('(function(){const a = analyse(S.calc); return heroNumbers(S.calc, a.base).net;})()', ctx3);
   ctx.check('пустой расчёт: прибыль — прочерк, не ложное число', q === '—', q);
-  ctx.check('главная: заголовок «Экспресс-оценка покупки»', /Экспресс-оценка покупки/.test(html) && !/<h3>Быстрая оценка<\/h3>/.test(html));
+  ctx.check('главная: заголовок «Экспресс-расчёт»', /<h3>Экспресс-расчёт<\/h3>/.test(html) && !/<h3>Экспресс-оценка покупки<\/h3>/.test(html) && !/<h3>Быстрая оценка<\/h3>/.test(html));
 }
 
 
@@ -673,5 +673,220 @@ vm.runInContext(`
 }
 `, ctx);
 
-console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
-process.exit(fail ? 1 : 0);
+/* --- Главная как дашборд: порядок блоков, ставки, курсы, заглушки --- */
+{
+  const mk = seed => {
+    const mem = new Map(); if (seed) mem.set('flipologia-v1', JSON.stringify(seed));
+    const wrap = o => new Proxy(o, {get: (t, k) => k in t ? t[k] : fake, set: (t, k, v) => (t[k] = v, true)}), view = wrap({innerHTML: ''}), toastEl = wrap({textContent: ''});
+    const doc = {querySelector: s => s === '#view' ? view : s === '#toast' ? toastEl : fake, querySelectorAll: () => [], getElementById: () => null, addEventListener() {}, documentElement: fake, body: fake};
+    const c = vm.createContext({document: doc, window: fake, navigator: {}, location: {protocol: 'file:'},
+      localStorage: {getItem: k => mem.has(k) ? mem.get(k) : null, setItem: (k, v) => mem.set(k, String(v))},
+      setTimeout: () => 0, clearTimeout: () => {}, confirm: () => true, Intl, console});
+    vm.runInContext(fs.readFileSync(rayonyFile, 'utf8'), c);
+    vm.runInContext(code, c);
+    return {c, view, toastEl};
+  };
+  const { c, view } = mk({deals: [{id: 'a1', name: 'Однушка', stage: 'Ремонт', expenses: [], works: null}]});
+  vm.runInContext("S.tab = 'home'; renderHome();", c);
+  const h = view.innerHTML;
+  const order = ['Сделать фото', 'Мои проекты', 'Экспресс-расчёт', 'Справочники', 'Календарь', 'Ключевая ставка ЦБ', 'Ставка рефинансирования', 'Ставки и курсы', 'Калькуляторы', 'Новости', 'Голосовой помощник'];
+  const idx = order.map(t => h.indexOf(t));
+  ctx.check('дашборд: все блоки на месте', idx.every(i => i >= 0), order.filter((t, i) => idx[i] < 0));
+  const want = ['Сделать фото', 'Мои проекты', 'Экспресс-расчёт', 'Справочники', 'Календарь', 'Ставки и курсы', 'Калькуляторы', 'Новости', 'Голосовой помощник'].map(t => h.indexOf(t));
+  ctx.check('дашборд: порядок блоков как в задаче', want.every((v, i) => i === 0 || v > want[i - 1]), want);
+  ctx.check('дашборд: «Новый проект» рядом с «Мои проекты»', /Мои проекты[\s\S]*\+ Новый проект[\s\S]*Экспресс-расчёт/.test(h));
+  ctx.check('дашборд: фото первой кнопкой, голос последней', h.indexOf('data-v="photo"') < h.indexOf('Мои проекты') && h.lastIndexOf('<button') === h.lastIndexOf('data-a="soon" data-v="voice"') - '<button class="bigbtn voice" '.length);
+  ctx.check('дашборд: ключевая ставка равна ставке рефинансирования', (() => { const m = h.match(/Ключевая ставка ЦБ<\/span><b>([^<]+)<\/b>[\s\S]*?Ставка рефинансирования<\/span><b>([^<]+)<\/b>/); return !!m && m[1] === m[2] && /%/.test(m[1]); })(), h.match(/Ключевая ставка ЦБ<\/span><b>[^<]*/));
+  ctx.check('дашборд: без курсов — подсказка, а не пустота', /homeRates">[^]*?(Загружаем|загрузятся|не загрузились)/.test(h));
+  vm.runInContext("S.kursy.cache = {date: '2026-11-05', ts: Date.now(), r: {USD: {v: 90.5, p: 90}, EUR: {v: 100, p: 99}, CNY: {v: 12.5, p: 12.4}}}; renderHome();", c);
+  const h2 = view.innerHTML;
+  ctx.check('дашборд: курсы USD/EUR/CNY показаны с датой', /Курс ЦБ РФ на 05\.11\.2026/.test(h2) && /90,50 ₽/.test(h2) && /100,00 ₽/.test(h2) && /12,50 ₽/.test(h2), h2.match(/homeRates">[^]*?<button/));
+  vm.runInContext("S.kursy.cache = {date: '2026-11-05', ts: Date.now(), r: {USD: null, EUR: {v: NaN, p: 1}}}; renderHome();", c);
+  ctx.check('дашборд: битый кэш курсов не роняет главную', view.innerHTML.includes('Голосовой помощник'));
+  vm.runInContext("S.deals = []; renderHome();", c);
+  ctx.check('дашборд: без проектов — подсказка и «Пример проекта»', /Проектов пока нет/.test(view.innerHTML) && /Пример проекта/.test(view.innerHTML));
+  vm.runInContext("S.deals = [{id: 'x', name: '<img src=x onerror=1>', stage: 'Поиск', expenses: [], works: null}]; renderHome();", c);
+  ctx.check('дашборд: название проекта экранировано', !view.innerHTML.includes('<img src=x') && view.innerHTML.includes('&lt;img'));
+  ctx.check('дашборд: заглушка осталась только у голоса, календарь «скоро»', (view.innerHTML.match(/data-a="soon"/g) || []).length === 1 && /Календарь[\s\S]*скоро/.test(view.innerHTML));
+  ctx.check('дашборд: «Сделать фото» ведёт в раздел фото', /data-a="home-push" data-v="photo"/.test(view.innerHTML));
+}
+
+/* --- Фото объекта: адрес, подпись, поиск, ошибки --- */
+ctx.check('фото: CSP разрешает blob-картинки и сервис адресов, и не больше', /img-src 'self' data: blob:;/.test(html) && /connect-src 'self' https:\/\/www\.cbr-xml-daily\.ru https:\/\/nominatim\.openstreetmap\.org;/.test(html) && !/default-src \*/.test(html));
+vm.runInContext(`
+{
+  check('фото: адрес из ответа OSM — город, улица, дом', nomAddress({address: {city: 'Москва', road: 'Новый Арбат', house_number: '22'}}) === 'Москва, Новый Арбат, 22');
+  check('фото: без дома — город и улица', nomAddress({address: {town: 'Видное', road: 'Советская улица'}}) === 'Видное, Советская улица');
+  check('фото: без улицы — первые части полного названия', nomAddress({address: {}, display_name: 'Кремль, Боровицкая, 39, Тверской район, Москва'}) === 'Кремль, Боровицкая, 39');
+  check('фото: мусор вместо ответа — пустой адрес', nomAddress(null) === '' && nomAddress('x') === '' && nomAddress({address: 5}) === '' && nomAddress({address: {road: 7, city: {}}}) === '');
+  check('фото: длинный адрес обрезается до 200', nomAddress({address: {road: 'а'.repeat(500)}}).length === 200);
+  check('фото: координаты — только настоящие числа в пределах', hasCoord(55.7, 37.6) && !hasCoord(NaN, 1) && !hasCoord(91, 0) && !hasCoord(0, 181) && !hasCoord('55', '37') && !hasCoord(null, null));
+  check('фото: текст координат', coordText(55.75222, 37.61556) === '55.75222, 37.61556' && coordText(null, 1) === '');
+  const ts = new Date(2026, 10, 5, 9, 7).getTime();
+  check('фото: дата с нулями', fmtDT(ts) === '05.11.2026 09:07' && fmtDT(NaN) === '');
+  const l1 = stampLines('Москва, Арбат, 22', 55.75, 37.6, ts);
+  check('фото: в подписи адрес, дата и координаты', l1[0] === 'Москва, Арбат, 22' && l1[1].startsWith('05.11.2026 09:07') && l1[1].includes('55.75000, 37.60000'), l1);
+  const l2 = stampLines('', 55.75, 37.6, ts);
+  check('фото: без адреса в подписи координаты', l2[0] === '55.75000, 37.60000' && l2[1] === '05.11.2026 09:07', l2);
+  const l3 = stampLines('  ', null, null, ts);
+  check('фото: без адреса и координат — «Адрес не указан»', l3[0] === 'Адрес не указан', l3);
+  const ctx2 = {measureText: t => ({width: t.length * 10})};
+  check('фото: перенос длинной строки по словам', JSON.stringify(phWrap(ctx2, 'aaaa bbbb cccc', 90)) === JSON.stringify(['aaaa bbbb', 'cccc']));
+  check('фото: очень длинное слово не зацикливает перенос', phWrap(ctx2, 'x'.repeat(100), 50).length === 1);
+  check('фото: не больше 4 строк подписи', phWrap(ctx2, 'a b c d e f g h', 10).length === 4);
+  check('фото: поиск по адресу без учёта регистра и ё', photoMatches({address: 'Москва, Тёплый Стан', ts}, 'теплый', '') && photoMatches({address: 'Арбат', ts}, 'АРБ', ''));
+  check('фото: поиск по проекту и по дате', photoMatches({address: '', ts}, 'однушка', 'Однушка на Арбате') && photoMatches({address: '', ts}, '05.11.2026', ''));
+  check('фото: пустой запрос показывает всё, чужой — ничего', photoMatches({address: 'x', ts}, '', '') && !photoMatches({address: 'Арбат', ts}, 'Тверская', 'Проект'));
+  check('фото: тексты ошибок геолокации', /Нет доступа/.test(geoErrText({code: 1})) && /слишком долго/.test(geoErrText({code: 3})) && /Не удалось определить/.test(geoErrText({code: 2})) && /не даёт определить/.test(geoErrText(new Error('nogeo'))) && geoErrText(null).length > 10);
+  check('фото: раздел зарегистрирован в навигации', NAV_TABS.includes('photo') && TITLES.photo === 'Фото объекта');
+}
+`, ctx);
+{
+  const { c, view } = (() => {
+    const mem = new Map(), wrap = o => new Proxy(o, {get: (t, k) => k in t ? t[k] : fake, set: (t, k, v) => (t[k] = v, true)}), view = wrap({innerHTML: ''});
+    const els = {};
+    const doc = {querySelector: s => s === '#view' ? view : fake, querySelectorAll: () => [], getElementById: id => els[id] || null, addEventListener() {}, documentElement: fake, body: fake};
+    const c = vm.createContext({document: doc, window: fake, navigator: {}, location: {protocol: 'file:'}, localStorage: {getItem: k => mem.has(k) ? mem.get(k) : null, setItem: (k, v) => mem.set(k, String(v))}, setTimeout: () => 0, clearTimeout: () => {}, confirm: () => true, Intl, console});
+    vm.runInContext(fs.readFileSync(rayonyFile, 'utf8'), c); vm.runInContext(code, c);
+    return {c, view};
+  })();
+  vm.runInContext("S.tab = 'photo'; PH.address = '<img src=x onerror=1>'; PH.q = '\"><b>'; renderPhoto();", c);
+  const h = view.innerHTML;
+  ctx.check('фото: страница рисуется, есть геолокация, съёмка, галерея, поиск', /Геолокация/.test(h) && /capture="environment"/.test(h) && /Выбрать из галереи/.test(h) && /Мои фото/.test(h) && /data-ph="q"/.test(h));
+  ctx.check('фото: адрес и запрос поиска экранированы', !h.includes('<img src=x onerror') && !h.includes('"><b>') && h.includes('&lt;img'));
+}
+
+/* --- Голосовой ввод: подставной распознаватель речи --- */
+{
+  const mem = new Map(), toasts = [];
+  class MockSR {
+    constructor() { MockSR.last = this; this.started = false; this.stopped = false; }
+    start() { if (MockSR.failStart) throw new Error('already started'); this.started = true; }
+    stop() { this.stopped = true; }
+  }
+  const mkEl = v => ({value: v || '', events: [], dispatchEvent(e) { this.events.push(e.type); }});
+  const mkBtn = () => { const sp = {textContent: 'Диктовать'}; const cls = new Set(); return {sp, cls, attrs: {}, classList: {toggle: (c, on) => on ? cls.add(c) : cls.delete(c)}, setAttribute(k, v) { this.attrs[k] = v; }, querySelector: () => sp}; };
+  const mk = win => {
+    const toastEl = new Proxy({textContent: ''}, {get: (t, k) => k in t ? t[k] : fake, set: (t, k, v) => (t[k] = v, true)});
+    const doc = {querySelector: s => s === '#toast' ? toastEl : fake, querySelectorAll: () => [], getElementById: () => null, addEventListener() {}, documentElement: fake, body: fake};
+    const c = vm.createContext({document: doc, window: win, navigator: {}, location: {protocol: 'file:'}, localStorage: {getItem: () => null, setItem: () => {}}, setTimeout: () => 0, clearTimeout: () => {}, confirm: () => true, Intl, console, Event: class { constructor(t) { this.type = t; } }});
+    vm.runInContext(fs.readFileSync(rayonyFile, 'utf8'), c); vm.runInContext(code, c);
+    return {c, toastEl};
+  };
+  const res = (list) => ({resultIndex: 0, results: list.map(([t, f]) => Object.assign([{transcript: t}], {isFinal: f}))});
+  const win = props => new Proxy(props, {get: (t, k) => k in t ? t[k] : fake, set: (t, k, v) => (t[k] = v, true)});
+  const {c, toastEl} = mk(win({SpeechRecognition: MockSR, webkitSpeechRecognition: undefined}));
+  c.MockSR = MockSR; c.el = mkEl('Стена'); c.st = {textContent: ''}; c.btn = mkBtn(); c.btn2 = mkBtn();
+  vm.runInContext("voiceToggle(el, btn, st);", c);
+  const r1 = MockSR.last;
+  ctx.check('голос: запись включилась, кнопка «Остановить»', r1.started && r1.lang === 'ru-RU' && r1.continuous === true && r1.interimResults === true && c.btn.sp.textContent === 'Остановить' && c.btn.attrs['aria-pressed'] === 'true' && c.btn.cls.has('rec'));
+  r1.onresult(res([['  в ванной  ', false]]));
+  ctx.check('голос: промежуточный текст только в статусе, не в поле', c.el.value === 'Стена' && c.st.textContent === 'Слышу:   в ванной  ', [c.el.value, c.st.textContent]);
+  r1.onresult(res([['плесень в углу', true]]));
+  ctx.check('голос: итоговый текст добавляется через пробел к имеющемуся', c.el.value === 'Стена плесень в углу' && c.el.events.includes('input'), c.el.value);
+  r1.onresult(res([['нужна обработка', true]]));
+  ctx.check('голос: следующая фраза дописывается дальше', c.el.value === 'Стена плесень в углу нужна обработка', c.el.value);
+  c.el.value = 'я'.repeat(1999);
+  r1.onresult(res([['длинное продолжение', true]]));
+  ctx.check('голос: длина отметок не больше 2000', c.el.value.length === 2000, c.el.value.length);
+  c.el.value = 'Стена';
+  vm.runInContext("voiceToggle(el, btn, st);", c);
+  ctx.check('голос: повторное нажатие останавливает запись', r1.stopped && c.btn.sp.textContent === 'Диктовать' && c.btn.attrs['aria-pressed'] === 'false' && !c.btn.cls.has('rec') && c.st.textContent === '');
+  r1.onresult(res([['последняя фраза', true]]));
+  ctx.check('голос: последняя фраза после остановки, до окончания записи, не теряется', c.el.value === 'Стена последняя фраза' && c.st.textContent === '', [c.el.value, c.st.textContent]);
+  ctx.check('голос: пока ждём окончание записи, это видно во внутреннем состоянии', vm.runInContext('VOICE.closing', c) === r1);
+  r1.onend();
+  const afterEnd = c.el.value; r1.onresult(res([['совсем запоздалая', true]]));
+  ctx.check('голос: после окончания записи слова в поле не попадают', c.el.value === afterEnd && vm.runInContext('VOICE.closing', c) === null, c.el.value);
+  vm.runInContext("voiceToggle(el, btn, st);", c); const r2 = MockSR.last;
+  r2.onerror({error: 'not-allowed'});
+  ctx.check('голос: отказ микрофона — понятное сообщение, кнопка вернулась', /Нет доступа к микрофону/.test(c.st.textContent) && c.btn.sp.textContent === 'Диктовать' && !c.btn.cls.has('rec'), c.st.textContent);
+  vm.runInContext("voiceToggle(el, btn, st);", c); const r3 = MockSR.last;
+  r3.onerror({error: 'no-speech'}); const ns = c.st.textContent;
+  vm.runInContext("voiceToggle(el, btn, st);", c); const r4 = MockSR.last;
+  r4.onerror({error: 'network'}); const nw = c.st.textContent;
+  ctx.check('голос: «речи не слышно» и «нет сети» различаются', /не слышно/.test(ns) && /нужен интернет/.test(nw), [ns, nw]);
+  vm.runInContext("voiceToggle(el, btn, st);", c); const r5 = MockSR.last; r5.onend();
+  ctx.check('голос: браузер сам закончил запись — кнопка вернулась', c.btn.sp.textContent === 'Диктовать' && !c.btn.cls.has('rec'));
+  vm.runInContext("voiceToggle(el, btn, st);", c); const r6 = MockSR.last;
+  vm.runInContext("voiceToggle(el, btn2, st);", c); const r7 = MockSR.last;
+  ctx.check('голос: вторая кнопка выключает первую и включается сама', r6.stopped && r7 !== r6 && r7.started && !c.btn.cls.has('rec'));
+  vm.runInContext("voiceStop();", c); MockSR.failStart = true;
+  vm.runInContext("voiceToggle(el, btn, st);", c);
+  ctx.check('голос: сбой запуска — сообщение и сброс, без падения', /Не удалось включить/.test(c.st.textContent) && c.btn.sp.textContent === 'Диктовать' && vm.runInContext('VOICE.rec', c) === null, c.st.textContent);
+  MockSR.failStart = false;
+  const m2 = mk(win({SpeechRecognition: undefined, webkitSpeechRecognition: undefined}));
+  vm.runInContext("voiceToggle({value: '', dispatchEvent() {}}, null, null);", m2.c);
+  ctx.check('голос: браузер без распознавания речи — подсказка про клавиатуру', /значок микрофона на клавиатуре/.test(m2.toastEl.textContent), m2.toastEl.textContent);
+  ctx.check('голос: тексты ошибок распознавания', voiceErrCheck());
+  function voiceErrCheck() { const f = c2 => vm.runInContext(`voiceErr(${JSON.stringify(c2)})`, c); return f('aborted') === '' && /Микрофон не найден/.test(f('audio-capture')) && f('что-то') === 'Не получилось распознать речь. Попробуйте ещё раз.'; }
+  ctx.check('голос: отметки ищутся поиском по фото', vm.runInContext("photoMatches({address: 'Арбат', note: 'Плесень в ванной', ts: 0}, 'плесень', '') && !photoMatches({address: 'Арбат', ts: 0}, 'плесень', '')", c));
+}
+
+/* --- Бланк нового объекта --- */
+{
+  const mem = new Map(), wrap = o => new Proxy(o, {get: (t, k) => k in t ? t[k] : fake, set: (t, k, v) => (t[k] = v, true)}), view = wrap({innerHTML: ''});
+  const doc = {querySelector: s => s === '#view' ? view : fake, querySelectorAll: () => [], getElementById: () => null, addEventListener() {}, documentElement: fake, body: fake};
+  const c = vm.createContext({document: doc, window: fake, navigator: {}, location: {protocol: 'file:'}, localStorage: {getItem: k => mem.has(k) ? mem.get(k) : null, setItem: (k, v) => mem.set(k, String(v))}, setTimeout: () => 0, clearTimeout: () => {}, confirm: () => true, Intl, console});
+  vm.runInContext(fs.readFileSync(rayonyFile, 'utf8'), c); vm.runInContext(code, c);
+  const run = e => vm.runInContext(e, c);
+  ctx.check('бланк: название — своё, иначе адрес, иначе «Новый объект»', run("newObjName('  Однушка ', 'Арбат') === 'Однушка' && newObjName('', '  Арбат, 5 ') === 'Арбат, 5' && newObjName('  ', '') === 'Новый объект' && newObjName(null, undefined) === 'Новый объект'"));
+  run("S.tab = 'newobj'; NB.name = '\"><img src=x onerror=1>'; NB.address = '<b>адрес</b>'; renderNewObj();");
+  const h = view.innerHTML;
+  ctx.check('бланк: есть название, адрес, геолокация, съёмка, галерея, создание, отмена', /data-nb="name"/.test(h) && /id="nbAddr"/.test(h) && /data-a="nb-geo"/.test(h) && /capture="environment"/.test(h) && /Выбрать из галереи/.test(h) && /data-a="nb-create"/.test(h) && /data-a="nb-cancel"/.test(h), h.slice(0, 120));
+  ctx.check('бланк: введённые название и адрес экранированы', !h.includes('<img src=x') && !h.includes('<b>адрес</b>') && h.includes('&lt;img') && h.includes('&lt;b&gt;'));
+  ctx.check('бланк: раздел зарегистрирован в навигации', run("NAV_TABS.includes('newobj') && TITLES.newobj === 'Новый объект'"));
+  run("nbReset();");
+  ctx.check('бланк: сброс очищает всё', run("NB.name === '' && NB.address === '' && NB.lat === null && NB.photos.length === 0 && NB.geoMsg === ''"));
+  ctx.check('бланк: «Новый проект» больше не создаёт пустой проект сразу', /case 'deal-new': navPush\(navRoot\('newobj'\)/.test(code) && !/newDeal\('Новая сделка'/.test(code));
+  ctx.check('бланк: проект создаётся после записи фото', code.indexOf("await phTx('readwrite', st => { recs.forEach") < code.indexOf('const nd = newDeal(name, null); nd.id = dealId;'));
+  run("S.tab = 'newobj'; renderNewObj();");
+  ctx.check('бланк: перерисовка не падает при пустых данных', view.innerHTML.includes('Создать проект'));
+}
+
+/* --- Бланк: гонки (фото и геолокация из сброшенного черновика, очередь, лимит) --- */
+ctx.pendingTests = ctx.pendingTests || [];
+{
+  const mem = new Map(), wrap = o => new Proxy(o, {get: (t, k) => k in t ? t[k] : fake, set: (t, k, v) => (t[k] = v, true)}), view = wrap({innerHTML: ''}), toastEl = wrap({textContent: ''});
+  let geoCb = null;
+  const doc = {createElement: () => fake, querySelector: s => s === '#view' ? view : s === '#toast' ? toastEl : fake, querySelectorAll: () => [], getElementById: () => null, addEventListener() {}, documentElement: fake, body: fake};
+  const c = vm.createContext({document: doc, window: fake, navigator: {geolocation: {getCurrentPosition: (ok, err) => { geoCb = ok; }}}, location: {protocol: 'file:'}, localStorage: {getItem: k => mem.has(k) ? mem.get(k) : null, setItem: (k, v) => mem.set(k, String(v))}, setTimeout: () => 0, clearTimeout: () => {}, confirm: () => true, Intl, console});
+  vm.runInContext(fs.readFileSync(rayonyFile, 'utf8'), c); vm.runInContext(code, c);
+  const run = e => vm.runInContext(e, c);
+  const tick = () => new Promise(r => setImmediate(r));
+  ctx.pendingTests.push((async () => {
+    // А. геолокация, запущенная до сброса черновика, не пишет в новый
+    run("S.tab = 'newobj'; nbReset();");
+    const p1 = run("geoLocate(NB, () => {})");
+    run("nbReset();");
+    geoCb({coords: {latitude: 55.1, longitude: 37.1, accuracy: 5}}); 
+    await p1; await tick();
+    ctx.check('бланк-гонка: запоздалая геолокация не попадает в новый черновик', run("NB.lat === null && NB.lon === null && NB.geoBusy === false && NB.geoMsg === ''"), run("[NB.lat, NB.geoBusy, NB.geoMsg]"));
+    // Б. фото, декодируемые при сбросе, в новый черновик не попадают
+    const gates = []; c.gates = gates;
+    run("phDecode = f => new Promise(res => gates.push(() => res({width: 100, height: 80})));");
+    const file = {type: 'image/jpeg', size: 10};
+    c.f1 = file;
+    run("nbReset(); nbPick([f1, f1, f1]);");
+    await tick(); const g1 = gates.length;
+    run("nbReset();");
+    gates.splice(0).forEach(g => g()); await tick(); await tick();
+    ctx.check('бланк-гонка: фото из отменённого черновика не попадают в новый', g1 === 1 && run("NB.photos.length === 0 && NB.busy === false"), run("[NB.photos.length, NB.busy]"));
+    // В. два выбора подряд обрабатываются по очереди, лимит не превышается
+    run("nbReset(); for (let i = 0; i < 7; i++) NB.photos.push({id: 'x' + i, base: {}, ts: 1, thumb: ''});");
+    run("phDecode = async f => ({width: 100, height: 80});");
+    c.pair = [file, file];
+    await run("Promise.all([nbPick(pair), nbPick(pair)])");
+    ctx.check('бланк-гонка: два выбора подряд не дают больше 8 фото', run("NB.photos.length === 8 && NB.busy === false"), [run("NB.photos.length"), toastEl.textContent]);
+    // Г. «Создать» при идущей обработке фото — отказ без создания проекта
+    const before = run("S.deals.length");
+    run("NB.busy = true; NB.name = 'тест';"); await run("nbCreate()");
+    ctx.check('бланк-гонка: «Создать» во время обработки фото не создаёт проект', run("S.deals.length") === before && /ещё обрабатываются/.test(toastEl.textContent) && run("NB.creating") === false, toastEl.textContent);
+    run("nbReset();");
+  })());
+}
+
+Promise.all(ctx.pendingTests || []).then(() => {
+  console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
+  process.exit(fail ? 1 : 0);
+});
