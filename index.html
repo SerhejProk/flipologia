@@ -80,7 +80,7 @@ h3{font-size:16px;font-weight:600;margin:0 0 12px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
 .inwrap{position:relative;display:flex;align-items:center}
 .inwrap span{position:absolute;right:10px;font-size:14px;color:var(--muted);pointer-events:none}
-input[type=text],input[type=date],input[type=url],input[type=tel],select,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--input);border:1px solid transparent;border-radius:12px;padding:10px 12px;min-height:46px}
+input[type=text],input[type=date],input[type=time],input[type=url],input[type=tel],select,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--input);border:1px solid transparent;border-radius:12px;padding:10px 12px;min-height:46px}
 .inwrap input{padding-right:40px}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);outline-offset:0;background:var(--card)}
 textarea{min-height:90px;resize:vertical}
@@ -232,6 +232,8 @@ tr.total td{font-weight:700;border-bottom:0}
 .hlist i{font-style:normal;color:var(--muted);font-size:18px}
 .deal .t{font-weight:700;font-size:16px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
+.calnav{display:flex;align-items:center;gap:8px}.calnav b{flex:1;text-align:center;font-size:15px;line-height:1.3}.calnav .btn{flex:none;min-width:44px}.calnav input{flex:1;min-width:0}
+.ce{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.ce:last-child{border-bottom:0}.ce .ct{flex:none;width:44px;font-weight:600;font-variant-numeric:tabular-nums}.ce .cb{flex:1;min-width:0;overflow-wrap:anywhere}.ce .btn{flex:none;padding:4px 12px;min-height:36px}
 .chips button{font:inherit;font-size:13px;padding:7px 14px;border-radius:999px;border:0;background:var(--card);box-shadow:var(--shadow);color:var(--muted);cursor:pointer;min-height:36px}
 .chips button.on{background:var(--gold);color:#fff}
 details{border-bottom:1px solid var(--line);padding:4px 0}
@@ -267,6 +269,16 @@ details li{margin:4px 0}
 #sheet.on{display:block}
 #sheet .sh-back{position:absolute;inset:0;background:rgba(20,23,28,.4)}
 #sheet .sh-box{position:absolute;left:0;right:0;bottom:0;max-width:720px;margin:0 auto;background:var(--card);border-radius:24px 24px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.18);max-height:80vh;overflow:auto}
+#xsheet{display:none;position:fixed;inset:0;z-index:93}
+#xsheet.on{display:block}
+#xsheet .sh-back{position:absolute;inset:0;background:rgba(20,23,28,.4)}
+#xsheet .sh-box{position:absolute;left:0;right:0;bottom:0;max-width:720px;margin:0 auto;background:var(--card);border-radius:24px 24px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.18);max-height:90vh;overflow:auto}
+#xsheet h3{margin:0 0 10px;font-size:18px}
+#xsheet .xl{margin:12px 0 6px;font-size:13px;color:var(--muted)}
+#xsheet #xSum{font-size:22px;font-weight:600}
+#xsheet .xh{min-height:18px;margin-top:4px;font-size:13px;color:var(--muted)}
+#xsheet .row{margin-top:14px}
+#xsheet .row .btn{flex:1}
 #sheet h3{margin:0 0 8px;font-size:18px}
 #sheet p{margin:0 0 14px;font-size:15px;line-height:1.5}
 .gloss p{margin:0 0 12px;font-size:14px;line-height:1.45}
@@ -320,9 +332,56 @@ button,summary,.tabs,.top,.chips,.seg,.lt{-webkit-user-select:none;user-select:n
 .rseg button{font-size:13px;padding:8px 2px}
 .star{width:44px;height:44px;border:0;border-radius:12px;box-shadow:var(--shadow);background:var(--card);color:var(--gold-ink);font-size:22px;line-height:1;cursor:pointer}
 .rlink{display:block;padding:9px 0;color:var(--gold-ink);font-weight:600;font-size:14px}
+/* стиль «Жидкое стекло» (по умолчанию): тёмный фон со светящимися пятнами, матовое стекло, неоновый синий, зелёная главная кнопка.
+   Прежний «Светлый минимализм» остаётся: html[data-style="light"], переключатель в «Справке» → «Оформление» */
+html[data-style="glass"]{
+  color-scheme:dark;
+  --bg:#05070F; --card:rgba(255,255,255,.07); --ink:#F2F6FF; --muted:#9AA8C7; --line:rgba(255,255,255,.11);
+  --dark:rgba(34,42,72,.94); --dark-ink:#F2F6FF; --gold:#2B72F0; --gold-ink:#6FB4FF; --acc-soft:rgba(77,163,255,.18);
+  --good:#22E07A; --good-bg:rgba(34,224,122,.14); --warn:#FFD84D; --warn-bg:rgba(255,216,77,.14); --bad:#FF7A85; --bad-bg:rgba(255,90,100,.16);
+  --input:rgba(255,255,255,.08); --edge:rgba(255,255,255,.2);
+  --shadow:inset 0 1px 0 rgba(255,255,255,.28),0 10px 30px rgba(0,0,0,.35);
+  --bar:rgba(18,22,42,.55); --bar-line:rgba(255,255,255,.18); --top-bg:rgba(5,7,15,.4);
+  --green:linear-gradient(180deg,#52F59A,#12B862);
+}
+html[data-style="glass"] body{background:var(--bg);padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+html[data-style="glass"] body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+  radial-gradient(420px 420px at -8% -4%,rgba(29,92,255,.7),transparent 70%),
+  radial-gradient(380px 380px at 108% 88%,rgba(19,196,106,.42),transparent 70%),
+  radial-gradient(340px 340px at -12% 58%,rgba(122,60,255,.42),transparent 70%)}
+html[data-style="glass"] :is(.card,.tile,.kpis,.next,.bigbtn,.star,.verdict .v){border:1px solid var(--edge);-webkit-backdrop-filter:blur(22px) saturate(1.6);backdrop-filter:blur(22px) saturate(1.6)}
+html[data-style="glass"] .card .next{border:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+html[data-style="glass"] :is(.card,.tile,.kpis){border-radius:22px}
+html[data-style="glass"] .tabs{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;border:1px solid var(--bar-line);border-radius:30px;padding-bottom:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 30px rgba(0,0,0,.4)}
+html[data-style="glass"] .tabs button.on{text-shadow:0 0 12px rgba(77,163,255,.9)}
+html[data-style="glass"] .toast{bottom:calc(88px + env(safe-area-inset-bottom))}
+html[data-style="glass"] .install{bottom:calc(86px + env(safe-area-inset-bottom));border:1px solid var(--bar-line)}
+html[data-style="glass"] .top{border-bottom:1px solid rgba(255,255,255,.06)}
+html[data-style="glass"] input[type=text],html[data-style="glass"] input[type=date],html[data-style="glass"] input[type=time],html[data-style="glass"] input[type=url],html[data-style="glass"] input[type=tel],html[data-style="glass"] select,html[data-style="glass"] textarea{border-color:rgba(255,255,255,.14)}
+html[data-style="glass"] .btn{border:1px solid rgba(77,163,255,.35)}
+html[data-style="glass"] .btn.pri,html[data-style="glass"] .bigbtn{background:var(--green);color:#032612;border-color:rgba(255,255,255,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 6px 22px rgba(34,224,122,.4)}
+html[data-style="glass"] .bigbtn.voice{background:linear-gradient(135deg,rgba(47,123,255,.55),rgba(47,123,255,.18));color:#fff;border-color:rgba(77,163,255,.6);box-shadow:0 0 26px rgba(77,163,255,.35),inset 0 1px 0 rgba(255,255,255,.4)}
+html[data-style="glass"] .btn.danger,html[data-style="glass"] .btn.rec{border-color:rgba(255,90,100,.4)}
+html[data-style="glass"] .chips button{border:1px solid var(--edge)}
+html[data-style="glass"] .chips button.on{background:linear-gradient(180deg,#4F94FF,#2B72F0);color:#fff;border-color:rgba(255,255,255,.35);box-shadow:0 0 14px rgba(77,163,255,.5)}
+html[data-style="glass"] .seg button.on{background:rgba(77,163,255,.32);color:#fff;box-shadow:0 0 12px rgba(77,163,255,.35)}
+html[data-style="glass"] .verdict .big,html[data-style="glass"] .kz-big,html[data-style="glass"] .price-big{text-shadow:0 0 24px rgba(77,163,255,.65)}
+html[data-style="glass"] .verdict .big.neg{text-shadow:0 0 24px rgba(255,90,100,.6)}
+html[data-style="glass"] :is(#sheet,#xsheet) .sh-back{background:rgba(2,4,10,.55)}
+html[data-style="glass"] :is(#sheet,#xsheet) .sh-box{background:rgba(22,28,50,.66);border:1px solid var(--bar-line);border-bottom:0;-webkit-backdrop-filter:blur(30px) saturate(1.7);backdrop-filter:blur(30px) saturate(1.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+@media (prefers-reduced-transparency:reduce){
+  html[data-style="glass"] *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  html[data-style="glass"]{--card:rgba(30,36,64,.96);--bar:rgba(18,22,42,.98);--top-bg:rgba(5,7,15,.96)}
+}
 </style>
 <script data-boot>
 // Экран запуска показываем один раз за сеанс; при автоматических проверках — только по ?splash
+// Стиль оформления: «glass» (по умолчанию) или «light» (прежний светлый); выбор хранится отдельно от данных
+try {
+  var flStyle = localStorage.getItem('fl-style') === 'light' ? 'light' : 'glass';
+  document.documentElement.setAttribute('data-style', flStyle);
+  if (flStyle === 'glass') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#05070F');
+} catch (e) { document.documentElement.setAttribute('data-style', 'glass'); }
 try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splash/.test(location.search))) document.documentElement.classList.add('nosplash'); } catch (e) {}
 </script>
 </head>
@@ -344,6 +403,7 @@ try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splas
 <div class="toast" id="toast"></div>
 
 <div id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetT"><div class="sh-back" data-a="sheet-close"></div><div class="sh-box"><h3 id="sheetT"></h3><p id="sheetP"></p><div class="row"><button type="button" class="btn pri" data-a="sheet-close" id="sheetOk">Понятно</button><button type="button" class="btn" data-a="term-all">Все термины</button></div></div></div>
+<div id="xsheet" role="dialog" aria-modal="true" aria-label="Новый расход"><div class="sh-back" data-a="x-close"></div><div class="sh-box" id="xbox"></div></div>
 <div id="report" role="dialog" aria-modal="true" aria-label="Отчёт инвестору"></div>
 <div id="pview" role="dialog" aria-modal="true" aria-label="Фото объекта"></div>
 <script src="rayony-data.js"></script>
@@ -518,6 +578,19 @@ const TORGI_RISKS = [
   'Нужна электронная подпись и регистрация на площадке; услуги площадки иногда оплачивает победитель'
 ];
 
+/* Календарь: чистка записей (нужна до load) */
+const CAL_MAX = 500;
+const isDay = s => { if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false; const d = new Date(s + 'T00:00:00Z'); return !isNaN(d) && d.toISOString().slice(0, 10) === s; };
+function cleanCal(a) {
+  if (!Array.isArray(a)) return [];
+  const seen = new Set();
+  return a.filter(e => e && typeof e === 'object' && isDay(e.date) && typeof e.text === 'string' && e.text.trim()).map(e => ({
+    id: typeof e.id === 'string' && e.id && !seen.has(e.id) ? (seen.add(e.id), e.id.slice(0, 40)) : (() => { const u = uid(); seen.add(u); return u; })(),
+    date: e.date, time: /^([01]\d|2[0-3]):[0-5]\d$/.test(e.time) ? e.time : '', text: e.text.trim().slice(0, 300),
+    dealId: typeof e.dealId === 'string' ? e.dealId.slice(0, 40) : '', auto: e.auto === true
+  })).slice(0, CAL_MAX);
+}
+
 /* ===== Хранилище ===== */
 function load() {
   let s = null;
@@ -539,6 +612,7 @@ function load() {
     rayony: cleanRayony(s.rayony),
     kursy: cleanKursy(s.kursy),
     lastBackup: Number(s.lastBackup) || 0,
+    cal: cleanCal(s.cal),
     tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy'].includes(s.tab) ? s.tab : 'home'
   };
 }
@@ -635,7 +709,7 @@ function cleanDeal(d) {
     stage: STAGES.includes(d.stage) ? d.stage : STAGES[0],
     calc: d.calc ? clean(DEFAULT_CALC, d.calc, CALC_ENUMS) : null,
     expenses: Array.isArray(d.expenses) ? d.expenses.filter(e => e && typeof e === 'object').map(e =>
-      ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note)})) : [],
+      ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note), stage: WORK_STAGES.some(w => w[1] === e.stage) ? e.stage : ''})) : [],
     checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
     risks: cleanRisks(d.risks),
     owner: cleanOwner(d.owner), people: cleanPeople(d.people), docs: cleanDocs(d.docs), ready: d.ready === 'yes' || d.ready === 'no' ? d.ready : '', place: cleanPlace(d.place),
@@ -659,6 +733,16 @@ const pct = v => (v < 0 ? '−' : '') + Math.abs(v).toFixed(1).replace('.', ',')
 function parseNum(s) {
   const v = Number(String(s).replace(/[\s ₽%]/g, '').replace(',', '.'));
   return isFinite(v) ? v : 0;
+}
+// Сумма расхода с сокращениями: «45к», «45 тыс», «4,5м», «1,2 млн»; без суффикса — как parseNum
+function parseAmount(s) {
+  const t = String(s == null ? '' : s).toLowerCase().replace(/ /g, ' ').trim();
+  const m = t.match(/^(\d[\d\s]*(?:[.,]\d+)?)\s*(млн|миллион[а-я]*|м|тыс|тысяч[а-я]*|к|k)?\.?(?:\s*₽|\s*р(?:уб[а-я.]*)?\.?)?$/);
+  if (!m) { const r = parseNum(t); return r > 0 && r <= 1e12 ? r : 0; }
+  const mult = !m[2] ? 1 : /^(к|k|тыс)/.test(m[2]) ? 1e3 : 1e6;
+  const v = parseNum(m[1]) * mult;
+  if (!isFinite(v) || v > 1e12) return 0;
+  return mult === 1 ? v : Math.round(v);
 }
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -684,6 +768,47 @@ function openSheet(k) {
   const ok = $('#sheetOk'); if (ok && ok.focus) ok.focus();
 }
 function closeSheet() { const el = $('#sheet'); if (el) el.classList.remove('on'); }
+/* ===== Быстрый ввод расхода (нижняя шторка) ===== */
+let XS = null; // {id: сделка, cat, stage, n: сколько добавлено за этот раз}
+function xChipsHtml(list, cur, act) {
+  return list.map(v => '<button type="button" data-a="' + act + '" data-v="' + esc(v) + '" class="' + (cur === v ? 'on' : '') + '" aria-pressed="' + (cur === v) + '">' + esc(v) + '</button>').join('');
+}
+function openExpSheet(d) {
+  const el = $('#xsheet'); if (!el || !d) return;
+  const last = (d.expenses || []).slice(-1)[0];
+  XS = {id: d.id, cat: last && EXP_CATS.includes(last.cat) ? last.cat : 'Материалы', stage: '', n: 0};
+  $('#xbox').innerHTML = '<h3>Новый расход</h3>' +
+    '<label class="f">Сумма<div class="inwrap"><input type="text" inputmode="decimal" id="xSum" placeholder="например, 45к" autocomplete="off" aria-describedby="xHint"><span>₽</span></div></label>' +
+    '<div class="xh" id="xHint">Можно «45к», «45 тыс», «1,2м»</div>' +
+    '<div class="xl">Статья</div><div class="chips" id="xCats">' + xChipsHtml(EXP_CATS, XS.cat, 'x-cat') + '</div>' +
+    '<div class="xl">Этап ремонта (необязательно)</div><div class="chips" id="xStages">' + xChipsHtml(WORK_STAGES.map(w => w[1]), '', 'x-stage') + '</div>' +
+    '<div class="grid2" style="margin-top:12px"><label class="f">Дата<input type="date" id="xDate" value="' + today() + '"></label>' +
+    '<label class="f">Комментарий<input type="text" id="xNote" placeholder="например, плитка" autocomplete="off"></label></div>' +
+    '<div class="row"><button type="button" class="btn pri" data-a="x-save">Добавить</button><button type="button" class="btn" data-a="x-more">Добавить и ещё</button></div>';
+  el.classList.add('on');
+  const s = $('#xSum'); if (s && s.focus) s.focus();
+}
+function closeXSheet() { const el = $('#xsheet'); if (el) el.classList.remove('on'); XS = null; }
+function xHint() {
+  const h = $('#xHint'), s = $('#xSum'); if (!h || !s) return;
+  const v = parseAmount(s.value);
+  h.textContent = s.value.trim() && v > 0 ? '= ' + rub(v) : 'Можно «45к», «45 тыс», «1,2м»';
+}
+// more=true — оставить шторку открытой для следующего расхода
+function xSave(more) {
+  if (!XS) return;
+  const d = S.deals.find(x => x.id === XS.id); if (!d) { closeXSheet(); return; }
+  const sum = parseAmount($('#xSum').value);
+  if (!(sum > 0)) { toast('Впишите сумму расхода'); $('#xSum').focus(); return; }
+  d.expenses = d.expenses || [];
+  d.expenses.push({id: uid(), cat: XS.cat, sum, date: $('#xDate').value || today(), note: $('#xNote').value.trim(), stage: XS.stage});
+  d.updated = Date.now(); save(); renderDeal(d);
+  XS.n++;
+  if (more) {
+    $('#xSum').value = ''; $('#xNote').value = ''; xHint(); $('#xSum').focus();
+    toast('Добавлено: ' + XS.n + '. Вводите следующий');
+  } else { const n = XS.n; closeXSheet(); toast(n > 1 ? 'Добавлено расходов: ' + n : 'Расход добавлен'); }
+}
 function openGlossary() {
   navTab('ref');
   const g = $('#gloss'); if (g) { g.open = true; g.scrollIntoView({block: 'start'}); }
@@ -1469,14 +1594,10 @@ function renderDeal(d) {
   h += dealDataHtml(d);
   h += worksCardHtml(d);
   h += '<div class="card"><h3>Расходы</h3>' +
-    '<div class="grid2"><label class="f">Статья<select id="expCat">' + EXP_CATS.map(c2 => '<option>' + c2 + '</option>').join('') + '</select></label>' +
-    '<label class="f">Сумма<div class="inwrap"><input type="text" inputmode="decimal" id="expSum"><span>₽</span></div></label>' +
-    '<label class="f">Дата<input type="date" id="expDate" value="' + today() + '"></label>' +
-    '<label class="f">Комментарий<input type="text" id="expNote" placeholder="например, плитка"></label></div>' +
-    '<button class="btn pri block" style="margin-top:10px" data-a="exp-add">Добавить расход</button>';
+    '<button class="btn pri block" data-a="exp-new">+ Добавить расход</button>';
   if (exp.length) {
     h += '<table style="margin-top:12px">' + exp.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(e =>
-      '<tr><td>' + esc(e.cat) + (e.note ? '<br><span class="small muted">' + esc(e.note) + '</span>' : '') + '<br><span class="small muted">' + esc((e.date || '').split('-').reverse().join('.')) + '</span></td>' +
+      '<tr><td>' + esc(e.cat) + (e.stage ? ' · ' + esc(e.stage) : '') + (e.note ? '<br><span class="small muted">' + esc(e.note) + '</span>' : '') + '<br><span class="small muted">' + esc((e.date || '').split('-').reverse().join('.')) + '</span></td>' +
       '<td class="n">' + rub(e.sum) + '<br><button class="back small" style="padding:4px 0;color:var(--bad)" data-a="exp-del" data-id="' + esc(e.id) + '">удалить</button></td></tr>').join('') +
       '<tr class="total"><td>Всего потрачено</td><td class="n">' + rub(spent) + '</td></tr></table>';
   }
@@ -1643,7 +1764,18 @@ $('#sheet').addEventListener('click', e => {
   if (b.dataset.a === 'sheet-close') closeSheet();
   else if (b.dataset.a === 'term-all') { closeSheet(); openGlossary(); }
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeSheet(); closeXSheet(); } });
+$('#xsheet').addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b || !XS) return;
+  const a = b.dataset.a;
+  if (a === 'x-close') closeXSheet();
+  else if (a === 'x-save') xSave(false);
+  else if (a === 'x-more') xSave(true);
+  else if (a === 'x-cat') { XS.cat = b.dataset.v; $('#xCats').innerHTML = xChipsHtml(EXP_CATS, XS.cat, 'x-cat'); }
+  else if (a === 'x-stage') { XS.stage = XS.stage === b.dataset.v ? '' : b.dataset.v; $('#xStages').innerHTML = xChipsHtml(WORK_STAGES.map(w => w[1]), XS.stage, 'x-stage'); }
+});
+$('#xsheet').addEventListener('input', e => { if (e.target.id === 'xSum') xHint(); });
+$('#xsheet').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'xSum') { e.preventDefault(); xSave(false); } });
 $('#report').addEventListener('click', e => {
   const b = e.target.closest('[data-ra]'); if (!b) return;
   if (b.dataset.ra === 'close') navBack();
@@ -1839,12 +1971,25 @@ function dealRayonHtml(d) {
     '<button class="btn block" style="margin-top:8px" data-a="rayon-open" data-id="' + esc(r.id) + '" data-from="deal">Открыть карточку района</button>';
 }
 
+/* ===== Стиль оформления ===== */
+const curStyle = () => (document.documentElement.getAttribute('data-style') === 'light' ? 'light' : 'glass');
+function setStyle(v) {
+  v = v === 'light' ? 'light' : 'glass';
+  try { localStorage.setItem('fl-style', v); } catch (e) {}
+  document.documentElement.setAttribute('data-style', v);
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', v === 'glass' ? '#05070F' : '#F6F7FA');
+  document.querySelectorAll('#styleSeg button').forEach(x => { const on = x.dataset.v === v; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+}
 /* ===== Раздел «Справка» ===== */
 function renderRef() {
   if (rayonView === 'list') return renderRayonList();
   if (rayonView) return renderRayon(rayonView);
   setTitle(TITLES.ref);
+  const st = curStyle();
   $('#view').innerHTML = '' +
+    '<div class="card"><h3>Оформление</h3><div class="chips" id="styleSeg">' +
+    '<button type="button" data-a="style" data-v="glass" class="' + (st === 'glass' ? 'on' : '') + '" aria-pressed="' + (st === 'glass') + '">Жидкое стекло</button>' +
+    '<button type="button" data-a="style" data-v="light" class="' + (st === 'light' ? 'on' : '') + '" aria-pressed="' + (st === 'light') + '">Светлый</button></div></div>' +
     '<button class="card deal" data-a="rayon-list"><span class="t">Районы</span><br><span class="small muted">Нотариусы, МФЦ, строймагазины, супермаркеты, рынки и цена м² по районам Москвы</span></button>' +
     '<button class="card deal" data-a="home-push" data-v="kursy"><span class="t">Курсы и ставки</span><br><span class="small muted">Ключевая ставка ЦБ, курсы валют, конвертер и цена объекта в других валютах</span></button>' +
     '<a class="card deal" href="https://t.me/flipologia" target="_blank" rel="noopener" style="text-decoration:none"><span class="t">Новости и лоты недели</span><br><span class="small muted">Свежие новости рынка, цены м² и лоты с дисконтом — в Telegram-канале «Флипология»</span></a>' +
@@ -1935,7 +2080,7 @@ function renderHome() {
     '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
     '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
     '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button></div>';
-  h += '<h3 class="hh">Календарь</h3><div class="card"><p class="small muted" style="margin:0">Визиты на объекты и встречи за день, с голосовым вводом. Появится в одном из следующих обновлений <span class="soon">скоро</span></p></div>';
+  h += '<h3 class="hh">Календарь</h3>' + calHomeHtml();
   const kr = keyRateNow(S.kursy), stale = kzDaysOld(kr.date) > KEY_STALE_DAYS;
   h += '<h3 class="hh">Ставки и курсы</h3><div class="card"><div class="kz-sum"><span>Ключевая ставка ЦБ</span><b>' + fmtPct(kr.v) + '</b></div>' +
     '<div class="kz-sum"><span>Ставка рефинансирования</span><b>' + fmtPct(kr.v) + '</b></div>' +
@@ -2130,6 +2275,89 @@ function voiceToggle(el, btn, st) {
   };
   try { rec.start(); voiceUi(true, 'Говорите…'); }
   catch (e) { VOICE.rec = null; voiceUi(false, 'Не удалось включить микрофон'); }
+}
+
+/* ===== Календарь =====
+   Записи: встречи и дела (можно диктовать) и посещения объектов. Посещение вносится само: при геолокации в проекте,
+   при сохранении фото в проект и при создании проекта с фото. На один проект в один день — одна автозапись. */
+const CAL = {day: '', time: '', text: '', deal: ''};
+const nowHM = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+function calSort(a, b) { return a.date === b.date ? String(a.time || '99:99').localeCompare(String(b.time || '99:99')) : a.date.localeCompare(b.date); }
+// Автозапись посещения; возвращает true, если добавили
+function calAddVisit(dealId) {
+  if (!dealId || !S.deals.some(x => x.id === dealId)) return false;
+  const day = today();
+  if (S.cal.some(e => e.auto && e.dealId === dealId && e.date === day)) return false;
+  if (S.cal.length >= CAL_MAX) S.cal = S.cal.slice().sort(calSort).slice(-(CAL_MAX - 1));
+  S.cal.push({id: uid(), date: day, time: nowHM(), text: 'Посещение объекта', dealId, auto: true});
+  save(); if (S.tab === 'cal') calPaint();
+  return true;
+}
+function calEventHtml(e, ro) {
+  const dl = e.dealId && S.deals.find(x => x.id === e.dealId);
+  return '<div class="ce"><div class="ct">' + (e.time ? esc(e.time) : '—') + '</div><div class="cb">' + esc(e.text) +
+    (dl ? '<br><span class="small muted">' + esc(dl.name || 'Проект') + (dl.address ? ' · ' + esc(dl.address) : '') + '</span>' : '') +
+    (e.auto ? '<br><span class="small muted">внесено автоматически</span>' : '') + '</div>' +
+    (ro ? '' : '<button type="button" class="btn danger" data-a="cal-del" data-id="' + esc(e.id) + '" aria-label="Удалить запись">×</button>') + '</div>';
+}
+function calDayLabel(iso) {
+  const dt = new Date(iso + 'T00:00:00'), t = today();
+  const wd = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'][dt.getDay()];
+  return isoRu(iso) + ', ' + wd + (iso === t ? ' · сегодня' : '');
+}
+function calShift(iso, n) { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function calListHtml(day) {
+  const ev = S.cal.filter(e => e.date === day).sort(calSort);
+  return ev.length ? ev.map(calEventHtml).join('') : '<p class="small muted" style="margin:0">На этот день записей нет.</p>';
+}
+function calOtherHtml() {
+  const t = today(), m = {};
+  S.cal.forEach(e => { if (e.date !== CAL.day) m[e.date] = (m[e.date] || 0) + 1; });
+  const days = Object.keys(m).sort((a, b) => (a >= t) === (b >= t) ? (a >= t ? a.localeCompare(b) : b.localeCompare(a)) : (a >= t ? -1 : 1)).slice(0, 10);
+  return days.length ? '<div class="chips">' + days.map(d => '<button type="button" data-a="cal-go" data-v="' + d + '">' + esc(isoRu(d).slice(0, 5)) + ' · ' + m[d] + '</button>').join('') + '</div>' : '<p class="small muted" style="margin:0">Других записей пока нет.</p>';
+}
+function calPaint() {
+  const l = document.getElementById('calList'), o = document.getElementById('calOther'), h = document.getElementById('calDayLbl'), di = document.getElementById('calDate');
+  if (S.tab !== 'cal' || !l) return;
+  l.innerHTML = calListHtml(CAL.day); if (o) o.innerHTML = calOtherHtml(); if (h) h.textContent = calDayLabel(CAL.day); if (di && di.value !== CAL.day) di.value = CAL.day;
+}
+function renderCal() {
+  if (!isDay(CAL.day)) CAL.day = today();
+  const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
+  $('#view').innerHTML =
+    '<div class="card"><div class="calnav"><button type="button" class="btn" data-a="cal-step" data-v="-1" aria-label="Предыдущий день">‹</button>' +
+    '<b id="calDayLbl"></b><button type="button" class="btn" data-a="cal-step" data-v="1" aria-label="Следующий день">›</button></div>' +
+    '<div class="calnav" style="margin-top:10px"><input type="date" id="calDate" data-cal="date" aria-label="Выбрать день"><button type="button" class="btn" data-a="cal-go" data-v="' + today() + '">Сегодня</button></div>' +
+    '<div id="calList" style="margin-top:12px"></div></div>' +
+    '<div class="card"><h3>Новая запись</h3>' +
+    '<label class="f"><span>Что и с кем</span><textarea id="calText" data-cal="text" rows="2" maxlength="300" placeholder="Например: встреча с прорабом, показ квартиры">' + esc(CAL.text) + '</textarea></label>' +
+    '<button type="button" class="btn block" data-a="cal-voice" aria-pressed="false" style="margin-top:8px">' + ICO.mic + '<span>Диктовать</span></button>' +
+    '<p class="small muted" id="calSt" role="status" style="margin:8px 0 0"></p>' +
+    '<div class="grid2" style="margin-top:6px"><label class="f"><span>Время</span><input type="time" id="calTime" data-cal="time" value="' + esc(CAL.time) + '"></label>' +
+    '<label class="f"><span>Проект</span><select id="calDeal" data-cal="deal"><option value="">Без проекта</option>' + deals.map(d => '<option value="' + esc(d.id) + '"' + (CAL.deal === d.id ? ' selected' : '') + '>' + esc(d.name || 'Проект') + '</option>').join('') + '</select></label></div>' +
+    '<button type="button" class="btn pri block" data-a="cal-add" style="margin-top:12px">Добавить на ' + '<span id="calAddDay"></span></button></div>' +
+    '<h3 class="hh">Другие дни</h3><div class="card" id="calOther"></div>' +
+    '<p class="small muted" style="margin:0 4px">Посещения объектов вносятся сами: когда вы определяете место в проекте, сохраняете фото в проект или создаёте проект с фото. Записи хранятся в этом телефоне и входят в резервную копию.</p>';
+  calPaint(); calAddLbl();
+}
+const calAddLbl = () => { const e = document.getElementById('calAddDay'); if (e) e.textContent = isoRu(CAL.day).slice(0, 5); };
+async function calAdd() {
+  voiceStop(); await voiceFlush();
+  const ta = document.getElementById('calText'), text = String((ta ? ta.value : CAL.text) || '').trim().slice(0, 300);
+  if (!text) { toast('Впишите или надиктуйте, что запланировано'); return; }
+  if (S.cal.length >= CAL_MAX) { toast('Записей слишком много: удалите старые'); return; }
+  const dl = CAL.deal && S.deals.some(x => x.id === CAL.deal) ? CAL.deal : '';
+  S.cal.push({id: uid(), date: CAL.day, time: /^([01]\d|2[0-3]):[0-5]\d$/.test(CAL.time) ? CAL.time : '', text, dealId: dl, auto: false});
+  CAL.text = ''; CAL.time = ''; save();
+  if (ta) ta.value = ''; const ti = document.getElementById('calTime'); if (ti) ti.value = '';
+  calPaint(); toast('Запись добавлена');
+}
+function calHomeHtml() {
+  const t = today(), ev = S.cal.filter(e => e.date === t).sort(calSort);
+  const nxt = S.cal.filter(e => e.date > t).sort(calSort)[0];
+  return '<div class="card"><h3>Сегодня</h3>' +
+    (ev.length ? ev.slice(0, 4).map(e => calEventHtml(e, true)).join('') + (ev.length > 4 ? '<p class="small muted" style="margin:6px 0 0">И ещё ' + (ev.length - 4) + '</p>' : '') : '<p class="small muted" style="margin:0 0 4px">На сегодня записей нет.' + (nxt ? ' Ближайшая: ' + esc(isoRu(nxt.date).slice(0, 5)) + ', ' + esc(nxt.text) + '.' : '') + '</p>') +
+    '<button class="btn pri block" style="margin-top:12px" data-a="home-push" data-v="cal">Открыть календарь</button></div>';
 }
 
 /* ===== Раздел «Фото объекта» =====
@@ -2342,6 +2570,7 @@ async function phCommitSave(dealId, makeNew, deal, addr, blob) {
   if (makeNew) { deal = newDeal(addr || 'Новый объект', null); deal.id = rec.dealId; deal.address = addr; save(); }
   phDrop();
   toast(deal ? 'Фото сохранено в проект «' + (deal.name || 'Без названия') + '»' : 'Фото сохранено');
+  if (deal) calAddVisit(deal.id);
   phReload();
 }
 async function phReload() {
@@ -2491,7 +2720,7 @@ async function dealGeo(d) {
   if (found && !own) { dd.address = found; dd.place = {lat: DG.lat, lon: DG.lon, address: found}; DG.geoMsg = 'Адрес объекта заполнен по геолокации. Проверьте и поправьте, если нужно.'; }
   else if (found && own === found) dd.place = {lat: DG.lat, lon: DG.lon, address: found};
   else if (found) DG.geoMsg = 'Найден адрес: ' + found + '. Ваш адрес оставлен без изменений.';
-  dd.updated = Date.now(); save();
+  dd.updated = Date.now(); save(); calAddVisit(dd.id);
   if (S.tab === 'deals' && openDeal === dd.id) {
     const a = document.querySelector('[data-d="address"]'); if (a && a.value !== (dd.address || '')) a.value = dd.address || '';
     dealTaxiPaint(dd); dgPaint();
@@ -2679,6 +2908,7 @@ async function nbCreate() {
     const n = recs.length;
     const here = S.tab === 'newobj';
     nbReset();
+    if (n) calAddVisit(dealId);
     toast('Проект создан' + (n ? ', фото: ' + n : ''));
     if (here) nbOpenDeal(dealId);
     if (n) phReload();
@@ -2706,7 +2936,7 @@ function renderNewObj() {
 }
 
 /* ===== Навигация ===== */
-const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', photo: 'Фото объекта', newobj: 'Новый объект'};
+const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', photo: 'Фото объекта', newobj: 'Новый объект', cal: 'Календарь'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
 function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
@@ -2728,18 +2958,18 @@ function go(tab, cls, y) {
   S.tab = tab; save();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
-  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, photo: renderPhoto, newobj: renderNewObj})[tab]();
+  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, photo: renderPhoto, newobj: renderNewObj, cal: renderCal})[tab]();
   // «Смета» и «Торги» открываются с главной: у них своя кнопка «назад»
   if (tab === 'smeta' || tab === 'torgi') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'kursy') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
-  if (tab === 'photo') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
+  if (tab === 'photo' || tab === 'cal') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'newobj') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   window.scrollTo(0, y || 0); animate(cls || 'anim-up'); onScroll();
 }
 /* ===== История: системная кнопка «назад», кнопка «‹» и свайп идут одним путём =====
    Стопка: «Главная» (глубина 0) → другая вкладка (1) → экраны вглубь (2, 3…).
    Вкладки записи не копят: со вкладки «назад» ведёт на «Главную», а из неё — выход из приложения. */
-const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'photo', 'newobj'];
+const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'photo', 'newobj', 'cal'];
 let navDepth = 0;       // глубина текущего экрана в стопке
 let navPending = null;  // вкладка, которую запишем, когда история вернётся к началу стопки
 const navRoot = tab => ({tab, deal: null, rayon: null, from: null});
@@ -2766,7 +2996,7 @@ function navWrite(method, st, depth) {
   try { window.history[method](Object.assign({nav: 1}, st, {depth, y: st.y || 0}), ''); } catch (e) {}
 }
 function navShow(st, cls, y) {
-  closeReport(); closeSheet(); closePView();
+  closeReport(); closeSheet(); closeXSheet(); closePView();
   openDeal = st.deal; rayonView = st.rayon; rayonFrom = st.from;
   go(st.tab, cls, y);
 }
@@ -2835,7 +3065,7 @@ function closeDeal() { navBack(); }
 let swipe = null;
 document.addEventListener('touchstart', e => {
   const p = e.touches[0];
-  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'photo' || S.tab === 'newobj') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
 }, {passive: true});
 document.addEventListener('touchend', e => {
   if (!swipe) return;
@@ -2972,7 +3202,6 @@ view.addEventListener('focusout', e => {
   }
   if (t.dataset.q) t.value = t.dataset.q === 'months' ? String(S.calc.months).replace('.', ',') : num(S.calc[t.dataset.q]);
   if (t.dataset.price) t.value = num(parseNum(t.value));
-  if (t.id === 'expSum' && t.value) t.value = num(parseNum(t.value));
   if (t.dataset.t && t.type === 'text') { const v = S.torgi[t.dataset.t]; t.value = ['start', 'extra'].includes(t.dataset.t) ? num(v) : String(v).replace('.', ','); }
   if (t.id === 'sellM2' && t.value) t.value = num(S.sellM2);
 });
@@ -2995,6 +3224,7 @@ view.addEventListener('click', e => {
   switch (a) {
     case 'term': openSheet(b.dataset.t); break;
     case 'home-gloss': openGlossary(); break;
+    case 'style': setStyle(b.dataset.v); break;
     case 'soon': toast('Голосовой помощник появится в следующем обновлении'); break;
     case 'ph-geo': phLocate(); break;
     case 'ph-pick': PH.pick = !PH.pick; phPaintPrev(); break;
@@ -3111,7 +3341,12 @@ view.addEventListener('click', e => {
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
       break;
     case 'go-tab': if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
-    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo') navPush(navRoot(b.dataset.v), 'anim-right'); break;
+    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo' || b.dataset.v === 'cal') navPush(navRoot(b.dataset.v), 'anim-right'); break;
+    case 'cal-voice': voiceToggle($('#calText'), b, $('#calSt')); break;
+    case 'cal-add': calAdd(); break;
+    case 'cal-del': { const id = b.dataset.id; if (S.cal.some(e => e.id === id) && confirm('Удалить запись?')) { S.cal = S.cal.filter(e => e.id !== id); save(); calPaint(); } break; }
+    case 'cal-step': { const n = Number(b.dataset.v) === 1 ? 1 : -1; CAL.day = calShift(isDay(CAL.day) ? CAL.day : today(), n); calPaint(); calAddLbl(); break; }
+    case 'cal-go': if (isDay(b.dataset.v)) { CAL.day = b.dataset.v; calPaint(); calAddLbl(); } break;
     case 'home-parse': { navTab('calc'); const pb = $('#parseBox'); if (pb) { pb.open = true; pb.scrollIntoView({block: 'center'}); } break; }
     case 'home-rayony': navTab('ref'); navPush({tab: 'ref', deal: null, rayon: 'list', from: null}); break;
     case 'home-tax': { navTab('ref'); const dt = [...document.querySelectorAll('#view details')].find(x => /^Налог при продаже/.test(x.textContent.trim())); if (dt) { dt.open = true; dt.scrollIntoView({block: 'start'}); } break; }
@@ -3188,14 +3423,7 @@ view.addEventListener('click', e => {
     case 'work-del':
       if (d && confirm('Убрать график ремонта?')) { d.works = null; d.updated = Date.now(); save(); renderDeal(d); }
       break;
-    case 'exp-add': {
-      if (!d) break;
-      const sum = parseNum($('#expSum').value);
-      if (sum <= 0) { toast('Впишите сумму расхода'); $('#expSum').focus(); break; }
-      d.expenses = d.expenses || [];
-      d.expenses.push({id: uid(), cat: $('#expCat').value, sum, date: $('#expDate').value || today(), note: $('#expNote').value.trim()});
-      d.updated = Date.now(); save(); renderDeal(d); toast('Расход добавлен'); break;
-    }
+    case 'exp-new': if (d) openExpSheet(d); break;
     case 'exp-del':
       if (d && confirm('Удалить этот расход?')) { d.expenses = d.expenses.filter(x => x.id !== b.dataset.id); save(); renderDeal(d); }
       break;
@@ -3269,9 +3497,13 @@ view.addEventListener('input', e => {
   }
   else if (t.dataset.d === 'address') dealTaxiPaint(curDeal());
   else if (t.dataset.ph === 'q') { PH.q = t.value.slice(0, 100); phPaintList(); }
+  else if (t.dataset.cal === 'text') CAL.text = t.value.slice(0, 300);
+  else if (t.dataset.cal === 'time') CAL.time = t.value;
 });
 view.addEventListener('change', e => {
   const t = e.target;
+  if (t.dataset.cal === 'date') { if (isDay(t.value)) { CAL.day = t.value; calPaint(); calAddLbl(); } return; }
+  if (t.dataset.cal === 'deal') { CAL.deal = t.value; return; }
   if (t.dataset.ph === 'addr') phRestamp();
   else if (t.dataset.ph === 'file') { const f = t.files && t.files[0]; t.value = ''; phPick(f); }
   else if (t.dataset.dfile) { const dd = curDeal(), fs2 = t.files ? Array.from(t.files) : []; t.value = ''; if (dd) dealAttach(dd, fs2); }

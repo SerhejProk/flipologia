@@ -366,6 +366,32 @@ vm.runInContext(`
   check('отчёт: без расходов на ремонт сметы нет', !h2.includes('Смета ремонта'));
 }
 
+/* --- Календарь --- */
+{
+  const bad = cleanCal([null, 5, {date: 'x', text: 'a'}, {date: '2026-02-30', text: 'a'}, {date: '2026-11-06', text: '   '}, {date: '2026-11-06', text: '<b>ок</b>', time: '25:99', id: 'a'}, {date: '2026-11-06', text: 'два', time: '09:30', id: 'a', auto: 'да'}]);
+  check('календарь: мусор отброшен, остаются 2 записи', bad.length === 2, JSON.stringify(bad));
+  check('календарь: плохое время сброшено, auto только true, id уникальны', bad[0].time === '' && bad[1].time === '09:30' && bad[1].auto === false && bad[0].id !== bad[1].id);
+  check('календарь: не массив — пусто', cleanCal(null).length === 0 && cleanCal({}).length === 0);
+  check('календарь: предел записей', cleanCal(Array.from({length: 700}, (_, i) => ({date: '2026-11-06', text: 'п' + i}))).length === CAL_MAX);
+  S.deals = [{id: 'k1', name: 'Объект <i>1</i>', address: 'ул. А', expenses: []}]; S.cal = [];
+  check('календарь: автопосещение добавляется', calAddVisit('k1') === true && S.cal.length === 1 && S.cal[0].auto === true && S.cal[0].date === today());
+  check('календарь: в тот же день по тому же проекту — не дублируется', calAddVisit('k1') === false && S.cal.length === 1);
+  check('календарь: чужого проекта нет — не добавляется', calAddVisit('нет') === false && calAddVisit('') === false && S.cal.length === 1);
+  check('календарь: сохраняется и читается из памяти', (() => { const r = load(); return r.cal.length === 1 && r.cal[0].dealId === 'k1'; })());
+  CAL.day = today(); S.tab = 'cal';
+  let err = null; try { renderCal(); } catch (e) { err = String(e); }
+  const v = calListHtml(today());
+  check('календарь: экран рисуется без ошибок', err === null, err);
+  check('календарь: в списке есть автозапись, название проекта экранировано', v.includes('Посещение объекта') && v.includes('внесено автоматически') && v.includes('&lt;i&gt;1&lt;/i&gt;') && !v.includes('<i>1</i>'));
+  check('календарь: в списке дня есть кнопка удаления', v.includes('data-a="cal-del"'));
+  S.cal.push({id: 'z', date: calShift(today(), 3), time: '', text: 'Показ', dealId: '', auto: false});
+  check('календарь: сдвиг дней и «Другие дни»', calShift('2026-12-31', 1) === '2027-01-01' && calShift('2026-03-01', -1) === '2026-02-28' && calOtherHtml().includes('data-v="' + calShift(today(), 3) + '"'));
+  S.tab = 'home'; let e2 = null; try { renderHome(); } catch (e) { e2 = String(e); }
+  check('календарь: на главной «Сегодня» без кнопок удаления', e2 === null && calHomeHtml().includes('Посещение объекта') && !calHomeHtml().includes('cal-del') && calHomeHtml().includes('Открыть календарь'), e2);
+  check('календарь: подделанная дата в cal-go не принимается', !isDay('<img>') && !isDay('2026-13-01') && isDay('2026-11-06'));
+  S.cal = []; S.deals = [];
+}
+
 /* --- История: кнопка «назад» --- */
 {
   S.deals = [{id: 'd1', name: 'Сделка', expenses: []}];
@@ -717,7 +743,7 @@ vm.runInContext(`
   ctx.check('дашборд: без проектов — подсказка и «Пример проекта»', /Проектов пока нет/.test(view.innerHTML) && /Пример проекта/.test(view.innerHTML));
   vm.runInContext("S.deals = [{id: 'x', name: '<img src=x onerror=1>', stage: 'Поиск', expenses: [], works: null}]; renderHome();", c);
   ctx.check('дашборд: название проекта экранировано', !view.innerHTML.includes('<img src=x') && view.innerHTML.includes('&lt;img'));
-  ctx.check('дашборд: заглушка осталась только у голоса, календарь «скоро»', (view.innerHTML.match(/data-a="soon"/g) || []).length === 1 && /Календарь[\s\S]*скоро/.test(view.innerHTML));
+  ctx.check('дашборд: заглушка осталась только у голоса, календарь оживлён', (view.innerHTML.match(/data-a="soon"/g) || []).length === 1 && /Календарь[\s\S]*Открыть календарь/.test(view.innerHTML) && !/Календарь[\s\S]{0,300}скоро/.test(view.innerHTML));
   ctx.check('дашборд: «Сделать фото» ведёт в раздел фото', /data-a="home-push" data-v="photo"/.test(view.innerHTML));
 }
 
@@ -960,6 +986,21 @@ ctx.pendingTests = ctx.pendingTests || [];
     run("nbReset();");
   })());
 }
+
+/* --- Быстрый ввод расхода: разбор суммы --- */
+vm.runInContext(`
+{
+  const cases = [['45к', 45000], ['45 к', 45000], ['45 тыс', 45000], ['45 тысяч', 45000], ['1,2м', 1200000], ['4,5 млн', 4500000],
+    ['15 000', 15000], ['15 000 ₽', 15000], ['123,45', 123.45], ['7к₽', 7000], ['2 500 руб.', 2500], ['', 0], ['abc', 0], ['-5', 0], ['1e308', 0], ['99999999999999к', 0]];
+  cases.forEach(([s, v]) => check('parseAmount(' + JSON.stringify(s) + ') = ' + v, near(parseAmount(s), v, 0.001), parseAmount(s)));
+  check('parseAmount(null) = 0', parseAmount(null) === 0);
+  check('шторка расхода: функции на месте', typeof openExpSheet === 'function' && typeof xSave === 'function');
+  // сохранение расхода с этапом проходит очистку данных; чужой этап отбрасывается
+  const d = cleanDeal({id: 'x1', name: 'т', expenses: [{id: 'e1', cat: 'Материалы', sum: 100, date: '2026-11-06', note: '', stage: 'Электрика'}, {id: 'e2', cat: 'Прочее', sum: 5, stage: '<img>'}, {id: 'e3', cat: 'Прочее', sum: 7}]});
+  check('cleanDeal: этап расхода сохраняется', d.expenses[0].stage === 'Электрика', d.expenses[0]);
+  check('cleanDeal: чужой этап отбрасывается', d.expenses[1].stage === '' && d.expenses[2].stage === '', d.expenses);
+}
+`, ctx);
 
 Promise.all(ctx.pendingTests || []).then(() => {
   console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
