@@ -177,7 +177,8 @@ tr.total td{font-weight:700;border-bottom:0}
   body.rep-on{padding:0!important}
   html:has(body.rep-on),body.rep-on{background:#fff!important}
   #report.on{position:static;overflow:visible;display:block}
-  .rep-bar{display:none}
+  .rep-bar,.rep-noprint{display:none}
+  .sheet a.rep-tel{color:inherit;text-decoration:none}
   .sheet{max-width:none;padding:0}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .sheet tr{break-inside:avoid}
@@ -1561,6 +1562,14 @@ function reportHtml(d) {
   const spent = exp.reduce((x, e) => x + e.sum, 0);
   const dt = today().split('-').reverse().join('.');
   let h = '<div class="sheet"><h1>' + esc(d.name || 'Объект') + '</h1><div class="meta">' + (d.address ? esc(d.address) + ' · ' : '') + 'этап: ' + esc(d.stage) + ' · отчёт на ' + dt + '</div>';
+  // Объект и контакты: адрес на сегодня, собственник, ответственные
+  const own = d.owner || {name: '', phone: ''}, ppl = (d.people || []).filter(x => x.name || x.phone || x.role), pl = placeFor(d);
+  const telCell = ph => { const t = telHref(ph); return ph ? (t ? '<a href="' + esc(t) + '" class="rep-tel">' + esc(ph) + '</a>' : esc(ph)) : '<span class="mut">телефон не указан</span>'; };
+  h += '<h2>Объект и контакты</h2><table>' +
+    '<tr><td>Адрес на ' + dt + '</td><td>' + (d.address ? esc(d.address) : '<span class="mut">не указан</span>') +
+      (pl ? '<br><a class="rep-noprint" href="' + taxiUrl(pl.lat, pl.lon) + '" rel="noopener">Вызвать такси</a>' : '') + '</td></tr>' +
+    '<tr><td>Собственник</td><td>' + (own.name || own.phone ? esc(own.name || '—') + '<br>' + telCell(own.phone) : '<span class="mut">не указан</span>') + '</td></tr>' +
+    (ppl.length ? ppl.map(x => '<tr><td>' + esc(x.role || 'Ответственный') + '</td><td>' + esc(x.name || '—') + '<br>' + telCell(x.phone) + '</td></tr>').join('') : '<tr><td>Ответственные</td><td><span class="mut">не назначены</span></td></tr>') + '</table>';
   // Ключевые цифры
   const f = p ? dealForecast(d, p, c) : null;
   const sold = d.saleFact > 0;
@@ -1589,6 +1598,14 @@ function reportHtml(d) {
     h += '<table style="margin-top:12px"><tr><td>Перерасход по статьям</td><td class="n ' + (f.pf.over > 0 ? 'bad' : '') + '">' + rub(-f.pf.over) + '</td></tr>' +
       (f.wp ? '<tr><td>' + (f.wp.shift < 0 ? 'Экономия от срока' : 'Потери от срока') + '</td><td class="n ' + (f.sched > 0 ? 'bad' : 'good') + '">' + rub(-f.sched) + '</td></tr>' : '') +
       (f.risk > 0 ? '<tr><td>Резерв на риски объекта</td><td class="n bad">' + rub(-f.risk) + '</td></tr>' : '') + '</table>';
+  }
+  // Смета ремонта: фактические расходы построчно (ремонт и материалы)
+  const rep = exp.filter(e => e.cat === 'Ремонт' || e.cat === 'Материалы').sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  if (rep.length) {
+    const rs = rep.reduce((x, e) => x + e.sum, 0);
+    h += '<h2>Смета ремонта (по факту)</h2><table><tr><th>Дата</th><th>Статья</th><th class="n">Сумма</th></tr>' + rep.map(e =>
+      '<tr><td>' + esc(String(e.date || '').split('-').reverse().join('.')) + '</td><td>' + esc(e.cat) + (e.note ? ' · ' + esc(e.note) : '') + '</td><td class="n">' + rub(e.sum) + '</td></tr>').join('') +
+      '<tr class="tot"><td colspan="2">Итого на ремонт</td><td class="n">' + rub(rs) + '</td></tr></table>';
   }
   // Структура вложений
   const parts = [['Покупка', c.price]];

@@ -354,6 +354,16 @@ vm.runInContext(`
   check('отчёт: проданная сделка показывает факт', h3.includes('Продано за') && h3.includes('Фактический результат продажи'));
   const h4 = reportHtml(mk({calc: Object.assign({}, DEFAULT_CALC, {price: 0, sale: 0})}));
   check('отчёт: нулевые цены — без NaN и Infinity', !/NaN|Infinity/.test(h4));
+  // Сводный отчёт: объект, контакты, смета
+  check('отчёт: блок «Объект и контакты» с адресом на сегодня', h.includes('Объект и контакты') && h.includes('Адрес на ' + today().split('-').reverse().join('.')));
+  check('отчёт: без собственника и ответственных — подписи, без падения', h.includes('не указан') && h.includes('не назначены'));
+  check('отчёт: без места такси нет', !h.includes('Вызвать такси'));
+  const h5 = reportHtml(mk({owner: {name: 'Иванов <b>И</b>', phone: '+7 900 111-22-33'}, people: [{id: 'p1', role: 'за электрику', name: 'Петров', phone: '8 900 222-33-44'}, {id: 'p2', role: '', name: '', phone: ''}], place: {lat: 55.7, lon: 37.6, address: 'ул. "Тест" & <b>'}}));
+  check('отчёт: собственник экранирован, телефон — ссылка', h5.includes('Иванов &lt;b&gt;') && h5.includes('href="tel:+79001112233"'));
+  check('отчёт: ответственный с ролью и телефоном, пустой не выводится', h5.includes('за электрику') && h5.includes('Петров') && h5.includes('tel:') && (h5.match(/Ответственный</g) || []).length === 0);
+  check('отчёт: такси при известном месте (в печать не идёт)', h5.includes('rep-noprint') && h5.includes('end-lat=55.700000'));
+  check('отчёт: смета ремонта по строкам с итогом', h.includes('Смета ремонта') && h.includes('Итого на ремонт') && h.includes(rub(900000)) && !h.includes('Чужая'));
+  check('отчёт: без расходов на ремонт сметы нет', !h2.includes('Смета ремонта'));
 }
 
 /* --- История: кнопка «назад» --- */
