@@ -844,6 +844,71 @@ vm.runInContext(`
   ctx.check('бланк: перерисовка не падает при пустых данных', view.innerHTML.includes('Создать проект'));
 }
 
+/* --- Данные объекта: собственник, документы, файлы, такси --- */
+vm.runInContext(`
+{
+  check('телефон: 8 и 7 в начале приводятся к +7', telHref('8 (900) 123-45-67') === 'tel:+79001234567' && telHref('7 900 123 45 67') === 'tel:+79001234567');
+  check('телефон: 10 цифр — это +7, плюс сохраняется', telHref('9001234567') === 'tel:+79001234567' && telHref('+375 29 123-45-67') === 'tel:+375291234567');
+  check('телефон: белорусский формат 8 0XX приводится к +375', telHref('8 029 123-45-67') === 'tel:+375291234567' && telHref('80291234567') === 'tel:+375291234567' && telHref('8 495 123-45-67') === 'tel:+74951234567');
+  check('телефон: короткий номер оставляем, мусор и пустое — нет ссылки', telHref('112 99') === 'tel:11299' && telHref('') === '' && telHref('abc') === '' && telHref('12') === '' && telHref('1'.repeat(16)) === '');
+  check('телефон: в ссылке нет ничего, кроме цифр и плюса', /^tel:[+]?[0-9]+$/.test(telHref('8"><script>9001234567')), telHref('8"><script>9001234567'));
+  check('такси: ссылка Яндекса с координатами назначения', taxiUrl(55.7522, 37.6156) === 'https://3.redirect.appmetrica.yandex.com/route?end-lat=55.752200&end-lon=37.615600&appmetrica_tracking_id=1178268795219780156&lang=ru', taxiUrl(55.7522, 37.6156));
+  const pl = {lat: 55.75, lon: 37.6, address: 'Москва, Арбат, 5'};
+  check('такси: место годится, только пока адрес тот же', placeFor({address: ' Москва, Арбат, 5 ', place: pl}) === pl && placeFor({address: 'Москва, Арбат, 6', place: pl}) === null && placeFor({address: 'x', place: null}) === null && placeFor(null) === null);
+  check('такси: координаты вне диапазона не годятся', placeFor({address: 'a', place: {lat: 99, lon: 0, address: 'a'}}) === null);
+  check('такси: без места — кнопка, с местом — ссылка', taxiBtnHtml({address: 'a', place: null}, 'deal-taxi').includes('<button') && taxiBtnHtml({address: 'a', place: null}, 'deal-taxi').includes('data-a="deal-taxi"') && taxiBtnHtml({address: 'a', place: {lat: 1, lon: 2, address: 'a'}}, 'deal-taxi').includes('<a class="btn" href="https://3.redirect'));
+  const d = cleanDeal({id: 'z', name: 'n', owner: {name: '  ' + 'И'.repeat(200), phone: '+7 900 ' + '1'.repeat(60)}, docs: {egrn: 'have', bank: 'miss', spouse: 'na', passport: 'hack', zzz: 'have', proxy: 5}, ready: 'maybe', place: {lat: 'x', lon: 1, address: 'a'}});
+  check('проект: собственник обрезан по длине', d.owner.name.length === 80 && d.owner.phone.length === 30, [d.owner.name.length, d.owner.phone.length]);
+  check('проект: документы — только известные ключи и состояния', JSON.stringify(d.docs) === JSON.stringify({egrn: 'have', spouse: 'na', bank: 'miss'}) || (d.docs.egrn === 'have' && d.docs.bank === 'miss' && d.docs.spouse === 'na' && !('passport' in d.docs) && !('zzz' in d.docs) && !('proxy' in d.docs)), d.docs);
+  check('проект: странные «готово» и место отбрасываются', d.ready === '' && d.place === null);
+  const d2 = cleanDeal({id: 'y', owner: 'bad', docs: 7, ready: 'yes', place: {lat: 55, lon: 37, address: ' Арбат '}});
+  check('проект: битые поля заменяются пустыми, правильные сохраняются', d2.owner.name === '' && d2.owner.phone === '' && Object.keys(d2.docs).length === 0 && d2.ready === 'yes' && d2.place.address === 'Арбат');
+  check('проект: старая запись без новых полей читается', (() => { const x = cleanDeal({id: 'o', name: 'Старая'}); return x.owner.phone === '' && x.ready === '' && x.place === null && JSON.stringify(x.docs) === '{}'; })());
+  const nd = newDeal('Тест', null);
+  check('проект: новый создаётся с пустыми данными объекта', nd.owner.name === '' && nd.ready === '' && nd.place === null && JSON.stringify(nd.docs) === '{}');
+  S.deals = S.deals.filter(x => x.id !== nd.id);
+  check('файлы: допустимые форматы — без html, svg, exe, js', docExt('Договор.PDF') === 'pdf' && !!DOC_EXT.pdf && !DOC_EXT.html && !DOC_EXT.svg && !DOC_EXT.exe && !DOC_EXT.js && !DOC_EXT.htm && !DOC_EXT.php);
+  check('файлы: расширение берётся из имени', docExt('a.b.docx') === 'docx' && docExt('noext') === '' && docExt('x.toolongext') === '' && docExt(null) === '');
+  check('файлы: открываем в новой вкладке только pdf и растровые картинки', DOC_OPEN.every(e => ['pdf', 'jpg', 'jpeg', 'png', 'webp'].includes(e)) && !DOC_OPEN.includes('docx') && !DOC_OPEN.includes('heic'));
+  check('файлы: имя очищается от опасных символов и обрезается', safeFileName('a/b' + String.fromCharCode(92) + 'c:d*e?"f<g>h|i') === 'a_b_c_d_e__f_g_h_i' && safeFileName('') === 'документ' && safeFileName('я'.repeat(300)).length === 120);
+  check('файлы: размер читается', fmtSize(500) === '1 КБ' && fmtSize(2048) === '2 КБ' && fmtSize(1572864) === '1,5 МБ');
+  const full = {docs: {egrn: 'have', title: 'have', passport: 'have', spouse: 'na', housebook: 'have', utility: 'have', bti: 'have', proxy: 'na', bank: 'na', guardian: 'na'}, ready: 'yes'};
+  check('документы: всё закрыто — «в порядке» и без предупреждения', /Не хватает: 0/.test(docSumHtml(full)) && /все документы в порядке/.test(docSumHtml(full)) && !/neg/.test(readyHtml(full)));
+  const part = {docs: {egrn: 'have', bank: 'miss'}, ready: 'yes'};
+  check('документы: считаются «нет» и «не отмечено»', /Не хватает: 1/.test(docSumHtml(part)) && /Не отмечено: 8/.test(docSumHtml(part)), docSumHtml(part));
+  check('документы: «всё готово» при неполном списке — предупреждение', /всё готово.*не подтверждено/.test(readyHtml(part)) && /ещё 9 не подтверждено/.test(readyHtml(part)), readyHtml(part));
+  const xs = {id: 'q', name: 'n', address: '', docs: {}, owner: {name: '"><img src=x onerror=1>', phone: '"><script>'}, ready: '', place: null};
+  const dh = dealDataHtml(xs);
+  check('карточка: имя и телефон собственника экранированы', !dh.includes('<img src=x') && !dh.includes('<script>') && dh.includes('&lt;img'));
+  check('карточка: есть собственник, геолокация, такси, документы, готовность, файлы', dh.includes('Собственник') && dh.includes('data-a="deal-geo"') && dh.includes('data-a="deal-taxi"') && dh.includes('Документы по объекту') && dh.includes('Всё ли готово?') && dh.includes('data-dfile') && dh.includes('Прикрепить файл'));
+  check('карточка: список документов — 10 пунктов по 3 отметки', (dh.match(/data-a="doc-set"/g) || []).length === 30, (dh.match(/data-a="doc-set"/g) || []).length);
+  check('карточка: без телефона нет кнопки «Позвонить»', !dealDataHtml(Object.assign({}, xs, {owner: {name: 'x', phone: ''}})).includes('Позвонить собственнику') && dealDataHtml(Object.assign({}, xs, {owner: {name: 'x', phone: '89001234567'}})).includes('href="tel:+79001234567"'));
+}
+`, ctx);
+
+/* --- Ответственные --- */
+vm.runInContext(`
+{
+  check('ответственные: не массив — пустой список', cleanPeople(null).length === 0 && cleanPeople('x').length === 0 && cleanPeople({}).length === 0 && cleanPeople(undefined).length === 0);
+  const big = Array.from({length: 20}, (_, i) => ({id: 'p' + i, role: 'r' + i, name: 'n', phone: '1'}));
+  check('ответственные: не больше 12', cleanPeople(big).length === PEOPLE_MAX && PEOPLE_MAX === 12);
+  const dup = cleanPeople([{id: 'a1', role: 'x'}, {id: 'a1', role: 'y'}, {id: 'bad id!', role: 'z'}, {role: 'w'}, null, 5, 'str']);
+  check('ответственные: повторы и плохие id заменяются, мусор отбрасывается', dup.length === 4 && new Set(dup.map(p => p.id)).size === 4 && dup.every(p => /^[A-Za-z0-9]{1,24}$/.test(p.id)) && dup[0].id === 'a1', dup.map(p => p.id));
+  const long = cleanPeople([{id: 'q', role: 'Р'.repeat(200), name: 'И'.repeat(200), phone: '9'.repeat(100)}])[0];
+  check('ответственные: поля обрезаются, пробелы убираются', long.role.length === 60 && long.name.length === 80 && long.phone.length === 30 && cleanPeople([{id: 'k', role: '  роль  ', name: 5, phone: null}])[0].role === 'роль' && cleanPeople([{id: 'k', name: 5}])[0].name === '');
+  check('ответственные: старый проект без списка читается', cleanDeal({id: 'o'}).people.length === 0 && newDeal('t', null).people.length === 0 && (S.deals = S.deals.filter(x => x.name !== 't'), true));
+  const x = personRowHtml({id: 'z1', role: '"><img src=x onerror=1>', name: '<b>', phone: '8 900 123-45-67'});
+  check('ответственные: строка экранирована, есть «Позвонить» и «Убрать»', !x.includes('<img src=x') && !x.includes('<b>') && x.includes('&lt;img') && x.includes('href="tel:+79001234567"') && x.includes('data-a="pp-del"') && x.includes('data-id="z1"'));
+  check('ответственные: без телефона нет ссылки «Позвонить»', !personRowHtml({id: 'z2', role: 'r', name: '', phone: ''}).includes('href='));
+  check('ответственные: пустой список — подсказка', /Пока никого/.test(peopleListHtml({people: []})) && /Пока никого/.test(peopleListHtml({})));
+  const full = {people: big};
+  check('ответственные: на пределе кнопки добавления заменяются сообщением', /Достигнут предел/.test(peopleAddHtml(full)) && !/pp-add/.test(peopleAddHtml(full)) && /data-a="pp-add"/.test(peopleAddHtml({people: []})) && (peopleAddHtml({people: []}).match(/data-a="pp-add"/g) || []).length === 6);
+  check('ответственные: роли в быстрых кнопках — «за проект», «за электрику», «за сантехнику»', /за проект/.test(peopleAddHtml({people: []})) && /за электрику/.test(peopleAddHtml({people: []})) && /за сантехнику/.test(peopleAddHtml({people: []})));
+  const card = dealDataHtml({id: 'd', name: 'n', address: '', docs: {}, owner: {name: '', phone: ''}, people: [{id: 'w1', role: 'за электрику', name: 'Пётр', phone: ''}], ready: '', place: null});
+  check('ответственные: блок есть в карточке проекта', card.includes('<h3>Ответственные</h3>') && card.includes('data-pid="w1"') && card.includes('id="roleList"'));
+}
+`, ctx);
+
 /* --- Бланк: гонки (фото и геолокация из сброшенного черновика, очередь, лимит) --- */
 ctx.pendingTests = ctx.pendingTests || [];
 {

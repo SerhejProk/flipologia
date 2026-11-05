@@ -80,7 +80,7 @@ h3{font-size:16px;font-weight:600;margin:0 0 12px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
 .inwrap{position:relative;display:flex;align-items:center}
 .inwrap span{position:absolute;right:10px;font-size:14px;color:var(--muted);pointer-events:none}
-input[type=text],input[type=date],input[type=url],select,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--input);border:1px solid transparent;border-radius:12px;padding:10px 12px;min-height:46px}
+input[type=text],input[type=date],input[type=url],input[type=tel],select,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--input);border:1px solid transparent;border-radius:12px;padding:10px 12px;min-height:46px}
 .inwrap input{padding-right:40px}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);outline-offset:0;background:var(--card)}
 textarea{min-height:90px;resize:vertical}
@@ -205,6 +205,15 @@ tr.total td{font-weight:700;border-bottom:0}
 .ph-it img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;background:var(--acc-soft);margin-bottom:4px}
 .ph-it b{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
 .ph-it span{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.pp{padding:12px 0;border-top:1px solid var(--line)}
+.pp:first-child{border-top:0;padding-top:0}
+.pcall:empty{display:none}
+.doc{padding:10px 0;border-top:1px solid var(--line)}
+.doc:first-child{border-top:0;padding-top:0}
+.doc-t{font-size:14.5px;margin-bottom:6px}
+.frow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.frow .btn{min-height:40px;padding:6px 12px}
+.btn svg{width:20px;height:20px;flex:none}
 .nb-ph{position:relative}
 .nb-ph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px}
 .nb-x{position:absolute;top:6px;right:6px;width:32px;height:32px;border:0;border-radius:99px;background:rgba(0,0,0,.6);color:#fff;font-size:16px;line-height:1;cursor:pointer}
@@ -573,6 +582,49 @@ function hasRisk(d, k) { return !!(d.risks && Object.prototype.hasOwnProperty.ca
 function riskTotal(d) {
   return CHECKLIST.reduce((s, [k]) => s + (hasRisk(d, k) ? (Number(d.risks[k]) || 0) : 0), 0);
 }
+// Документы по объекту: ключ, название. Перечень — ориентир, не юридическая консультация.
+const DOC_LIST = [
+  ['egrn', 'Выписка из ЕГРН'],
+  ['title', 'Документ-основание права: договор, дарение, наследство'],
+  ['passport', 'Паспорт собственника'],
+  ['spouse', 'Нотариальное согласие супруга'],
+  ['housebook', 'Выписка из домовой книги: кто прописан'],
+  ['utility', 'Справка об отсутствии долгов по ЖКУ и капремонту'],
+  ['bti', 'Технический паспорт или поэтажный план'],
+  ['proxy', 'Доверенность, если продаёт представитель'],
+  ['bank', 'Согласие банка или снятие обременения'],
+  ['guardian', 'Разрешение органов опеки, если среди собственников дети']
+];
+const DOC_STATES = [['have', 'Есть'], ['miss', 'Нет'], ['na', 'Не нужен']];
+function cleanOwner(o) {
+  const t = (v, n) => typeof v === 'string' ? v.trim().slice(0, n) : '';
+  return o && typeof o === 'object' ? {name: t(o.name, 80), phone: t(o.phone, 30)} : {name: '', phone: ''};
+}
+const PEOPLE_MAX = 12;
+const ROLE_SUGGEST = ['Ответственный за проект', 'Ответственный за электрику', 'Ответственный за сантехнику', 'Ответственный за отделку', 'Ответственный за демонтаж', 'Прораб', 'Юрист', 'Риелтор'];
+// Ответственные: до 12 записей, id — только буквы и цифры, без повторов
+function cleanPeople(a) {
+  if (!Array.isArray(a)) return [];
+  const t = (v, n) => typeof v === 'string' ? v.trim().slice(0, n) : '', seen = new Set();
+  return a.filter(x => x && typeof x === 'object').slice(0, PEOPLE_MAX).map(x => {
+    let id = typeof x.id === 'string' && /^[A-Za-z0-9]{1,24}$/.test(x.id) ? x.id : uid();
+    while (seen.has(id)) id = uid();
+    seen.add(id);
+    return {id, role: t(x.role, 60), name: t(x.name, 80), phone: t(x.phone, 30)};
+  });
+}
+function cleanDocs(o) {
+  const out = {};
+  if (o && typeof o === 'object') DOC_LIST.forEach(([k]) => { if (o[k] === 'have' || o[k] === 'miss' || o[k] === 'na') out[k] = o[k]; });
+  return out;
+}
+// Место на карте, найденное для адреса: годится, только пока адрес в проекте совпадает с адресом в записи
+function cleanPlace(pl) {
+  if (!pl || typeof pl !== 'object') return null;
+  const lat = pl.lat, lon = pl.lon;
+  if (typeof lat !== 'number' || typeof lon !== 'number' || !isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  return {lat, lon, address: typeof pl.address === 'string' ? pl.address.trim().slice(0, 200) : ''};
+}
 function cleanDeal(d) {
   if (!d || typeof d !== 'object') return null;
   const str = v => v == null ? '' : String(v);
@@ -585,6 +637,7 @@ function cleanDeal(d) {
       ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note)})) : [],
     checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
     risks: cleanRisks(d.risks),
+    owner: cleanOwner(d.owner), people: cleanPeople(d.people), docs: cleanDocs(d.docs), ready: d.ready === 'yes' || d.ready === 'no' ? d.ready : '', place: cleanPlace(d.place),
     notes: str(d.notes), saleFact: Number(d.saleFact) || 0, works: cleanWorks(d.works), demo: d.demo === true,
     created: Number(d.created) || Date.now(), updated: Number(d.updated) || Date.now()
   };
@@ -1412,6 +1465,7 @@ function renderDeal(d) {
     ? '<table><tr><td>Покупка</td><td class="n">' + rub(c.price) + '</td></tr><tr><td>Ремонт по плану</td><td class="n">' + rub(c.repair) + '</td></tr><tr><td>Продажа по плану</td><td class="n">' + rub(c.sale) + '</td></tr><tr class="total"><td>Чистая прибыль</td><td class="n">' + rub(p.net) + ' · ' + pct(p.annual) + '</td></tr></table>'
     : '<p class="muted">Расчёта ещё нет.</p>') +
     '<button class="btn block" style="margin-top:10px" data-a="deal-to-calc">' + (p ? 'Открыть в калькуляторе' : 'Посчитать сделку') + '</button></div>';
+  h += dealDataHtml(d);
   h += worksCardHtml(d);
   h += '<div class="card"><h3>Расходы</h3>' +
     '<div class="grid2"><label class="f">Статья<select id="expCat">' + EXP_CATS.map(c2 => '<option>' + c2 + '</option>').join('') + '</select></label>' +
@@ -1435,6 +1489,7 @@ function renderDeal(d) {
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-share">Поделиться сделкой</button>';
   h += '<button class="btn danger block" data-a="deal-del">Удалить сделку</button>';
   $('#view').innerHTML = h;
+  dealFilesLoad(d.id);
 }
 const WORK_STATUS = {done: ['Готово', 'pos'], work: ['В работе', ''], wait: ['Ждёт', 'muted']};
 function workInfoHtml(r) {
@@ -1603,7 +1658,7 @@ function dealFactHtml(d) {
       (p ? '<p class="note">План до налога был ' + rub(p.pbt) + '.</p>' : '') : '<p class="note">Впишите цену продажи, чтобы увидеть фактическую прибыль. Расходы на сделку при покупке вносите в «Расходы» со статьёй «Оформление сделки».</p>';
 }
 function newDeal(name, calc) {
-  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', rayon: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], checks: {}, risks: {}, notes: '', saleFact: 0, works: null, created: Date.now(), updated: Date.now()};
+  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', rayon: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], checks: {}, risks: {}, owner: {name: '', phone: ''}, people: [], docs: {}, ready: '', place: null, notes: '', saleFact: 0, works: null, created: Date.now(), updated: Date.now()};
   S.deals.push(d); save(); return d;
 }
 
@@ -1817,6 +1872,7 @@ const ICO = {
   parse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 12h6M9 16h4"/></svg>',
   cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.800 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+  taxi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l1.5-5A2 2 0 0 1 8.4 8.600h7.200a2 2 0 0 1 1.900 1.400L19 15"/><rect x="3" y="15" width="18" height="4.500" rx="1.500"/><path d="M8 4.500h8M7 19.500v1.500M17 19.500v1.500"/></svg>',
   mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'
 };
 const QUICK = [['price', 'Покупка', '₽'], ['sale', 'Продажа', '₽'], ['repair', 'Ремонт', '₽', 'repair'], ['months', 'Срок', 'мес', 'months']];
@@ -2125,16 +2181,21 @@ function phDb() {
   if (phDbP) return phDbP;
   phDbP = new Promise((res, rej) => {
     if (typeof indexedDB === 'undefined' || !indexedDB) { rej(new Error('noidb')); return; }
-    const q = indexedDB.open('flipologia-photos', 1);
-    q.onupgradeneeded = () => { q.result.createObjectStore('photos', {keyPath: 'id'}); };
-    q.onsuccess = () => res(q.result);
+    const q = indexedDB.open('flipologia-photos', 2);
+    q.onupgradeneeded = () => {
+      const db = q.result;
+      if (!db.objectStoreNames.contains('photos')) db.createObjectStore('photos', {keyPath: 'id'});
+      if (!db.objectStoreNames.contains('docs')) db.createObjectStore('docs', {keyPath: 'id'}).createIndex('dealId', 'dealId');
+    };
+    q.onsuccess = () => { q.result.onversionchange = () => { q.result.close(); phDbP = null; }; res(q.result); };
+    q.onblocked = () => rej(new Error('blocked'));
     q.onerror = () => rej(q.error || new Error('idb'));
   });
   phDbP.catch(() => { phDbP = null; });
   return phDbP;
 }
-const phTx = (mode, fn) => phDb().then(db => new Promise((res, rej) => {
-  const tx = db.transaction('photos', mode), r = fn(tx.objectStore('photos'));
+const phTx = (mode, fn, store) => phDb().then(db => new Promise((res, rej) => {
+  const tx = db.transaction(store || 'photos', mode), r = fn(tx.objectStore(store || 'photos'));
   tx.oncomplete = () => res(r && r.result); tx.onerror = tx.onabort = () => rej(tx.error || new Error('tx'));
 }));
 const phDealName = id => { const d = id && S.deals.find(x => x.id === id); return d ? (d.name || 'Без названия') : ''; };
@@ -2172,7 +2233,10 @@ async function geoLocate(T, paint) {
     let addr = ''; try { addr = await phReverse(T.lat, T.lon); } catch (e) {}
     if (T.gen !== gen) return;
     if (addr && T.address !== typed) T.geoMsg = 'Адрес найден, но вы уже вписали свой, он оставлен: ' + addr;
-    else if (addr) { T.address = addr; T.geoMsg = 'Адрес найден: проверьте и поправьте, если нужно.'; }
+    else if (addr) {
+      T.address = addr; T.geoMsg = 'Адрес найден: проверьте и поправьте, если нужно.';
+      if ('place' in T) T.place = {lat: T.lat, lon: T.lon, address: addr.trim()};
+    }
     else T.geoMsg = 'Место определено, но адрес найти не удалось (нет сети или сервис не ответил). Впишите адрес вручную.';
   } catch (e) { if (T.gen !== gen) return; T.geoMsg = geoErrText(e); }
   T.geoBusy = false; paint();
@@ -2338,13 +2402,209 @@ function renderPhoto() {
   phPaintGeo(); phPaintPrev(); phPaintList(); phReload();
 }
 
+/* ===== Данные объекта: собственник, документы, файлы, такси ===== */
+const DOC_EXT = {pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic',
+  doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
+const DOC_OPEN = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];   // только их открываем в новой вкладке; остальное — скачивание
+const DOC_LIMIT = 15 * 1024 * 1024, DOC_MAX = 30;
+const docExt = name => { const m = /\.([A-Za-z0-9]{1,5})$/.exec(String(name || '')); return m ? m[1].toLowerCase() : ''; };
+const safeFileName = n => String(n || 'документ').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 120) || 'документ';
+const fmtSize = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' МБ' : Math.max(1, Math.round(n / 1024)) + ' КБ';
+const docName = k => { const x = DOC_LIST.find(y => y[0] === k); return x ? x[1] : 'Другое'; };
+// Телефон для ссылки «Позвонить»: российский формат приводим к +7, короткие номера оставляем как есть
+function telHref(phone) {
+  const raw = String(phone || '').trim(); let d = raw.replace(/\D/g, '');
+  if (d.length < 5 || d.length > 15) return '';
+  if (raw.startsWith('+')) return 'tel:+' + d;
+  if (d.length === 11 && d.startsWith('80')) return 'tel:+375' + d.slice(2);   // белорусский формат 8 0XX XXX-XX-XX
+  if (d.length === 11 && (d[0] === '8' || d[0] === '7')) return 'tel:+7' + d.slice(1);
+  if (d.length === 10) return 'tel:+7' + d;
+  return 'tel:' + d;
+}
+// Такси: ссылка Яндекса на заказ поездки к объекту (формат из документации Яндекса: appmetrica redirect)
+const taxiUrl = (lat, lon) => 'https://3.redirect.appmetrica.yandex.com/route?end-lat=' + lat.toFixed(6) + '&end-lon=' + lon.toFixed(6) + '&appmetrica_tracking_id=1178268795219780156&lang=ru';
+const placeFor = h => h && h.place && hasCoord(h.place.lat, h.place.lon) && String(h.place.address || '').trim() === String(h.address || '').trim() ? h.place : null;
+async function geocodeAddress(address) {
+  const q = String(address || '').trim();
+  if (!q) return null;
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null, t = setTimeout(() => { if (ctl) ctl.abort(); }, 10000);
+  try {
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=ru&countrycodes=ru,by,kz&q=' + encodeURIComponent(q), {signal: ctl ? ctl.signal : undefined});
+    if (!r.ok) throw new Error('http ' + r.status);
+    const j = await r.json(), x = Array.isArray(j) ? j[0] : null;
+    if (!x) return null;
+    const lat = Number(x.lat), lon = Number(x.lon);
+    const name = String(x.display_name || '').split(',').slice(0, 4).map(v => v.trim()).filter(Boolean).join(', ');
+    return hasCoord(lat, lon) ? {lat, lon, name} : null;
+  } finally { clearTimeout(t); }
+}
+// Кнопка такси: если место для текущего адреса известно — обычная ссылка (так надёжнее открывается приложение), иначе кнопка, которая сначала ищет адрес
+const taxiBtnHtml = (h, act) => { const pl = placeFor(h); return pl ? '<a class="btn" href="' + taxiUrl(pl.lat, pl.lon) + '" rel="noopener">' + ICO.taxi + 'Вызвать такси</a>' : '<button type="button" class="btn" data-a="' + act + '">' + ICO.taxi + 'Вызвать такси</button>'; };
+async function taxiGo(h, after, say) {
+  const addr = String(h.address || '').trim();
+  let pl = placeFor(h);
+  if (!pl) {
+    if (!addr) { toast('Впишите адрес или нажмите «Геолокация»'); return; }
+    toast('Ищем адрес на карте…');
+    let g = null; try { g = await geocodeAddress(addr); } catch (e) {}
+    if (String(h.address || '').trim() !== addr) return;   // адрес успели поменять — результат уже не тот
+    if (!g) { toast('Не нашли этот адрес на карте. Допишите город и дом или нажмите «Геолокация» на объекте'); return; }
+    h.place = {lat: g.lat, lon: g.lon, address: addr};
+    if (after) after();
+    // Место нашли по тексту адреса и могли ошибиться (одинаковые улицы в разных городах): показываем и просим подтвердить повторным нажатием
+    const msg = 'На карте найдено: ' + (g.name || 'точка по адресу') + '. Если это то место, нажмите «Вызвать такси» ещё раз. Если нет, допишите город и дом.';
+    if (say) say(msg); else toast(msg);
+    return;
+  }
+  location.href = taxiUrl(pl.lat, pl.lon);
+}
+const curDeal = () => S.deals.find(x => x.id === openDeal) || null;
+function dealTaxiPaint(d) { const el = document.getElementById('dealTaxi'); if (el && d) el.innerHTML = taxiBtnHtml(d, 'deal-taxi'); }
+// Геолокация проекта: координаты и адрес, адрес подставляется только если у проекта он пуст
+const DG = {lat: null, lon: null, acc: null, address: '', geoMsg: '', geoBusy: false, gen: 0, id: ''};
+const dgPaint = () => { if (openDeal === DG.id) geoPaint(DG, 'dealGeo', '__none', 'deals'); };
+async function dealGeo(d) {
+  if (DG.geoBusy) { if (DG.id !== d.id) toast('Сейчас определяется место для другого проекта. Подождите несколько секунд'); return; }
+  DG.id = d.id; DG.lat = DG.lon = DG.acc = null; DG.address = '';
+  await geoLocate(DG, dgPaint);
+  const dd = S.deals.find(x => x.id === DG.id);
+  if (!dd || !hasCoord(DG.lat, DG.lon)) return;
+  const found = String(DG.address || '').trim(), own = String(dd.address || '').trim();
+  if (found && !own) { dd.address = found; dd.place = {lat: DG.lat, lon: DG.lon, address: found}; DG.geoMsg = 'Адрес объекта заполнен по геолокации. Проверьте и поправьте, если нужно.'; }
+  else if (found && own === found) dd.place = {lat: DG.lat, lon: DG.lon, address: found};
+  else if (found) DG.geoMsg = 'Найден адрес: ' + found + '. Ваш адрес оставлен без изменений.';
+  dd.updated = Date.now(); save();
+  if (S.tab === 'deals' && openDeal === dd.id) {
+    const a = document.querySelector('[data-d="address"]'); if (a && a.value !== (dd.address || '')) a.value = dd.address || '';
+    dealTaxiPaint(dd); dgPaint();
+  }
+}
+function docSumHtml(d) {
+  const docs = d.docs || {}, st = k => docs[k] || '';
+  const miss = DOC_LIST.filter(([k]) => st(k) === 'miss').length, unset = DOC_LIST.filter(([k]) => !st(k)).length;
+  const need = miss + unset;
+  return '<p class="small" style="margin:8px 0 0"><b' + (miss ? ' class="neg"' : '') + '>Не хватает: ' + miss + '</b>' + (unset ? ' · Не отмечено: ' + unset : '') + (need === 0 ? ' · все документы в порядке' : '') + '</p>';
+}
+function docListHtml(d) {
+  const docs = d.docs || {};
+  return DOC_LIST.map(([k, name]) => {
+    const n = DF.id === d.id ? DF.list.filter(f => f.tag === k).length : 0;
+    return '<div class="doc"><div class="doc-t">' + esc(name) + (n ? ' <span class="small muted">· файлов: ' + n + '</span>' : '') + '</div><div class="chips">' +
+      DOC_STATES.map(([v, l]) => '<button type="button" data-a="doc-set" data-k="' + k + '" data-v="' + v + '" class="' + (docs[k] === v ? 'on' : '') + '" aria-pressed="' + (docs[k] === v) + '">' + l + '</button>').join('') + '</div></div>';
+  }).join('');
+}
+function readyHtml(d) {
+  const miss = DOC_LIST.filter(([k]) => (d.docs || {})[k] !== 'have' && (d.docs || {})[k] !== 'na').length;
+  return '<div class="chips">' + [['yes', 'Да, всё готово'], ['no', 'Нет, не всё']].map(([v, l]) => '<button type="button" data-a="ready-set" data-v="' + v + '" class="' + (d.ready === v ? 'on' : '') + '" aria-pressed="' + (d.ready === v) + '">' + l + '</button>').join('') + '</div>' +
+    (d.ready === 'yes' && miss ? '<p class="small neg" style="margin:8px 0 0">Отмечено «всё готово», но по списку документов ещё ' + miss + ' не подтверждено.</p>' : '');
+}
+function personRowHtml(p) {
+  const call = telHref(p.phone), id = esc(p.id);
+  return '<div class="pp"><label class="f"><span>Роль</span><input type="text" list="roleList" data-pid="' + id + '" data-pf="role" maxlength="60" autocomplete="off" placeholder="Например: за электрику" value="' + esc(p.role) + '"></label>' +
+    '<div class="grid2" style="margin-top:8px"><label class="f"><span>Имя</span><input type="text" data-pid="' + id + '" data-pf="name" maxlength="80" autocomplete="off" placeholder="Фамилия Имя" value="' + esc(p.name) + '"></label>' +
+    '<label class="f"><span>Телефон</span><input type="tel" inputmode="tel" data-pid="' + id + '" data-pf="phone" maxlength="30" autocomplete="off" placeholder="+7 900 000-00-00" value="' + esc(p.phone) + '"></label></div>' +
+    '<div class="row" style="margin-top:8px"><span class="pcall" data-pc="' + id + '">' + (call ? '<a class="btn" href="' + esc(call) + '">Позвонить</a>' : '') + '</span><button type="button" class="btn danger" data-a="pp-del" data-id="' + id + '">Убрать</button></div></div>';
+}
+function peopleListHtml(d) {
+  const list = d.people || [];
+  return list.length ? list.map(personRowHtml).join('') : '<p class="small muted" style="margin:0 0 4px">Пока никого. Добавьте того, кто отвечает за проект, электрику, сантехнику.</p>';
+}
+function peopleAddHtml(d) {
+  const n = (d.people || []).length;
+  if (n >= PEOPLE_MAX) return '<p class="small muted" style="margin:10px 0 0">Достигнут предел: ' + PEOPLE_MAX + ' ответственных. Уберите лишних, чтобы добавить новых.</p>';
+  return '<p class="small muted" style="margin:12px 0 6px">Добавить:</p><div class="chips">' + ROLE_SUGGEST.slice(0, 5).map((r, i) => '<button type="button" data-a="pp-add" data-i="' + i + '">' + esc(r.replace('Ответственный ', '')) + '</button>').join('') + '<button type="button" data-a="pp-add" data-i="-1">Другой…</button></div>';
+}
+function peopleCardHtml(d) {
+  return '<div class="card"><h3>Ответственные</h3><div id="ppList">' + peopleListHtml(d) + '</div><div id="ppAdd">' + peopleAddHtml(d) + '</div>' +
+    '<datalist id="roleList">' + ROLE_SUGGEST.map(r => '<option value="' + esc(r) + '">').join('') + '</datalist></div>';
+}
+function dealDataHtml(d) {
+  const o = d.owner || {name: '', phone: ''}, call = telHref(o.phone);
+  return '<div class="card"><h3>Собственник</h3>' +
+    '<label class="f">Имя<input type="text" data-own="name" maxlength="80" autocomplete="off" value="' + esc(o.name) + '" placeholder="Фамилия Имя Отчество"></label>' +
+    '<div style="height:10px"></div><label class="f">Телефон<input type="tel" data-own="phone" maxlength="30" autocomplete="off" inputmode="tel" value="' + esc(o.phone) + '" placeholder="+7 900 000-00-00"></label>' +
+    '<div id="ownCall" style="margin-top:10px">' + (call ? '<a class="btn block" href="' + esc(call) + '">Позвонить собственнику</a>' : '') + '</div></div>' + peopleCardHtml(d) +
+    '<div class="card"><h3>Место и дорога</h3><div class="row"><button type="button" class="btn pri" data-a="deal-geo">' + ICO.pin + 'Геолокация</button><span id="dealTaxi">' + taxiBtnHtml(d, 'deal-taxi') + '</span></div>' +
+    '<p class="small muted" id="dealGeo" role="status" style="margin:10px 0 0"></p>' +
+    '<p class="small muted" style="margin:6px 0 0">Такси заказывается к адресу объекта. Чтобы найти место, адрес или координаты отправляются в OpenStreetMap.</p></div>' +
+    '<div class="card"><h3>Документы по объекту</h3><div id="docList">' + docListHtml(d) + '</div><div id="docSum">' + docSumHtml(d) + '</div>' +
+    '<h3 style="margin-top:16px">Всё ли готово?</h3><div id="docReady">' + readyHtml(d) + '</div>' +
+    '<p class="small muted" style="margin:10px 0 0">Список — ориентир, а не юридическая консультация. Точный перечень уточняйте у юриста.</p></div>' +
+    '<div class="card"><h3>Файлы документов</h3>' +
+    '<label class="f"><span>Что это за документ</span><select id="fileTag"><option value="">Другое</option>' + DOC_LIST.map(([k, n]) => '<option value="' + k + '">' + esc(n) + '</option>').join('') + '</select></label>' +
+    '<label class="btn pri block fbtn" style="margin-top:10px">Прикрепить файл<input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.heic,image/*" data-dfile="1" aria-label="Прикрепить файл"></label>' +
+    '<p class="small muted" style="margin:8px 0 0">PDF, фото, Word и Excel, до 15 МБ каждый. Файлы лежат только в этом браузере и в резервную копию не входят.</p>' +
+    '<div id="dealFiles"></div></div>';
+}
+// Файлы проекта (хранилище docs в IndexedDB)
+const DF = {id: '', list: [], loaded: false, err: ''};
+async function dealFilesLoad(id) {
+  DF.id = id; DF.list = []; DF.loaded = false; DF.err = ''; dealFilesPaint();
+  try { const r = await phTx('readonly', s => s.index('dealId').getAll(id), 'docs'); if (DF.id !== id) return; DF.list = (r || []).filter(f => f && isBlob(f.blob) && typeof f.id === 'string').sort((a, b) => (b.ts || 0) - (a.ts || 0)); }
+  catch (e) { if (DF.id !== id) return; DF.list = []; DF.err = 'Хранилище файлов недоступно в этом браузере (например, в приватном режиме).'; }
+  DF.loaded = true; dealFilesPaint();
+  const d = curDeal(); const el = document.getElementById('docList'); if (d && el && d.id === id) el.innerHTML = docListHtml(d);
+}
+function dealFilesPaint() {
+  const el = document.getElementById('dealFiles');
+  if (S.tab !== 'deals' || !el || !curDeal() || curDeal().id !== DF.id) return;
+  if (DF.err) { el.innerHTML = '<p class="small muted" style="margin:12px 0 0">' + esc(DF.err) + '</p>'; return; }
+  if (!DF.loaded) { el.innerHTML = '<p class="small muted" style="margin:12px 0 0">Загружаем…</p>'; return; }
+  el.innerHTML = DF.list.length ? DF.list.map(f => '<div class="frow"><div style="min-width:0"><div style="overflow-wrap:anywhere">' + esc(f.name) + '</div><div class="small muted">' + esc(docName(f.tag)) + ' · ' + esc(fmtSize(f.size || 0)) + ' · ' + esc(fmtDT(f.ts)) + '</div></div><div class="row" style="flex:none">' +
+    (DOC_OPEN.includes(f.ext) ? '<button type="button" class="btn" data-a="file-open" data-id="' + esc(f.id) + '">Открыть</button>' : '') +
+    '<button type="button" class="btn" data-a="file-save" data-id="' + esc(f.id) + '">Скачать</button><button type="button" class="btn danger" data-a="file-del" data-id="' + esc(f.id) + '" aria-label="Удалить файл">✕</button></div></div>').join('')
+    : '<p class="small muted" style="margin:12px 0 0">Файлов пока нет.</p>';
+}
+async function dealAttach(d, files) {
+  const id = d.id;
+  for (const f of files) {
+    const ext = docExt(f.name);
+    if (!DOC_EXT[ext]) { toast('Формат «.' + (ext || '?') + '» не поддерживается. Можно: PDF, фото, Word, Excel'); continue; }
+    if (f.size > DOC_LIMIT) { toast('Файл «' + safeFileName(f.name) + '» больше 15 МБ'); continue; }
+    if (!S.deals.some(x => x.id === id)) return;   // проект удалили, пока шла загрузка
+    if (DF.id === id && DF.list.length >= DOC_MAX) { toast('К проекту можно прикрепить не больше ' + DOC_MAX + ' файлов'); break; }
+    const tagEl = document.getElementById('fileTag'), tag = tagEl && DOC_LIST.some(x => x[0] === tagEl.value) ? tagEl.value : '';
+    const rec = {id: uid(), dealId: id, ts: Date.now(), name: safeFileName(f.name), ext, type: DOC_EXT[ext], size: f.size, tag, blob: new Blob([f], {type: DOC_EXT[ext]})};
+    try { await phTx('readwrite', s => s.put(rec), 'docs'); }
+    catch (e) { toast('Файл не сохранился: хранилище браузера недоступно или заполнено'); return; }
+    const dd = S.deals.find(x => x.id === id);
+    if (!dd) { phTx('readwrite', s => s.delete(rec.id), 'docs').catch(() => {}); return; }
+    if (dd && tag) { dd.docs = dd.docs || {}; if (dd.docs[tag] !== 'have') { dd.docs[tag] = 'have'; dd.updated = Date.now(); save(); } }
+    if (DF.id === id) DF.list.unshift(rec);
+    toast('Файл прикреплён');
+  }
+  if (DF.id === id) { dealFilesPaint(); const dd = curDeal(), el = document.getElementById('docList'); if (dd && dd.id === id && el) { el.innerHTML = docListHtml(dd); const sm = document.getElementById('docSum'); if (sm) sm.innerHTML = docSumHtml(dd); const rd = document.getElementById('docReady'); if (rd) rd.innerHTML = readyHtml(dd); } }
+}
+function dealFileGet(id, save2) {
+  const f = DF.list.find(x => x.id === id);
+  if (!f) return;
+  const url = URL.createObjectURL(f.blob), a = document.createElement('a');
+  a.href = url;
+  if (save2 || !DOC_OPEN.includes(f.ext)) a.download = f.name; else { a.target = '_blank'; a.rel = 'noopener'; }
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 300000);
+}
+async function dealFileDel(id) {
+  const f = DF.list.find(x => x.id === id);
+  if (!f || !confirm('Удалить файл «' + f.name + '»? Вернуть его будет нельзя.')) return;
+  try { await phTx('readwrite', s => s.delete(id), 'docs'); } catch (e) { toast('Не получилось удалить файл'); return; }
+  DF.list = DF.list.filter(x => x.id !== id); dealFilesPaint();
+  const d = curDeal(), el = document.getElementById('docList'); if (d && el) el.innerHTML = docListHtml(d);
+}
+// При удалении проекта чистим и его файлы
+function dealFilesPurge(id) {
+  phTx('readwrite', s => { s.index('dealId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = e => { const c = e.target.result; if (c) { s.delete(c.primaryKey); c.continue(); } }; }, 'docs').catch(() => {});
+}
+
 /* ===== Бланк нового объекта =====
    Открывается по «Новый проект»: название, адрес с геолокацией и фото. Проект и фото создаются кнопкой «Создать проект». */
 const NB_MAX = 8;
-const NB = {name: '', address: '', lat: null, lon: null, acc: null, geoMsg: '', geoBusy: false, photos: [], busy: false, creating: false, gen: 0};
+const NB = {name: '', address: '', lat: null, lon: null, acc: null, geoMsg: '', geoBusy: false, photos: [], busy: false, creating: false, gen: 0, owner: {name: '', phone: ''}, resp: {name: '', phone: ''}, place: null};
 const newObjName = (name, address) => String(name || '').trim() || String(address || '').trim() || 'Новый объект';
-function nbReset() { NB.gen++; NB.name = ''; NB.address = ''; NB.lat = NB.lon = NB.acc = null; NB.geoMsg = ''; NB.geoBusy = false; NB.photos = []; NB.busy = false; }
-const nbPaintGeo = () => geoPaint(NB, 'nbGeo', 'nbAddr', 'newobj');
+function nbReset() { NB.gen++; NB.name = ''; NB.owner = {name: '', phone: ''}; NB.resp = {name: '', phone: ''}; NB.place = null; NB.address = ''; NB.lat = NB.lon = NB.acc = null; NB.geoMsg = ''; NB.geoBusy = false; NB.photos = []; NB.busy = false; }
+const nbTaxiPaint = () => { const el = document.getElementById('nbTaxi'); if (el && S.tab === 'newobj') el.innerHTML = taxiBtnHtml(NB, 'nb-taxi'); };
+const nbPaintGeo = () => { geoPaint(NB, 'nbGeo', 'nbAddr', 'newobj'); nbTaxiPaint(); };
 function nbPaintPhotos() {
   const el = document.getElementById('nbPhotos');
   if (S.tab !== 'newobj' || !el) return;
@@ -2398,7 +2658,7 @@ async function nbCreate() {
       try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
     }
     // Проект создаём только после записи фото: при сбое не остаётся проекта без снимков
-    const nd = newDeal(name, null); nd.id = dealId; nd.address = addr; save();
+    const nd = newDeal(name, null); nd.id = dealId; nd.address = addr; nd.owner = cleanOwner(NB.owner); nd.people = cleanPeople(NB.resp.name.trim() || NB.resp.phone.trim() ? [{role: ROLE_SUGGEST[0], name: NB.resp.name, phone: NB.resp.phone}] : []); nd.place = cleanPlace(placeFor(NB)); save();
     const n = recs.length;
     const here = S.tab === 'newobj';
     nbReset();
@@ -2412,10 +2672,14 @@ function renderNewObj() {
     '<div class="card"><h3>Данные объекта</h3>' +
     '<label class="f"><span>Название</span><input type="text" data-nb="name" maxlength="80" autocomplete="off" placeholder="Например: однушка на Арбате" value="' + esc(NB.name) + '"></label>' +
     '<p class="small muted" style="margin:6px 0 12px">Если название не писать, проект назовётся по адресу.</p>' +
-    '<button class="btn pri block" data-a="nb-geo">' + ICO.pin + 'Геолокация</button>' +
+    '<div class="row"><button type="button" class="btn pri" data-a="nb-geo">' + ICO.pin + 'Геолокация</button><span id="nbTaxi">' + taxiBtnHtml(NB, 'nb-taxi') + '</span></div>' +
     '<p class="small muted" id="nbGeo" role="status" style="margin:10px 0 0"></p>' +
     '<label class="f" style="margin-top:10px"><span>Адрес</span><input type="text" id="nbAddr" data-nb="addr" maxlength="200" autocomplete="off" placeholder="Город, улица, дом" value="' + esc(NB.address) + '"></label>' +
-    '<p class="small muted" style="margin:8px 0 0">Чтобы найти адрес, координаты отправляются в сервис OpenStreetMap.</p></div>' +
+    '<p class="small muted" style="margin:8px 0 0">Чтобы найти адрес, координаты отправляются в сервис OpenStreetMap. Такси заказывается к этому адресу.</p>' +
+    '<div style="height:12px"></div><label class="f"><span>Собственник</span><input type="text" data-nb="oname" maxlength="80" autocomplete="off" placeholder="Фамилия Имя Отчество" value="' + esc(NB.owner.name) + '"></label>' +
+    '<div style="height:10px"></div><label class="f"><span>Телефон собственника</span><input type="tel" data-nb="ophone" maxlength="30" autocomplete="off" inputmode="tel" placeholder="+7 900 000-00-00" value="' + esc(NB.owner.phone) + '"></label>' +
+    '<div style="height:12px"></div><label class="f"><span>Ответственный за проект</span><input type="text" data-nb="rname" maxlength="80" autocomplete="off" placeholder="Кто будет заниматься объектом" value="' + esc(NB.resp.name) + '"></label>' +
+    '<div style="height:10px"></div><label class="f"><span>Телефон ответственного</span><input type="tel" data-nb="rphone" maxlength="30" autocomplete="off" inputmode="tel" placeholder="+7 900 000-00-00" value="' + esc(NB.resp.phone) + '"></label></div>' +
     '<div class="card"><h3>Фото объекта</h3><div class="row"><label class="btn pri fbtn">' + ICO.cam + 'Снять фото<input type="file" accept="image/*" capture="environment" data-nb="file" aria-label="Снять фото"></label>' +
     '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" multiple data-nb="file" aria-label="Выбрать фото из галереи"></label></div>' +
     '<div id="nbPhotos"></div><p class="small muted" style="margin:10px 0 0">Адрес и дата вписываются в каждый снимок при создании проекта. До ' + NB_MAX + ' фото.</p></div>' +
@@ -2836,6 +3100,46 @@ view.addEventListener('click', e => {
     case 'home-tax': { navTab('ref'); const dt = [...document.querySelectorAll('#view details')].find(x => /^Налог при продаже/.test(x.textContent.trim())); if (dt) { dt.open = true; dt.scrollIntoView({block: 'start'}); } break; }
     case 'deal-new': navPush(navRoot('newobj'), 'anim-right'); break;
     case 'nb-geo': geoLocate(NB, nbPaintGeo); break;
+    case 'nb-taxi': taxiGo(NB, nbTaxiPaint, m => { NB.geoMsg = m; nbPaintGeo(); }); break;
+    case 'deal-geo': { const dd = curDeal(); if (dd) dealGeo(dd); break; }
+    case 'deal-taxi': { const dd = curDeal(); if (dd) taxiGo(dd, () => { dd.updated = Date.now(); save(); dealTaxiPaint(dd); }, m => { DG.id = dd.id; DG.lat = DG.lon = DG.acc = null; DG.geoMsg = m; dgPaint(); }); break; }
+    case 'doc-set': {
+      const dd = curDeal(); if (!dd || !DOC_LIST.some(x => x[0] === b.dataset.k) || !DOC_STATES.some(x => x[0] === b.dataset.v)) break;
+      dd.docs = dd.docs || {};
+      if (dd.docs[b.dataset.k] === b.dataset.v) delete dd.docs[b.dataset.k]; else dd.docs[b.dataset.k] = b.dataset.v;
+      dd.updated = Date.now(); save();
+      $('#docList').innerHTML = docListHtml(dd); $('#docSum').innerHTML = docSumHtml(dd); $('#docReady').innerHTML = readyHtml(dd); break;
+    }
+    case 'ready-set': {
+      const dd = curDeal(); if (!dd || (b.dataset.v !== 'yes' && b.dataset.v !== 'no')) break;
+      dd.docs = dd.docs || {};
+      if (dd.ready === b.dataset.v) dd.ready = '';
+      else {
+        const lack = DOC_LIST.filter(([k]) => dd.docs[k] !== 'have' && dd.docs[k] !== 'na').length;
+        if (b.dataset.v === 'yes' && lack && !confirm('По списку документов ещё ' + lack + ' не подтверждено («Есть» или «Не нужен»). Всё равно отметить, что всё готово?')) break;
+        dd.ready = b.dataset.v;
+      }
+      dd.updated = Date.now(); save(); $('#docReady').innerHTML = readyHtml(dd); break;
+    }
+    case 'pp-add': {
+      const dd = curDeal(); if (!dd) break;
+      dd.people = dd.people || [];
+      if (dd.people.length >= PEOPLE_MAX) { toast('Больше ' + PEOPLE_MAX + ' ответственных добавить нельзя'); break; }
+      const i = Number(b.dataset.i), np = {id: uid(), role: i >= 0 && i < ROLE_SUGGEST.length ? ROLE_SUGGEST[i] : '', name: '', phone: ''};
+      dd.people.push(np); dd.updated = Date.now(); save();
+      $('#ppList').innerHTML = peopleListHtml(dd); $('#ppAdd').innerHTML = peopleAddHtml(dd);
+      const nf = document.querySelector('[data-pid="' + np.id + '"][data-pf="' + (np.role ? 'name' : 'role') + '"]'); if (nf && nf.scrollIntoView) { nf.scrollIntoView({block: 'center'}); if (nf.focus) nf.focus(); }
+      break;
+    }
+    case 'pp-del': {
+      const dd = curDeal(), pr = dd && (dd.people || []).find(x => x.id === b.dataset.id); if (!pr) break;
+      if ((pr.name || pr.phone) && !confirm('Убрать «' + (pr.role || 'ответственного') + (pr.name ? ', ' + pr.name : '') + '»?')) break;
+      dd.people = dd.people.filter(x => x.id !== pr.id); dd.updated = Date.now(); save();
+      $('#ppList').innerHTML = peopleListHtml(dd); $('#ppAdd').innerHTML = peopleAddHtml(dd); break;
+    }
+    case 'file-open': dealFileGet(b.dataset.id, false); break;
+    case 'file-save': dealFileGet(b.dataset.id, true); break;
+    case 'file-del': dealFileDel(b.dataset.id); break;
     case 'nb-del': NB.photos = NB.photos.filter(x => x.id !== b.dataset.id); nbPaintPhotos(); break;
     case 'nb-create': nbCreate(); break;
     case 'nb-cancel': nbReset(); navBack(); break;
@@ -2880,7 +3184,7 @@ view.addEventListener('click', e => {
       break;
     case 'deal-del':
       if (d && confirm('Удалить сделку «' + d.name + '» со всеми расходами?')) {
-        S.deals = S.deals.filter(x => x.id !== d.id); if (S.calcDeal === d.id) S.calcDeal = null; save(); navBack();
+        dealFilesPurge(d.id); S.deals = S.deals.filter(x => x.id !== d.id); if (S.calcDeal === d.id) S.calcDeal = null; save(); navBack();
       }
       break;
     case 'backup-save': {
@@ -2930,13 +3234,30 @@ view.addEventListener('input', e => {
   if (t.dataset.ph === 'addr') PH.address = t.value.slice(0, 200);
   else if (t.dataset.ph === 'note') PH.note = t.value.slice(0, 2000);
   else if (t.dataset.nb === 'name') NB.name = t.value.slice(0, 80);
-  else if (t.dataset.nb === 'addr') NB.address = t.value.slice(0, 200);
+  else if (t.dataset.nb === 'addr') { NB.address = t.value.slice(0, 200); nbTaxiPaint(); }
+  else if (t.dataset.nb === 'oname') NB.owner.name = t.value.slice(0, 80);
+  else if (t.dataset.nb === 'ophone') NB.owner.phone = t.value.slice(0, 30);
+  else if (t.dataset.nb === 'rname') NB.resp.name = t.value.slice(0, 80);
+  else if (t.dataset.nb === 'rphone') NB.resp.phone = t.value.slice(0, 30);
+  else if (t.dataset.pid) {
+    const dd = curDeal(), pr = dd && (dd.people || []).find(x => x.id === t.dataset.pid), f = t.dataset.pf;
+    if (!pr || (f !== 'role' && f !== 'name' && f !== 'phone')) return;
+    pr[f] = t.value.slice(0, f === 'role' ? 60 : f === 'name' ? 80 : 30); dd.updated = Date.now(); save();
+    if (f === 'phone') { const call = telHref(pr.phone), el = [...document.querySelectorAll('.pcall')].find(x => x.dataset.pc === pr.id); if (el) el.innerHTML = call ? '<a class="btn" href="' + esc(call) + '">Позвонить</a>' : ''; }
+  }
+  else if (t.dataset.own) {
+    const dd = curDeal(); if (!dd) return;
+    dd.owner = dd.owner || {name: '', phone: ''}; dd.owner[t.dataset.own === 'phone' ? 'phone' : 'name'] = t.value.slice(0, t.dataset.own === 'phone' ? 30 : 80); dd.updated = Date.now(); save();
+    if (t.dataset.own === 'phone') { const call = telHref(dd.owner.phone), el = document.getElementById('ownCall'); if (el) el.innerHTML = call ? '<a class="btn block" href="' + esc(call) + '">Позвонить собственнику</a>' : ''; }
+  }
+  else if (t.dataset.d === 'address') dealTaxiPaint(curDeal());
   else if (t.dataset.ph === 'q') { PH.q = t.value.slice(0, 100); phPaintList(); }
 });
 view.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset.ph === 'addr') phRestamp();
   else if (t.dataset.ph === 'file') { const f = t.files && t.files[0]; t.value = ''; phPick(f); }
+  else if (t.dataset.dfile) { const dd = curDeal(), fs2 = t.files ? Array.from(t.files) : []; t.value = ''; if (dd) dealAttach(dd, fs2); }
   else if (t.dataset.nb === 'file') { const fs = t.files ? Array.from(t.files) : []; t.value = ''; nbPick(fs); }
 });
 $('#pview').addEventListener('click', e => {
