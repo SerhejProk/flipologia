@@ -168,6 +168,7 @@ html[data-style="glass"] .fab{bottom:calc(108px + env(safe-area-inset-bottom))}
 .gf.s-done{background:var(--good)}.gf.s-work{background:var(--gold)}.gf.s-late{background:var(--bad)}.gf.s-wait{background:#9AA6B8}
 .gtoday{position:absolute;top:0;bottom:44px;width:0;border-left:2px dashed var(--bad);pointer-events:none}.gtoday span{position:absolute;bottom:-14px;left:0;transform:translateX(-50%);font-size:11px;color:var(--bad);background:var(--card);white-space:nowrap}.gtoday.l span{transform:none;left:-2px}.gtoday.r span{transform:translateX(-100%);left:2px}
 .gax{display:flex;justify-content:space-between;margin-top:20px}.gkey{margin-top:2px}.gkey u{display:inline-block;width:14px;height:7px;border-radius:3px;margin:0 4px 0 8px;vertical-align:middle;text-decoration:none}.gkey u.gp{background:#B8C0CC;margin-left:0}.gkey u.gf{background:var(--gold)}
+#camview{display:none;position:fixed;inset:0;z-index:97;background:#080A0E;overflow:auto}#camview.on{display:block}.cam-box{max-width:820px;margin:0 auto;padding:16px;color:#fff}.cam-box video{display:block;width:100%;max-height:70vh;object-fit:contain;border-radius:14px;background:#000;margin-bottom:10px}
 #tlview{display:none;position:fixed;inset:0;z-index:96;background:#080A0E;overflow:auto;overscroll-behavior:contain}#tlview.on{display:block}
 .tl-box{max-width:720px;margin:0 auto;padding:16px;color:#fff}.tl-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .tl-box img{display:block;width:100%;max-height:70vh;object-fit:contain;border-radius:14px;background:#000}.tl-cap{color:#C9CED6;margin:8px 0}.tl-box input[type=range]{width:100%;margin:8px 0}
@@ -477,6 +478,7 @@ try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splas
 <div id="report" role="dialog" aria-modal="true" aria-label="Отчёт инвестору"></div>
 <div id="pview" role="dialog" aria-modal="true" aria-label="Фото объекта"></div>
 <div id="tlview" role="dialog" aria-modal="true" aria-label="Таймлапс ремонта"></div>
+<div id="camview" role="dialog" aria-modal="true" aria-label="Снимок с камеры"></div>
 <script src="rayony-data.js"></script>
 <script>
 'use strict';
@@ -2345,6 +2347,67 @@ async function baLoad(d) {
   }).join('');
 }
 
+
+/* ===== «Снять фото» на компьютере: веб-камера вместо окна выбора файла =====
+   На телефоне атрибут capture сразу открывает камеру. На компьютере он не работает, поэтому показываем свой просмотр с камеры.
+   Если камеры нет, доступ запрещён или страница не по https — открывается обычный выбор файла. */
+const CAM = {stream: null, kind: '', skip: false, busy: false};
+function camDesktop() {
+  try {
+    const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    return !coarse && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && window.isSecureContext !== false;
+  } catch (e) { return false; }
+}
+function camStop() { if (CAM.stream) { try { CAM.stream.getTracks().forEach(t => t.stop()); } catch (e) {} CAM.stream = null; } }
+function camClose() {
+  camStop();
+  const el = document.getElementById('camview');
+  if (el) { const v = el.querySelector('video'); if (v) { try { v.srcObject = null; } catch (e) {} } el.classList.remove('on'); el.innerHTML = ''; }
+}
+function camFallback(kind) {
+  CAM.skip = true;
+  const inp = document.querySelector('input[type="file"][capture][data-' + (kind === 'nb' ? 'nb' : 'ph') + '="file"]');
+  if (inp) inp.click();
+  setTimeout(() => { CAM.skip = false; }, 500);
+}
+async function camOpen(kind) {
+  if (CAM.busy) return; CAM.busy = true;
+  try {
+    camClose();
+    let st;
+    try { st = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment', width: {ideal: 1920}}, audio: false}); }
+    catch (e) { toast('Камера недоступна: выберите файл'); camFallback(kind); return; }
+    CAM.stream = st; CAM.kind = kind;
+    const el = document.getElementById('camview'); if (!el) { camStop(); return; }
+    el.innerHTML = '<div class="cam-box"><div class="tl-top"><b>Снимок с камеры</b><button type="button" class="btn" data-a="cam-close">Закрыть</button></div>' +
+      '<video id="camVideo" autoplay playsinline muted aria-label="Изображение с камеры"></video>' +
+      '<div class="tl-ctl"><button type="button" class="btn pri" data-a="cam-snap">Снять</button></div>' +
+      '<p class="small tl-cap" role="status" id="camSt">Наведите камеру и нажмите «Снять».</p></div>';
+    el.classList.add('on');
+    const v = document.getElementById('camVideo'); v.srcObject = st; try { await v.play(); } catch (e) {}
+    const sb = el.querySelector('[data-a="cam-snap"]'); if (sb && sb.focus) sb.focus();
+  } finally { CAM.busy = false; }
+}
+function camSnap() {
+  const v = document.getElementById('camVideo'), kind = CAM.kind;
+  if (!v || !v.videoWidth) { toast('Камера ещё не готова, подождите секунду'); return; }
+  const cv = document.createElement('canvas'); cv.width = v.videoWidth; cv.height = v.videoHeight;
+  cv.getContext('2d').drawImage(v, 0, 0);
+  cv.toBlob(b => {
+    camClose();
+    if (!b) { toast('Не получилось сделать снимок'); return; }
+    const f = new File([b], 'camera.jpg', {type: 'image/jpeg'});
+    if (kind === 'nb') nbPick([f]); else phPick(f);
+  }, 'image/jpeg', 0.92);
+}
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t && t.matches && t.matches('input[type="file"][capture]') && !CAM.skip && camDesktop()) { e.preventDefault(); camOpen(t.dataset.nb ? 'nb' : 'ph'); return; }
+  const b = t && t.closest && t.closest('#camview [data-a]'); if (!b) return;
+  if (b.dataset.a === 'cam-close') camClose(); else if (b.dataset.a === 'cam-snap') camSnap();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && CAM.stream) camClose(); });
+
 /* ===== Таймлапс ремонта: слайдшоу фото объекта по датам ===== */
 const TL = {urls: [], items: [], i: 0, timer: 0, ms: 1000, play: false, busy: false, opener: null};
 const TL_MAX = 80, TL_SPEEDS = [2000, 1000, 500, 250];
@@ -4170,7 +4233,7 @@ function navWrite(method, st, depth) {
   try { window.history[method](Object.assign({nav: 1}, st, {depth, y: st.y || 0}), ''); } catch (e) {}
 }
 function navShow(st, cls, y) {
-  closeReport(); closeSheet(); closeXSheet(); closePView(); tlClose();
+  closeReport(); closeSheet(); closeXSheet(); closePView(); tlClose(); camClose();
   openDeal = st.deal; rayonView = st.rayon; rayonFrom = st.from;
   go(st.tab, cls, y);
 }
@@ -4205,6 +4268,7 @@ function navTab(tab) {
 }
 window.addEventListener('popstate', e => {
   if (TL.items.length) tlClose();
+  if (CAM.stream) camClose();
   if (navPending) { const p = navPending; navPending = null; navDepth = 0; navCommitTab(p); return; }
   if (!e.state || e.state.nav !== 1) return;
   const st = navClean(e.state), cls = st.depth < navDepth ? 'anim-left' : 'anim-right';
