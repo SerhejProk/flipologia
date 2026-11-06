@@ -455,6 +455,26 @@ html[data-style="glass"] .verdict .big,html[data-style="glass"] .kz-big,html[dat
 html[data-style="glass"] .verdict .big.neg{text-shadow:0 0 24px rgba(255,90,100,.6)}
 html[data-style="glass"] :is(#sheet,#xsheet) .sh-back{background:rgba(2,4,10,.55)}
 html[data-style="glass"] :is(#sheet,#xsheet) .sh-box{background:rgba(22,28,50,.66);border:1px solid var(--bar-line);border-bottom:0;-webkit-backdrop-filter:blur(30px) saturate(1.7);backdrop-filter:blur(30px) saturate(1.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+/* Темы из заметки «Дизайн, в.2»: «Тёплая» (терракота и кашемир), «Изумруд» (графит, изумруд, золото), «Индиго» (светло-серый, индиго, зелёный для прибыли). Правило 60/30/10: фон, основной цвет, акцент */
+html[data-style="terra"]{color-scheme:light;
+  --bg:#F4F1EA; --card:#FFFFFF; --ink:#2B2D42; --muted:#6E6A63; --line:#E6E0D3;
+  --dark:#2B2D42; --dark-ink:#FFFFFF; --gold:#BC522B; --gold-ink:#A2421F; --acc-soft:#F7E4DA;
+  --good:#2F7D4F; --good-bg:#E3F1E7; --warn:#9A5B00; --warn-bg:#FBEBCB; --bad:#C2312F; --bad-bg:#FBE4E1;
+  --input:#EFEBE1; --shadow:0 1px 2px rgba(43,45,66,.06),0 6px 18px rgba(43,45,66,.05);
+  --bar:rgba(244,241,234,.88); --bar-line:rgba(43,45,66,.1); --top-bg:rgba(244,241,234,.88)}
+html[data-style="emerald"]{color-scheme:dark;
+  --bg:#14171A; --card:#1E2226; --ink:#F1F2EE; --muted:#9BA39E; --line:#2D3338;
+  --dark:#0B4233; --dark-ink:#FFFFFF; --gold:#0F6B4F; --gold-ink:#D9B94A; --acc-soft:rgba(212,175,55,.14);
+  --good:#5BD69A; --good-bg:rgba(91,214,154,.14); --warn:#E8C468; --warn-bg:rgba(232,196,104,.14); --bad:#FF8A8F; --bad-bg:rgba(255,138,143,.15);
+  --input:#262B30; --shadow:none;
+  --bar:rgba(30,34,38,.9); --bar-line:rgba(241,242,238,.1); --top-bg:rgba(20,23,26,.88)}
+html[data-style="indigo"]{color-scheme:light;
+  --bg:#F8F9FA; --card:#FFFFFF; --ink:#1B1F3B; --muted:#5F6477; --line:#E4E6EF;
+  --dark:#2A2659; --dark-ink:#FFFFFF; --gold:#3F51B5; --gold-ink:#3343A6; --acc-soft:#E8EAF8;
+  --good:#0B8F51; --good-bg:#DDFBE9; --warn:#9A5B00; --warn-bg:#FBEBCB; --bad:#D6343B; --bad-bg:#FCE7E8;
+  --input:#EFF0F6; --shadow:0 1px 2px rgba(27,31,59,.06),0 6px 18px rgba(27,31,59,.05);
+  --bar:rgba(255,255,255,.88); --bar-line:rgba(27,31,59,.09); --top-bg:rgba(248,249,250,.88)}
+html[data-style="indigo"] .verdict .big:not(.neg),html[data-style="indigo"] .price-big{color:var(--good)}
 @media (prefers-reduced-transparency:reduce){
   html[data-style="glass"] *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
   html[data-style="glass"]{--card:rgba(30,36,64,.96);--bar:rgba(18,22,42,.98);--top-bg:rgba(5,7,15,.96)}
@@ -467,9 +487,10 @@ html[data-contrast="high"] .chips button,html[data-contrast="high"] .btn{border:
 // Экран запуска показываем один раз за сеанс; при автоматических проверках — только по ?splash
 // Стиль оформления: «light» (по умолчанию, светлый минимализм) или «glass» (жидкое стекло); выбор хранится отдельно от данных
 try {
-  var flStyle = localStorage.getItem('fl-style') === 'glass' ? 'glass' : 'light';
+  var flStyle = localStorage.getItem('fl-style'), flTheme = {glass: '#05070F', terra: '#F4F1EA', emerald: '#14171A', indigo: '#F8F9FA'};
+  if (flStyle !== 'light' && !flTheme[flStyle]) flStyle = 'light';
   document.documentElement.setAttribute('data-style', flStyle);
-  if (flStyle === 'glass') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#05070F');
+  if (flTheme[flStyle]) document.querySelector('meta[name="theme-color"]').setAttribute('content', flTheme[flStyle]);
 } catch (e) { document.documentElement.setAttribute('data-style', 'light'); }
 try { if (localStorage.getItem('fl-contrast') === '1') { document.documentElement.setAttribute('data-contrast', 'high'); document.documentElement.setAttribute('data-style', 'light'); } } catch (e) {}
 try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splash/.test(location.search))) document.documentElement.classList.add('nosplash'); } catch (e) {}
@@ -906,6 +927,138 @@ function inspectCardHtml(d) {
       '<div class="chkrow"><label class="chk"><input type="checkbox" data-insp="' + k + '"' + (ins[k] ? ' checked' : '') + '><span>' + esc(l) + '</span></label></div>').join('')).join('') + '</div>';
 }
 function cleanReservePct(v) { const n = Number(v); return [5, 10, 15, 20].includes(n) ? n : 10; }
+/* ===== Генератор объявления о продаже (Авито, ЦИАН, чат) =====
+   Текст собирается по шаблонам из того, что вы отметили и вписали: ничего не выдумывается. Хранится в проекте (deal.ad), без интернета и без ИИ. */
+const AD_ROOMS = ['', 'Студия', '1', '2', '3', '4', '5'];
+const AD_HOUSES = ['', 'Кирпичный', 'Панельный', 'Монолитный', 'Блочный', 'Сталинка'];
+const AD_BALC = ['', 'Балкон', 'Лоджия', 'Балкон и лоджия'];
+const AD_BATH = ['', 'Раздельный', 'Совмещённый'];
+const AD_STATE = ['', 'Свежий ремонт под ключ', 'Косметический ремонт', 'Чистовая отделка', 'Предчистовая отделка', 'Без отделки'];
+const AD_DID = ['Новая электрика', 'Новая сантехника', 'Заменены трубы', 'Выровнены стены', 'Новые полы', 'Новые окна', 'Новые двери', 'Тёплый пол', 'Натяжные потолки', 'Кухня в комплекте', 'Встроенная мебель', 'Техника остаётся'];
+const AD_FEAT = ['Свободная продажа', 'Один собственник', 'Нет обременений', 'Никто не прописан', 'Готова к ипотеке', 'Документы готовы', 'Показ в день обращения', 'Торг уместен'];
+const AD_TONES = [['biz', 'Деловой'], ['warm', 'Тёплый']];
+const AD_LIMIT = {title: 50, body: 3000};
+const AD_NUMS = ['area', 'kitchen', 'ceiling', 'floor', 'floors', 'year', 'price'];
+function adClean(a) {
+  a = a && typeof a === 'object' ? a : {};
+  const num = (v, max) => { const n = Number(String(v == null ? '' : v).replace(',', '.').replace(/\s/g, '')); return n > 0 && n <= max ? Math.round(n * 10) / 10 : 0; };
+  const pick = (v, list) => list.includes(v) ? v : '';
+  const list = (v, all) => Array.isArray(v) ? all.filter(x => v.includes(x)) : [];
+  return {rooms: pick(a.rooms, AD_ROOMS), area: num(a.area, 1000), kitchen: num(a.kitchen, 200), ceiling: num(a.ceiling, 10), floor: Math.round(num(a.floor, 200)), floors: Math.round(num(a.floors, 200)), year: Math.round(num(a.year, 2100)),
+    house: pick(a.house, AD_HOUSES), balcony: pick(a.balcony, AD_BALC), bath: pick(a.bath, AD_BATH), state: pick(a.state, AD_STATE), price: Math.round(num(a.price, 1e11)),
+    metro: String(a.metro == null ? '' : a.metro).slice(0, 60), walk: String(a.walk == null ? '' : a.walk).slice(0, 40), extra: String(a.extra == null ? '' : a.extra).slice(0, 1000),
+    did: list(a.did, AD_DID), feat: list(a.feat, AD_FEAT), tone: a.tone === 'warm' ? 'warm' : 'biz'};
+}
+const adNum = v => String(v).replace('.', ',');
+const adRub = v => fmtN.format(Math.round(v)).replace(/[  ]/g, ' ') + ' ₽';
+const adLow = s => s ? s[0].toLowerCase() + s.slice(1) : s;
+function adPrice(a, d) { const c = d && d.calc ? d.calc : null; return a.price > 0 ? a.price : (c && c.sale > 0 ? c.sale : 0); }
+const adKind = a => a.rooms === 'Студия' ? 'Студия' : a.rooms ? a.rooms + '-комнатная квартира' : 'Квартира';
+const adKindAcc = a => a.rooms === 'Студия' ? 'студию' : a.rooms ? a.rooms + '-комнатную квартиру' : 'квартиру';
+// Заголовок для Авито: до 50 символов, без цены и телефона; части добавляются, пока помещаются
+function adTitle(a) {
+  const parts = [a.rooms === 'Студия' ? 'Студия' : a.rooms ? a.rooms + '-к. квартира' : 'Квартира'];
+  if (a.area) parts.push(adNum(a.area) + ' м²');
+  if (a.floor) parts.push(a.floor + (a.floors ? '/' + a.floors : '') + ' эт.');
+  let t = parts[0];
+  for (let i = 1; i < parts.length; i++) { if ((t + ', ' + parts[i]).length <= AD_LIMIT.title) t += ', ' + parts[i]; }
+  return t;
+}
+function adBody(a, d, rayonTxt) {
+  const warm = a.tone === 'warm', price = adPrice(a, d), addr = d && d.address ? String(d.address).trim() : '', L = [];
+  L.push((warm ? 'Предлагаем ' + adKindAcc(a) : 'Продаётся ' + adLow(adKind(a))) + (a.area ? ', ' + adNum(a.area) + ' м²' : '') + (addr ? (warm ? ' по адресу ' : ' по адресу: ') + addr : '') + '.');
+  const p = [];
+  if (a.floor) p.push('Этаж ' + a.floor + (a.floors ? ' из ' + a.floors : ''));
+  if (a.house) p.push(a.house + ' дом' + (a.year ? ', ' + a.year + ' года постройки' : ''));
+  else if (a.year) p.push('Год постройки дома: ' + a.year);
+  if (a.kitchen) p.push('Кухня ' + adNum(a.kitchen) + ' м²');
+  if (a.ceiling) p.push('Потолки ' + adNum(a.ceiling) + ' м');
+  if (a.bath) p.push('Санузел ' + adLow(a.bath));
+  if (a.balcony) p.push(a.balcony);
+  if (p.length) L.push('', 'О квартире:', ...p.map(x => '— ' + x));
+  if (a.state || a.did.length) {
+    L.push('', a.state ? 'Ремонт: ' + adLow(a.state) + (a.did.length ? '. Что сделано:' : '.') : 'Что сделано:');
+    a.did.forEach(x => L.push('— ' + x));
+  }
+  const cond = a.feat.filter(x => x !== 'Торг уместен');
+  if (cond.length) { L.push('', 'Условия продажи:'); cond.forEach(x => L.push('— ' + x)); }
+  const loc = [];
+  if (a.metro) loc.push('Метро ' + a.metro + (a.walk ? ', ' + a.walk : '') + '.');
+  else if (a.walk) loc.push(a.walk[0].toUpperCase() + a.walk.slice(1) + '.');
+  if (rayonTxt) loc.push(rayonTxt);
+  if (loc.length) L.push('', ...loc);
+  if (a.extra.trim()) L.push('', a.extra.trim());
+  L.push('');
+  if (price) L.push('Цена: ' + adRub(price) + '.' + (a.feat.includes('Торг уместен') ? ' Торг уместен.' : ''));
+  L.push(warm ? 'Приезжайте посмотреть: договоримся о удобном времени.' : 'Показ по договорённости.');
+  return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+function adShort(a, d) {
+  const price = adPrice(a, d), addr = d && d.address ? String(d.address).trim() : '';
+  const bits = [adKind(a) + (a.area ? ', ' + adNum(a.area) + ' м²' : ''), addr, a.floor ? 'этаж ' + a.floor + (a.floors ? ' из ' + a.floors : '') : '', a.state ? adLow(a.state) : '', price ? 'цена ' + adRub(price) : ''].filter(Boolean);
+  return 'Продаю: ' + bits.join(', ') + '. Подробности и фото пришлю.';
+}
+// Чего не хватает, чтобы объявление читалось: комнаты, площадь, этаж, адрес, цена, метро
+function adMissing(a, d) {
+  const m = [];
+  if (!a.rooms) m.push('количество комнат');
+  if (!a.area) m.push('площадь');
+  if (!a.floor) m.push('этаж');
+  if (!(d && String(d.address || '').trim())) m.push('адрес (в карточке проекта)');
+  if (!adPrice(a, d)) m.push('цена (впишите ниже или в расчёте «Цена продажи»)');
+  if (!a.metro && !a.walk) m.push('метро или как добраться');
+  return m;
+}
+function adRayonText(d) {
+  if (!d || !d.rayon || adRayon !== d.rayon || !adSel.size) return '';
+  const r = rayonById(d.rayon); return r ? adText(r, adSel) : '';
+}
+function adOutHtml(d) {
+  const a = adClean(d.ad), t = adTitle(a), b = adBody(a, d, adRayonText(d)), sh = adShort(a, d), miss = adMissing(a, d);
+  const block = (k, label, text, lim) => '<div class="xl" style="margin-top:12px"><b>' + label + '</b></div><textarea readonly rows="' + (k === 'title' ? 2 : k === 'short' ? 4 : 12) + '" aria-label="' + esc(label) + '">' + esc(text) + '</textarea>' +
+    '<div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><span class="small ' + (lim && text.length > lim ? 'neg' : 'muted') + '">' + text.length + (lim ? ' из ' + lim : '') + ' симв.</span><button type="button" class="btn" data-a="ag-copy" data-v="' + k + '">Скопировать</button></div>';
+  return (miss.length ? '<p class="note" style="margin-top:12px"><b>Чего не хватает:</b> ' + esc(miss.join(', ')) + '.</p>' : '') +
+    block('title', 'Заголовок для Авито', t, AD_LIMIT.title) + block('body', 'Описание', b, AD_LIMIT.body) + block('short', 'Коротко для чата и мессенджера', sh, 0) +
+    '<ul class="small muted" style="margin:12px 0 0;padding-left:20px"><li>Пишите только то, что подтверждено документами: площадь по выписке ЕГРН; «нет обременений» и «никто не прописан» только если это так.</li><li>Телефон и ссылки в текст не вставляйте: площадки их убирают.</li><li>Цена в тексте должна совпадать с ценой в поле объявления.</li><li>Фото: от 10 штук, первым самую светлую комнату или вид из окна.</li></ul>';
+}
+function adCardHtml(d) {
+  const a = adClean(d.ad);
+  const sel = (k, list, lbl) => '<label class="f"><span>' + lbl + '</span><select data-ag="' + k + '">' + list.map(v => { const o = Array.isArray(v) ? v : [v, v || '—']; return '<option value="' + esc(o[0]) + '"' + (a[k] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>';
+  const inp = (k, lbl, ph, mode, max) => '<label class="f"><span>' + lbl + '</span><input type="text" inputmode="' + (mode || 'decimal') + '" maxlength="' + (max || 8) + '" data-ag="' + k + '" placeholder="' + esc(ph || '') + '" value="' + esc(typeof a[k] === 'number' ? (a[k] ? adNum(a[k]) : '') : (a[k] || '')) + '"></label>';
+  const chips = (k, list) => '<div class="chips" style="margin:4px 0 10px">' + list.map(v => '<button type="button" data-a="ag-chip" data-k="' + k + '" data-v="' + esc(v) + '" class="' + (a[k].includes(v) ? 'on' : '') + '" aria-pressed="' + a[k].includes(v) + '">' + esc(v) + '</button>').join('') + '</div>';
+  const c = d.calc && d.calc.sale > 0 ? d.calc.sale : 0;
+  return '<details class="card" id="agCard"' + (d.ad ? ' open' : '') + '><summary><b>Объявление для продажи</b></summary>' +
+    '<p class="small muted" style="margin:8px 0">Впишите, что знаете: в текст попадёт только это. Заголовок для Авито, описание и короткий текст для чата собираются сами. Всё хранится в проекте.</p>' +
+    '<div class="grid2">' + sel('rooms', AD_ROOMS, 'Комнат') + inp('area', 'Площадь, м²', '54,3') + inp('kitchen', 'Кухня, м²', '9') + inp('ceiling', 'Потолки, м', '2,7') + inp('floor', 'Этаж', '5', 'numeric', 3) + inp('floors', 'Этажей в доме', '9', 'numeric', 3) + sel('house', AD_HOUSES, 'Дом') + inp('year', 'Год постройки', '1985', 'numeric', 4) + sel('bath', AD_BATH, 'Санузел') + sel('balcony', AD_BALC, 'Балкон') + '</div>' +
+    sel('state', AD_STATE, 'Состояние') +
+    '<div class="xl"><b>Что сделано</b></div>' + chips('did', AD_DID) +
+    '<div class="xl"><b>Условия продажи</b> <span class="small muted">отмечайте только подтверждённое</span></div>' + chips('feat', AD_FEAT) +
+    '<div class="grid2">' + inp('metro', 'Метро', 'Кузьминки', 'text', 60) + inp('walk', 'Как добраться', '7 минут пешком', 'text', 40) + '</div>' +
+    inp('price', 'Цена, ₽', c ? 'из расчёта: ' + num(c) : 'впишите цену', 'decimal', 13) +
+    '<label class="f"><span>Своё дополнение</span><textarea data-ag="extra" rows="2" maxlength="1000" placeholder="Например: тихий двор, рядом школа и детский сад">' + esc(a.extra) + '</textarea></label>' +
+    sel('tone', AD_TONES, 'Тон текста') +
+    '<div id="agOut">' + adOutHtml(d) + '</div></details>';
+}
+// Запись поля в проект. Числа храним как ввели (пока человек печатает «54,», ничего не теряем), чистим при чтении
+function agSet(d, k, v) {
+  const raw = Object.assign({}, d.ad && typeof d.ad === 'object' ? d.ad : {});
+  if (k === 'did' || k === 'feat') { const l = Array.isArray(raw[k]) ? raw[k].slice() : [], i = l.indexOf(v); if (i >= 0) l.splice(i, 1); else l.push(v); raw[k] = l; }
+  else raw[k] = String(v == null ? '' : v);
+  d.ad = raw; d.updated = Date.now(); save();
+  const o = document.getElementById('agOut'); if (o) o.innerHTML = adOutHtml(d);
+}
+function agAction(a, b) {
+  const d = curDeal(); if (!d) return;
+  if (a === 'ag-chip') {
+    agSet(d, b.dataset.k, b.dataset.v);
+    const on = adClean(d.ad)[b.dataset.k].includes(b.dataset.v); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
+  } else if (a === 'ag-copy') {
+    const aa = adClean(d.ad), k = b.dataset.v, text = k === 'title' ? adTitle(aa) : k === 'short' ? adShort(aa, d) : adBody(aa, d, adRayonText(d));
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast('Текст скопирован'), () => toast('Не получилось скопировать: выделите текст вручную'));
+    else toast('Копирование недоступно: выделите текст вручную');
+  }
+}
+
 function cleanDeal(d) {
   if (!d || typeof d !== 'object') return null;
   const str = v => v == null ? '' : String(v);
@@ -921,7 +1074,7 @@ function cleanDeal(d) {
     checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
     risks: cleanRisks(d.risks),
     owner: cleanOwner(d.owner), people: cleanPeople(d.people), docs: cleanDocs(d.docs), ready: d.ready === 'yes' || d.ready === 'no' ? d.ready : '', place: cleanPlace(d.place),
-    notes: str(d.notes), saleFact: Number(d.saleFact) || 0, works: cleanWorks(d.works), demo: d.demo === true,
+    ad: d.ad && typeof d.ad === 'object' && !Array.isArray(d.ad) ? adClean(d.ad) : null, notes: str(d.notes), saleFact: Number(d.saleFact) || 0, works: cleanWorks(d.works), demo: d.demo === true,
     created: Number(d.created) || Date.now(), updated: Number(d.updated) || Date.now()
   };
 }
@@ -2231,6 +2384,7 @@ function renderDeal(d) {
   h += '<div class="card"><h3>Заметки</h3><textarea data-d="notes" placeholder="Контакты продавца, прораба, договорённости">' + esc(d.notes || '') + '</textarea></div>';
   h += bookDealHtml(d);
   h += contactsDealHtml(d);
+  if (dealOpen(d, 3, !!d.ad)) h += adCardHtml(d);
   h += '<button class="btn pri block" style="margin-bottom:10px" data-a="deal-report">Отчёт инвестору</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-link">Ссылка на отчёт для соинвестора</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-share">Поделиться сделкой</button>';
@@ -3306,7 +3460,10 @@ function dealRayonHtml(d) {
 }
 
 /* ===== Стиль оформления ===== */
-const curStyle = () => (document.documentElement.getAttribute('data-style') === 'glass' ? 'glass' : 'light');
+// Оформление: светлый (по умолчанию), жидкое стекло и три темы из заметки «Дизайн, в.2»
+const STYLES = [['light', 'Светлый', '#F6F7FA'], ['glass', 'Жидкое стекло', '#05070F'], ['terra', 'Тёплый: терракота', '#F4F1EA'], ['emerald', 'Изумруд и золото', '#14171A'], ['indigo', 'Индиго', '#F8F9FA']];
+const cleanStyle = v => STYLES.some(x => x[0] === v) ? v : 'light';
+const curStyle = () => cleanStyle(document.documentElement.getAttribute('data-style'));
 // Лёгкая вибрация при действии (на iPhone в браузере её нет — тогда ничего не происходит)
 function haptic(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 15); } catch (e) {} }
 // Режим «яркий свет»: чёрное на белом, толстые рамки; принудительно светлый стиль
@@ -3314,7 +3471,7 @@ function applyContrast(on) {
   try { localStorage.setItem('fl-contrast', on ? '1' : '0'); } catch (e) {}
   const r = document.documentElement;
   if (on) { r.setAttribute('data-contrast', 'high'); r.setAttribute('data-style', 'light'); }
-  else { r.removeAttribute('data-contrast'); let st = 'light'; try { st = localStorage.getItem('fl-style') === 'glass' ? 'glass' : 'light'; } catch (e) {} r.setAttribute('data-style', st); }
+  else { r.removeAttribute('data-contrast'); let st = 'light'; try { st = cleanStyle(localStorage.getItem('fl-style')); } catch (e) {} r.setAttribute('data-style', st); }
   document.querySelectorAll('#contrastSeg button').forEach(x => { const o = (x.dataset.v === '1') === !!on; x.classList.toggle('on', o); x.setAttribute('aria-pressed', String(o)); });
 }
 function contrastOn() { return document.documentElement.getAttribute('data-contrast') === 'high'; }
@@ -3327,10 +3484,10 @@ function dealFabHtml(d) {
   return '<button type="button" class="fab" data-a="exp-new" aria-label="Добавить расход">+ Расход</button><div style="height:64px" aria-hidden="true"></div>';
 }
 function setStyle(v) {
-  v = v === 'glass' ? 'glass' : 'light';
+  v = cleanStyle(v);
   try { localStorage.setItem('fl-style', v); } catch (e) {}
   document.documentElement.setAttribute('data-style', v);
-  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', v === 'glass' ? '#05070F' : '#F6F7FA');
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', STYLES.find(x => x[0] === v)[2]);
   document.querySelectorAll('#styleSeg button').forEach(x => { const on = x.dataset.v === v; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
 }
 /* ===== Раздел «Справка» ===== */
@@ -3357,8 +3514,7 @@ function renderRef() {
     '<button type="button" data-a="contrast" data-v="1" class="' + (contrastOn() ? 'on' : '') + '" aria-pressed="' + contrastOn() + '">Высокий контраст</button></div>' +
     '<p class="small muted" style="margin:10px 0 0">Чёрное на белом с жирными рамками: читается на солнце. Включает светлый стиль.</p></div>' +
     '<div class="card"><h3>Оформление</h3><div class="chips" id="styleSeg">' +
-    '<button type="button" data-a="style" data-v="glass" class="' + (st === 'glass' ? 'on' : '') + '" aria-pressed="' + (st === 'glass') + '">Жидкое стекло</button>' +
-    '<button type="button" data-a="style" data-v="light" class="' + (st === 'light' ? 'on' : '') + '" aria-pressed="' + (st === 'light') + '">Светлый</button></div></div>' +
+    STYLES.map(x => '<button type="button" data-a="style" data-v="' + x[0] + '" class="' + (st === x[0] ? 'on' : '') + '" aria-pressed="' + (st === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
     backupCardHtml() +
     '<button class="card deal" data-a="home-push" data-v="docs"><span class="t">Юридический справочник</span><br><span class="small muted">Шаблоны договоров, актов, расписок и инструкции: задаток, ДКП, подряд, торги, налог, инвестор</span></button>' +
     '<button class="card deal" data-a="rayon-list"><span class="t">Районы</span><br><span class="small muted">Нотариусы, МФЦ, строймагазины, супермаркеты, рынки и цена м² по районам Москвы</span></button>' +
@@ -5111,6 +5267,7 @@ view.addEventListener('click', e => {
     case 'contrast': applyContrast(b.dataset.v === '1'); toast(b.dataset.v === '1' ? 'Высокий контраст включён' : 'Обычный вид'); break;
     case 'soon': openVoiceHelper(); break;
     case 'ph-geo': phLocate(); break;
+    case 'ag-chip': case 'ag-copy': agAction(a, b); break;
     case 'rl-open': rlOpen(); break;
     case 'lv-open': lvOpen(); break;
     case 'ph-pick': PH.pick = !PH.pick; phPaintPrev(); break;
@@ -5435,6 +5592,7 @@ view.addEventListener('input', e => {
     const n = parseNum(t.value); S.scen[t.dataset.sc] = isFinite(n) && t.value.trim() !== '' ? n : -1; save();
     const el = $('#scenTab'); if (el) el.innerHTML = scenTableHtml(S.calc);
   }
+  else if (t.dataset.ag) { const dd = curDeal(); if (dd) agSet(dd, t.dataset.ag, t.value); }
   else if (t.dataset.ct) {
     const k = t.dataset.ct;
     if (k === 'q') { CT.q = t.value.slice(0, 100); const l = document.getElementById('ctList'); if (l) l.innerHTML = ctListHtml(); }

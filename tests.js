@@ -1645,6 +1645,27 @@ vm.runInContext(`
 }
 `, ctx);
 
+
+/* --- Генератор объявления и темы --- */
+vm.runInContext(`
+{
+  const d0 = cleanDeal({id: 'ad1', name: 'Двушка', address: 'Москва, Кузьминская 11', calc: Object.assign({}, DEFAULT_CALC, {sale: 7500000})});
+  const a0 = adClean({rooms: '2', area: '54,3', floor: '5', floors: '9', house: 'Кирпичный', year: '1985', state: 'Свежий ремонт под ключ', did: ['Новая электрика', 'левое'], feat: ['Нет обременений', 'Торг уместен'], metro: 'Кузьминки', walk: '7 минут пешком', tone: 'biz'});
+  check('объявление: чистка полей, чужое отбрасывается', a0.area === 54.3 && a0.floor === 5 && a0.did.length === 1 && a0.feat.length === 2 && adClean(null).rooms === '' && adClean({rooms: '99', house: 'x', area: -5, floor: 'abc'}).area === 0 && adClean({tone: 'zz'}).tone === 'biz');
+  check('объявление: заголовок для Авито до 50 символов, без цены', adTitle(a0) === '2-к. квартира, 54,3 м², 5/9 эт.' && adTitle(a0).length <= 50 && adTitle(adClean({})) === 'Квартира' && adTitle(adClean({rooms: 'Студия', area: 21})) === 'Студия, 21 м²' && adTitle(a0).indexOf('₽') < 0);
+  const b0 = adBody(a0, d0, '');
+  check('объявление: описание — только введённое, адрес, цена из расчёта и торг', /Продаётся 2-комнатная квартира, 54,3 м² по адресу: Москва, Кузьминская 11/.test(b0) && /Этаж 5 из 9/.test(b0) && /Кирпичный дом, 1985 года постройки/.test(b0) && /Цена: 7 500 000 ₽\. Торг уместен\./.test(b0) && /Метро Кузьминки, 7 минут пешком/.test(b0) && /— Новая электрика/.test(b0) && /— Нет обременений/.test(b0), b0);
+  check('объявление: не выдумывает — пустые поля не попадают в текст', (() => { const t = adBody(adClean({}), cleanDeal({id: 'x', name: 'п'}), ''); return t.indexOf('undefined') < 0 && t.indexOf('NaN') < 0 && t.indexOf('Этаж') < 0 && t.indexOf('Цена') < 0 && t.indexOf('Метро') < 0 && t.indexOf('Условия') < 0; })());
+  check('объявление: тёплый тон и свой район', /^Предлагаем 2-комнатную квартиру/.test(adBody(Object.assign({}, a0, {tone: 'warm'}), d0, 'Инфраструктура района: школа')) && /Инфраструктура района: школа/.test(adBody(a0, d0, 'Инфраструктура района: школа')));
+  check('объявление: цена своя важнее расчётной', /Цена: 8 000 000 ₽/.test(adBody(Object.assign({}, a0, {price: 8000000}), d0, '')) && adPrice(adClean({}), d0) === 7500000 && adPrice(adClean({}), cleanDeal({id: 'y', name: 'п', calc: Object.assign({}, DEFAULT_CALC, {sale: 0})})) === 0);
+  check('объявление: подсказка, чего не хватает', adMissing(adClean({}), cleanDeal({id: 'z', name: 'п'})).length === 6 && adMissing(a0, d0).length === 0);
+  check('объявление: короткий текст', /^Продаю: 2-комнатная квартира, 54,3 м², Москва, Кузьминская 11, этаж 5 из 9, свежий ремонт под ключ, цена 7 500 000 ₽\. /.test(adShort(a0, d0)));
+  check('объявление: в телефон и ссылку ничего не попадает, разметка экранируется в карточке', (() => { const dd = cleanDeal({id: 'q', name: 'п', address: '<b>x</b>', ad: {extra: '<script>1</script>'}}); const h = adCardHtml(dd) + adOutHtml(dd); return h.indexOf('<script>1') < 0 && h.indexOf('<b>x</b>') < 0; })());
+  check('объявление: хранится в проекте и переживает загрузку', cleanDeal({id: 'w', name: 'п', ad: {area: 40, rooms: '1'}}).ad.area === 40 && cleanDeal({id: 'w', name: 'п'}).ad === null && cleanDeal({id: 'w', name: 'п', ad: 'мусор'}).ad === null);
+  check('темы: стили из списка, чужой — светлый', STYLES.length === 5 && cleanStyle('terra') === 'terra' && cleanStyle('emerald') === 'emerald' && cleanStyle('indigo') === 'indigo' && cleanStyle('hack"><') === 'light' && cleanStyle(null) === 'light');
+}
+`, ctx);
+
 Promise.all(ctx.pendingTests || []).then(() => {
   console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
   process.exit(fail ? 1 : 0);
