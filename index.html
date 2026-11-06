@@ -271,6 +271,8 @@ html[data-style="glass"] .fab{bottom:calc(108px + env(safe-area-inset-bottom))}
 .ce{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.ce:last-child{border-bottom:0}.ce .ct{flex:none;width:44px;font-weight:600;font-variant-numeric:tabular-nums}.ce .cb{flex:1;min-width:0;overflow-wrap:anywhere}.ce .btn{flex:none;padding:4px 12px;min-height:36px}
 .chips button{font:inherit;font-size:13px;padding:7px 14px;border-radius:999px;border:0;background:var(--card);box-shadow:var(--shadow);color:var(--muted);cursor:pointer;min-height:36px}
 .chips button.on{background:var(--gold);color:#fff}
+.bke{padding:12px 0;border-bottom:1px solid var(--line)}.bke:last-child{border-bottom:0}.bke.pinned{border-left:3px solid var(--gold);padding-left:10px}
+.bkt{white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:4px}.bka{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.bka .btn{min-height:40px;padding:6px 14px}
 details{border-bottom:1px solid var(--line);padding:4px 0}
 details:last-child{border-bottom:0}
 summary{cursor:pointer;font-weight:600;padding:10px 0;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
@@ -631,6 +633,21 @@ function cleanCal(a) {
   })).slice(0, CAL_MAX);
 }
 
+/* Записная книжка: чистка записей (нужна до load) */
+const BOOK_MAX = 1000, BOOK_LEN = 2000;
+function cleanBook(a) {
+  if (!Array.isArray(a)) return [];
+  const seen = new Set();
+  return a.filter(e => e && typeof e === 'object' && typeof e.text === 'string' && e.text.trim()).slice(0, BOOK_MAX).map(e => {
+    let id = typeof e.id === 'string' && e.id ? e.id.slice(0, 40) : '';
+    if (!id || seen.has(id)) id = uid();
+    seen.add(id);
+    const ts = Number(e.ts);
+    return {id, text: e.text.trim().slice(0, BOOK_LEN), ts: isFinite(ts) && ts > 0 ? ts : Date.now(),
+      dealId: typeof e.dealId === 'string' ? e.dealId.slice(0, 40) : '', pin: e.pin === true};
+  });
+}
+
 /* ===== Хранилище ===== */
 function load() {
   let s = null;
@@ -653,9 +670,10 @@ function load() {
     kursy: cleanKursy(s.kursy),
     lastBackup: Number(s.lastBackup) || 0,
     cal: cleanCal(s.cal),
+    book: cleanBook(s.book),
     // Режим «Просто / Полный»: новая установка — просто; у тех, у кого уже есть проекты, — полный
     mode: s.mode === 'full' || s.mode === 'simple' ? s.mode : (Array.isArray(s.deals) && s.deals.some(d => d && !d.demo) ? 'full' : 'simple'),
-    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax'].includes(s.tab) ? s.tab : 'home'
+    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'notes'].includes(s.tab) ? s.tab : 'home'
   };
 }
 // Приводит сохранённые данные к ожидаемым типам: числа — к числам, варианты — к допустимым.
@@ -803,8 +821,8 @@ function cleanDeal(d) {
 let S = load();
 let openDeal = null; // id сделки, открытой в разделе «Сделки»
 function save() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, S, {calc: undefined, calcDeal: undefined}))); }
-  catch (e) { toast('Не получилось сохранить: память браузера недоступна'); }
+  try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, S, {calc: undefined, calcDeal: undefined}))); return true; }
+  catch (e) { toast('Не получилось сохранить: память браузера недоступна'); return false; }
 }
 
 /* ===== Утилиты ===== */
@@ -1875,6 +1893,7 @@ function renderDeal(d) {
   h += checkCardHtml(d);
   h += inspectCardHtml(d);
   h += '<div class="card"><h3>Заметки</h3><textarea data-d="notes" placeholder="Контакты продавца, прораба, договорённости">' + esc(d.notes || '') + '</textarea></div>';
+  h += bookDealHtml(d);
   h += '<button class="btn pri block" style="margin-bottom:10px" data-a="deal-report">Отчёт инвестору</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-link">Ссылка на отчёт для соинвестора</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-share">Поделиться сделкой</button>';
@@ -2699,6 +2718,7 @@ function homeHtml() {
     '<button class="btn pri block" data-a="go-tab" data-v="calc">Открыть полный расчёт</button></div>';
   if (sh(2)) h += portfolioHtml(S.deals);
   if (sh(1)) h += '<h3 class="hh">Справочники</h3><div class="card hlist">' +
+    '<button data-a="home-push" data-v="notes"><span>Записная книжка' + (S.book.length ? ' · ' + S.book.length : '') + '</span><i>›</i></button>' +
     '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
     '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
     '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button>' + (full ? '' : '<button data-a="home-push" data-v="kursy"><span>Курсы и ставки</span><i>›</i></button>') + '</div>';
@@ -2982,6 +3002,113 @@ function calHomeHtml() {
   return '<div class="card"><h3>Сегодня</h3>' +
     (ev.length ? ev.slice(0, 4).map(e => calEventHtml(e, true)).join('') + (ev.length > 4 ? '<p class="small muted" style="margin:6px 0 0">И ещё ' + (ev.length - 4) + '</p>' : '') : '<p class="small muted" style="margin:0 0 4px">На сегодня записей нет.' + (nxt ? ' Ближайшая: ' + esc(isoRu(nxt.date).slice(0, 5)) + ', ' + esc(nxt.text) + '.' : '') + '</p>') +
     '<button class="btn pri block" style="margin-top:12px" data-a="home-push" data-v="cal">Открыть календарь</button></div>';
+}
+
+
+/* ===== Записная книжка =====
+   Короткие записи с датой: общие и привязанные к проекту. Диктовка, поиск, закрепление, правка.
+   Хранится в этом телефоне, входит в резервную копию; в отчёт инвестору и ссылку соинвестора не попадает. */
+const BK = {text: '', deal: '', q: '', f: '', edit: '', etext: '', dtext: '', busy: false};
+const bkFmt = ts => { const d = new Date(ts); return isNaN(d) ? '' : two(d.getDate()) + '.' + two(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + two(d.getHours()) + ':' + two(d.getMinutes()); };
+const bkSort = (a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || b.ts - a.ts;
+function bkMatch(e, q) { return !q || e.text.toLowerCase().includes(q.toLowerCase()); }
+function bkAdd(text, dealId) {
+  const t = String(text || '').trim().slice(0, BOOK_LEN);
+  if (!t) { toast('Впишите или надиктуйте запись'); return false; }
+  if (S.book.length >= BOOK_MAX) { toast('Записей слишком много: удалите старые'); return false; }
+  S.book.push({id: uid(), text: t, ts: Date.now(), dealId: dealId && S.deals.some(x => x.id === dealId) ? dealId : '', pin: false});
+  if (!save()) { S.book.pop(); return false; }
+  return true;
+}
+function bkEntryHtml(e, showDeal) {
+  const dl = showDeal && e.dealId && S.deals.find(x => x.id === e.dealId);
+  if (BK.edit === e.id) {
+    return '<div class="bke"><textarea id="bkEditText" rows="4" maxlength="' + BOOK_LEN + '" data-bk="edit" aria-label="Правка записи">' + esc(BK.etext || e.text) + '</textarea>' +
+      '<div class="row" style="margin-top:8px"><button type="button" class="btn pri" data-a="bk-save" data-id="' + esc(e.id) + '">Сохранить</button><button type="button" class="btn" data-a="bk-cancel">Отмена</button></div></div>';
+  }
+  return '<div class="bke' + (e.pin ? ' pinned' : '') + '"><div class="bkt">' + esc(e.text) + '</div>' +
+    '<div class="small muted">' + esc(bkFmt(e.ts)) + (dl ? ' · ' + esc(dl.name || 'Проект') : '') + (e.pin ? ' · закреплено' : '') + '</div>' +
+    '<div class="bka"><button type="button" class="btn" data-a="bk-pin" data-id="' + esc(e.id) + '">' + (e.pin ? 'Открепить' : 'Закрепить') + '</button>' +
+    '<button type="button" class="btn" data-a="bk-edit" data-id="' + esc(e.id) + '">Править</button>' +
+    '<button type="button" class="btn danger" data-a="bk-del" data-id="' + esc(e.id) + '" aria-label="Удалить запись">Удалить</button></div></div>';
+}
+function bkListHtml() {
+  const q = BK.q.trim();
+  const all = S.book.filter(e => (!BK.f || (BK.f === 'none' ? !e.dealId || !S.deals.some(x => x.id === e.dealId) : e.dealId === BK.f)) && bkMatch(e, q)).sort(bkSort);
+  if (!S.book.length) return '<p class="small muted" style="margin:0">Записей пока нет. Впишите или надиктуйте первую выше.</p>';
+  if (!all.length) return '<p class="small muted" style="margin:0">Ничего не найдено.</p>';
+  return all.map(e => bkEntryHtml(e, true)).join('') + (all.length ? '<p class="small muted" style="margin:10px 0 0">Записей: ' + all.length + '</p>' : '');
+}
+function renderNotes() {
+  if (BK.f && BK.f !== 'none' && !S.deals.some(d => d.id === BK.f)) BK.f = '';
+  if (BK.deal && !S.deals.some(d => d.id === BK.deal)) BK.deal = '';
+  const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
+  const opt = (sel, none) => '<option value="">' + none + '</option>' + deals.map(d => '<option value="' + esc(d.id) + '"' + (sel === d.id ? ' selected' : '') + '>' + esc(d.name || 'Проект') + '</option>').join('');
+  $('#view').innerHTML =
+    '<div class="card"><h3>Новая запись</h3>' +
+    '<label class="f"><span>Текст</span><textarea id="bkText" data-bk="text" rows="3" maxlength="' + BOOK_LEN + '" placeholder="Например: прораб Иван, 8 903…, договорились на среду">' + esc(BK.text) + '</textarea></label>' +
+    '<button type="button" class="btn block" data-a="bk-voice" aria-pressed="false" style="margin-top:8px">' + ICO.mic + '<span>Диктовать</span></button>' +
+    '<p class="small muted" id="bkSt" role="status" style="margin:8px 0 0"></p>' +
+    '<label class="f" style="margin-top:6px"><span>Проект</span><select id="bkDeal" data-bk="deal">' + opt(BK.deal, 'Без проекта') + '</select></label>' +
+    '<button type="button" class="btn pri block" data-a="bk-add" style="margin-top:12px">Добавить запись</button></div>' +
+    '<div class="card"><h3>Записи</h3>' +
+    '<label class="f"><span>Поиск</span><input type="text" enterkeyhint="search" id="bkQ" data-bk="q" maxlength="100" placeholder="Слово из записи" value="' + esc(BK.q) + '"></label>' +
+    '<label class="f"><span>Показать</span><select id="bkF" data-bk="f"><option value="">Все записи</option><option value="none"' + (BK.f === 'none' ? ' selected' : '') + '>Без проекта</option>' +
+    deals.map(d => '<option value="' + esc(d.id) + '"' + (BK.f === d.id ? ' selected' : '') + '>' + esc(d.name || 'Проект') + '</option>').join('') + '</select></label>' +
+    '<div id="bkList" style="margin-top:8px">' + bkListHtml() + '</div></div>' +
+    '<p class="small muted" style="margin:0 4px">Записи хранятся в этом телефоне и входят в резервную копию. В отчёт инвестору и в ссылку для соинвестора они не попадают.</p>';
+}
+function bkPaint() {
+  const l = document.getElementById('bkList'); if (l && S.tab === 'notes') l.innerHTML = bkListHtml();
+  const d = typeof curDeal === "function" ? curDeal() : null; if (d) bkDealPaint(d);
+}
+function bkDealListHtml(d) {
+  const l = S.book.filter(e => e.dealId === d.id).sort(bkSort);
+  return l.length ? l.map(e => bkEntryHtml(e, false)).join('') : '<p class="small muted" style="margin:10px 0 0">По этому проекту записей пока нет.</p>';
+}
+function bookDealHtml(d) {
+  return '<div class="card" id="bkDealCard"><h3>Записная книжка проекта</h3>' +
+    '<textarea id="bkDText" data-bk="dtext" rows="2" maxlength="' + BOOK_LEN + '" placeholder="Что важно записать по этому проекту" aria-label="Новая запись по проекту">' + esc(BK.dtext) + '</textarea>' +
+    '<div class="row" style="margin-top:8px"><button type="button" class="btn" data-a="bk-dvoice" aria-pressed="false">' + ICO.mic + '<span>Диктовать</span></button>' +
+    '<button type="button" class="btn pri" data-a="bk-dadd">Добавить</button></div>' +
+    '<p class="small muted" id="bkDSt" role="status" style="margin:8px 0 0"></p>' +
+    '<div id="bkDList">' + bkDealListHtml(d) + '</div>' +
+    '<button type="button" class="btn block" style="margin-top:10px" data-a="home-push" data-v="notes">Вся записная книжка</button></div>';
+}
+function bkDealPaint(d) { const l = document.getElementById('bkDList'); if (l) l.innerHTML = bkDealListHtml(d); }
+async function bkAddFrom(deal) {
+  if (BK.busy) return;
+  BK.busy = true;
+  try { await bkAddInner(deal); } finally { BK.busy = false; }
+}
+async function bkAddInner(deal) {
+  voiceStop(); await voiceFlush();
+  if (deal) {
+    const d = curDeal(); if (!d) return;
+    const ta = document.getElementById('bkDText');
+    if (bkAdd(ta ? ta.value : BK.dtext, d.id)) { BK.dtext = ''; if (ta) ta.value = ''; bkDealPaint(d); toast('Запись добавлена'); }
+  } else {
+    const ta = document.getElementById('bkText');
+    if (bkAdd(ta ? ta.value : BK.text, BK.deal)) { BK.text = ''; if (ta) ta.value = ''; bkPaint(); toast('Запись добавлена'); }
+  }
+}
+function bkAction(a, b) {
+  const id = b.dataset.id, e = id && S.book.find(x => x.id === id);
+  switch (a) {
+    case 'bk-voice': voiceToggle($('#bkText'), b, $('#bkSt')); break;
+    case 'bk-dvoice': voiceToggle($('#bkDText'), b, $('#bkDSt')); break;
+    case 'bk-add': bkAddFrom(false); break;
+    case 'bk-dadd': bkAddFrom(true); break;
+    case 'bk-pin': if (e) { e.pin = !e.pin; save(); bkPaint(); } break;
+    case 'bk-edit': if (e) { BK.edit = e.id; BK.etext = e.text; bkPaint(); const t = document.getElementById('bkEditText'); if (t) t.focus(); } break;
+    case 'bk-cancel': BK.edit = ''; BK.etext = ''; bkPaint(); break;
+    case 'bk-save': if (e) {
+      const t = document.getElementById('bkEditText'), v = String(t ? t.value : '').trim().slice(0, BOOK_LEN);
+      if (!v) { toast('Запись не может быть пустой. Чтобы убрать её, нажмите «Удалить».'); break; }
+      e.text = v; BK.edit = ''; BK.etext = ''; save(); bkPaint(); toast('Сохранено');
+    } break;
+    case 'bk-del': if (e && confirm('Удалить запись?')) { S.book = S.book.filter(x => x.id !== e.id); if (BK.edit === e.id) { BK.edit = ''; BK.etext = ''; } save(); bkPaint(); } break;
+  }
 }
 
 /* ===== Раздел «Фото объекта» =====
@@ -3565,7 +3692,7 @@ function renderNewObj() {
 }
 
 /* ===== Навигация ===== */
-const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый объект', cal: 'Календарь'};
+const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый объект', cal: 'Календарь', notes: 'Записная книжка'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
 function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
@@ -3583,22 +3710,22 @@ function animate(cls) {
   const v = $('#view'); v.classList.remove('anim-up', 'anim-right', 'anim-left'); void v.offsetWidth; v.classList.add(cls);
 }
 function go(tab, cls, y) {
-  voiceStop();
+  voiceStop(); BK.edit = ''; BK.etext = '';
   S.tab = tab; save();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
-  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, tax: renderTax, photo: renderPhoto, newobj: renderNewObj, cal: renderCal})[tab]();
+  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, tax: renderTax, photo: renderPhoto, newobj: renderNewObj, cal: renderCal, notes: renderNotes})[tab]();
   // «Смета» и «Торги» открываются с главной: у них своя кнопка «назад»
   if (tab === 'smeta' || tab === 'torgi') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'kursy' || tab === 'tax') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
-  if (tab === 'photo' || tab === 'cal') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
+  if (tab === 'photo' || tab === 'cal' || tab === 'notes') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'newobj') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   window.scrollTo(0, y || 0); animate(cls || 'anim-up'); onScroll();
 }
 /* ===== История: системная кнопка «назад», кнопка «‹» и свайп идут одним путём =====
    Стопка: «Главная» (глубина 0) → другая вкладка (1) → экраны вглубь (2, 3…).
    Вкладки записи не копят: со вкладки «назад» ведёт на «Главную», а из неё — выход из приложения. */
-const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'photo', 'newobj', 'cal'];
+const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'photo', 'newobj', 'cal', 'notes'];
 let navDepth = 0;       // глубина текущего экрана в стопке
 let navPending = null;  // вкладка, которую запишем, когда история вернётся к началу стопки
 const navRoot = tab => ({tab, deal: null, rayon: null, from: null});
@@ -3694,7 +3821,7 @@ function closeDeal() { navBack(); }
 let swipe = null;
 document.addEventListener('touchstart', e => {
   const p = e.touches[0];
-  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'tax' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'tax' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal' || S.tab === 'notes') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
 }, {passive: true});
 document.addEventListener('touchend', e => {
   if (!swipe) return;
@@ -3990,7 +4117,8 @@ view.addEventListener('click', e => {
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
       break;
     case 'go-tab': if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
-    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo' || b.dataset.v === 'cal') navPush(navRoot(b.dataset.v), 'anim-right'); break;
+    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo' || b.dataset.v === 'cal' || b.dataset.v === 'notes') navPush(navRoot(b.dataset.v), 'anim-right'); break;
+    case 'bk-voice': case 'bk-dvoice': case 'bk-add': case 'bk-dadd': case 'bk-pin': case 'bk-edit': case 'bk-cancel': case 'bk-save': case 'bk-del': bkAction(a, b); break;
     case 'cal-voice': voiceToggle($('#calText'), b, $('#calSt')); break;
     case 'cal-add': calAdd(); break;
     case 'cal-del': { const id = b.dataset.id; if (S.cal.some(e => e.id === id) && confirm('Удалить запись?')) { S.cal = S.cal.filter(e => e.id !== id); save(); calPaint(); } break; }
@@ -4106,7 +4234,7 @@ view.addEventListener('click', e => {
     case 'exp-csv': if (d) expensesCsvSave(d); break;
     case 'deal-del':
       if (d && confirm('Удалить сделку «' + d.name + '» со всеми расходами?')) {
-        dealFilesPurge(d.id); S.deals = S.deals.filter(x => x.id !== d.id); if (S.calcDeal === d.id) S.calcDeal = null; save(); navBack();
+        dealFilesPurge(d.id); S.deals = S.deals.filter(x => x.id !== d.id); if (S.calcDeal === d.id) S.calcDeal = null; S.book.forEach(x => { if (x.dealId === d.id) x.dealId = ''; }); save(); navBack();
       }
       break;
     case 'backup-save': {
@@ -4175,12 +4303,18 @@ view.addEventListener('input', e => {
   else if (t.dataset.d === 'address') dealTaxiPaint(curDeal());
   else if (t.dataset.ph === 'q') { PH.q = t.value.slice(0, 100); phPaintList(); }
   else if (t.dataset.cal === 'text') CAL.text = t.value.slice(0, 300);
+  else if (t.dataset.bk === 'edit') BK.etext = t.value.slice(0, BOOK_LEN);
+  else if (t.dataset.bk === 'text') BK.text = t.value.slice(0, BOOK_LEN);
+  else if (t.dataset.bk === 'dtext') BK.dtext = t.value.slice(0, BOOK_LEN);
+  else if (t.dataset.bk === 'q') { BK.q = t.value.slice(0, 100); const l = document.getElementById('bkList'); if (l) l.innerHTML = bkListHtml(); }
   else if (t.dataset.cal === 'time') CAL.time = t.value;
 });
 view.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset.cal === 'date') { if (isDay(t.value)) { CAL.day = t.value; calPaint(); calAddLbl(); } return; }
   if (t.dataset.cal === 'deal') { CAL.deal = t.value; return; }
+  if (t.dataset.bk === 'deal') { BK.deal = t.value; return; }
+  if (t.dataset.bk === 'f') { BK.f = t.value; bkPaint(); return; }
   if (t.dataset.ph === 'addr') phRestamp();
   else if (t.dataset.ph === 'file') { const f = t.files && t.files[0]; t.value = ''; phPick(f); }
   else if (t.dataset.dfile) { const dd = curDeal(), fs2 = t.files ? Array.from(t.files) : []; t.value = ''; if (dd) dealAttach(dd, fs2); }

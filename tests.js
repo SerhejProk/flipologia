@@ -1256,6 +1256,60 @@ vm.runInContext(`
 }
 `, ctx);
 
+/* --- Записная книжка --- */
+vm.runInContext(`
+{
+  const keep = S.book, keepDeals = S.deals;
+  S.deals = [cleanDeal({id: 'bd1', name: 'Двушка'})];
+  S.book = [];
+  // чистка
+  check('книжка: не массив → пусто', cleanBook(null).length === 0 && cleanBook('x').length === 0 && cleanBook({}).length === 0);
+  const cl = cleanBook([null, 5, {text: ''}, {text: '   '}, {text: 5}, {id: 'a', text: ' привет ', ts: 100, dealId: 'bd1', pin: true}, {id: 'a', text: 'дубль', ts: 'x', pin: 'yes'}]);
+  check('книжка: мусор отброшен, пробелы обрезаны', cl.length === 2 && cl[0].text === 'привет');
+  check('книжка: повторный id заменён, битая дата — сейчас, pin только true', cl[1].id !== 'a' && cl[1].ts > 1e12 && cl[1].pin === false && cl[0].pin === true);
+  check('книжка: длинный текст обрезан до предела', cleanBook([{text: 'я'.repeat(5000)}])[0].text.length === BOOK_LEN);
+  check('книжка: число записей ограничено', cleanBook(Array.from({length: BOOK_MAX + 50}, (_, i) => ({text: 'з' + i}))).length === BOOK_MAX);
+  // добавление
+  check('книжка: пустая запись не добавляется', bkAdd('  ', '') === false && S.book.length === 0);
+  check('книжка: добавление', bkAdd('  Позвонить в БТИ ', '') === true && S.book.length === 1 && S.book[0].text === 'Позвонить в БТИ' && S.book[0].dealId === '' && S.book[0].pin === false);
+  bkAdd('По проекту', 'bd1'); bkAdd('Чужой проект', 'нет-такого');
+  check('книжка: проект привязывается, несуществующий отбрасывается', S.book[1].dealId === 'bd1' && S.book[2].dealId === '');
+  // сортировка и поиск
+  S.book[0].ts = 1000; S.book[1].ts = 3000; S.book[2].ts = 2000;
+  check('книжка: новые сверху', S.book.slice().sort(bkSort).map(e => e.text).join('|') === 'По проекту|Чужой проект|Позвонить в БТИ');
+  S.book[0].pin = true;
+  check('книжка: закреплённые выше всех', S.book.slice().sort(bkSort)[0].text === 'Позвонить в БТИ');
+  check('книжка: поиск без учёта регистра', bkMatch(S.book[0], 'бти') && bkMatch(S.book[0], 'ПОЗВОНИТЬ') && !bkMatch(S.book[0], 'проект') && bkMatch(S.book[0], ''));
+  // отрисовка и защита от разметки
+  S.book.push({id: 'x1', text: '<img src=x onerror=alert(1)> & "кавычки"', ts: Date.now(), dealId: 'bd1', pin: false});
+  const html = bkListHtml();
+  check('книжка: текст экранируется', !/<img src=x/.test(html) && html.includes('&lt;img'));
+  BK.q = 'бти'; check('книжка: список фильтруется поиском', bkListHtml().includes('БТИ') && !bkListHtml().includes('По проекту'));
+  BK.q = 'zzzz'; check('книжка: «ничего не найдено»', bkListHtml().includes('Ничего не найдено'));
+  BK.q = ''; BK.f = 'bd1';
+  check('книжка: фильтр по проекту', bkListHtml().includes('По проекту') && !bkListHtml().includes('БТИ'));
+  BK.f = 'none'; check('книжка: фильтр «без проекта»', bkListHtml().includes('БТИ') && !bkListHtml().includes('По проекту'));
+  BK.f = '';
+  check('книжка: в сделке только её записи', bkDealListHtml(S.deals[0]).includes('По проекту') && !bkDealListHtml(S.deals[0]).includes('БТИ'));
+  check('книжка: в сделке пустой список — подсказка', bkDealListHtml(cleanDeal({id: 'zz', name: 'п'})).includes('пока нет'));
+  check('книжка: блок сделки содержит поле, диктовку и добавление', /data-bk="dtext"/.test(bookDealHtml(S.deals[0])) && /data-a="bk-dvoice"/.test(bookDealHtml(S.deals[0])) && /data-a="bk-dadd"/.test(bookDealHtml(S.deals[0])));
+  check('книжка: не попадает в ссылку соинвестора', !JSON.stringify(shareSnap(S.deals[0])).includes('БТИ') && !JSON.stringify(shareSnap(S.deals[0])).includes('По проекту'));
+  // правка не теряется при перерисовке, устаревший фильтр сбрасывается
+  S.book = [{id: 'e1', text: 'Старый', ts: 5, dealId: '', pin: false}];
+  BK.edit = 'e1'; BK.etext = 'Набранный текст';
+  check('книжка: набранная правка переживает перерисовку', bkEntryHtml(S.book[0], true).includes('Набранный текст'));
+  BK.edit = ''; BK.etext = '';
+  BK.f = 'нет-проекта'; BK.deal = 'нет-проекта';
+  try { renderNotes(); } catch (e) {}
+  check('книжка: фильтр и проект сбрасываются, если проекта нет', BK.f === '' && BK.deal === '');
+  const saveKeep = save; save = () => false;
+  const nBefore = S.book.length;
+  check('книжка: при сбое сохранения запись не остаётся в памяти', bkAdd('Не сохранится', '') === false && S.book.length === nBefore);
+  save = saveKeep;
+  S.book = keep; S.deals = keepDeals;
+}
+`, ctx);
+
 Promise.all(ctx.pendingTests || []).then(() => {
   console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
   process.exit(fail ? 1 : 0);
