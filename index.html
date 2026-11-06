@@ -92,7 +92,7 @@ textarea{min-height:90px;resize:vertical}
 .btn.danger{background:var(--bad-bg);color:var(--bad)}
 .btn.block{width:100%}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.chk{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:15px;cursor:pointer}
+.chk{display:flex;gap:10px;align-items:center;min-height:48px;padding:6px 0;font-size:15px;cursor:pointer}
 .chk input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:var(--gold)}
 .chkrow{display:flex;align-items:flex-start;gap:8px}
 .chkrow .chk{flex:1;min-width:0}
@@ -150,7 +150,14 @@ tr.total td{font-weight:700;border-bottom:0}
 .fab{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:6;height:56px;padding:0 22px;border:0;border-radius:28px;background:var(--gold);color:#fff;font:inherit;font-size:16px;font-weight:600;box-shadow:0 8px 24px rgba(10,99,255,.35);cursor:pointer}
 .fab:active{transform:scale(.96)}
 html[data-style="glass"] .fab{bottom:calc(108px + env(safe-area-inset-bottom))}
-#xRooms button,#phRooms button,#xStages button,#xCats button{min-height:44px;padding:8px 16px}
+#xStages button,#xCats button{min-height:44px;padding:8px 16px}
+#xRooms,#phRooms{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}#xRooms button,#phRooms button{min-height:64px;padding:8px 6px;border-radius:16px;font-size:15px;line-height:1.2}
+.exr td{padding-top:12px;padding-bottom:12px}.exr td.n{min-width:96px}.exa{display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin-top:6px}
+.exb{min-height:48px;min-width:72px;padding:10px 14px;border:0;border-radius:12px;background:var(--input);color:var(--gold-ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer}.exb.bad{color:var(--bad);background:var(--bad-bg)}
+.stagebar{display:flex;align-items:center;gap:4px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}.stagebar::-webkit-scrollbar{display:none}
+.stagebar button{flex:none;min-height:44px;padding:8px 14px;border:0;border-radius:999px;background:var(--card);box-shadow:var(--shadow);color:var(--muted);font:inherit;font-size:14px;font-weight:600;cursor:pointer}.stagebar button.on{background:var(--gold);color:#fff}.stagebar i{flex:none;color:var(--muted);font-style:normal}
+.dthumb{display:inline-block;width:36px;height:36px;margin-right:10px;border-radius:9px;overflow:hidden;vertical-align:middle;background:var(--input)}.dthumb:empty{display:none}.dthumb img{display:block;width:100%;height:100%;object-fit:cover}
+.xnum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 10px}.xnum button{min-height:56px;border:0;border-radius:14px;background:var(--input);color:var(--ink);font:inherit;font-size:22px;font-weight:600;cursor:pointer}.xnum button:active{transform:scale(.96)}.xnum .xc{grid-column:1/-1;min-height:44px;font-size:15px;color:var(--bad)}
 .xq{display:flex;gap:6px;margin-top:8px}
 .xq button{flex:1;min-width:0;min-height:44px;font:inherit;font-size:14px;font-weight:600;border:0;border-radius:12px;background:var(--acc-soft);color:var(--gold-ink);cursor:pointer;padding:0 4px}
 .xq button:active{transform:scale(.96)}
@@ -240,6 +247,17 @@ html[data-style="glass"] .fab{bottom:calc(108px + env(safe-area-inset-bottom))}
 .hdeal:first-of-type{border-top:0;padding-top:0}
 .bigbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:64px;border:0;border-radius:20px;background:var(--gold);color:#fff;font:inherit;font-size:17px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);margin:0 0 12px}
 .bigbtn svg{width:28px;height:28px;flex:none}
+.bigbtn.acc{justify-content:flex-start;padding:0 20px;text-align:left}.bigbtn.acc .t{flex:1}
+.accbtn{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 18px;border:0;border-radius:20px;background:var(--card);color:var(--ink);font:inherit;font-size:16px;font-weight:600;text-align:left;box-shadow:var(--shadow);cursor:pointer;margin:0 0 12px}
+.accbtn .t{flex:1;min-width:0}.accbtn small{display:block;font-weight:400;font-size:13px;color:var(--muted);margin-top:2px}
+.chev{font-style:normal;font-size:24px;line-height:1;flex:none;transition:transform .2s}[aria-expanded="true"]>.chev{transform:rotate(90deg)}
+.accp{margin:-4px 0 12px}.accp>.card:last-child{margin-bottom:0}
+.rates{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;margin-bottom:12px}.rates .card{margin:0;padding:14px}.rates h3{margin:0 0 6px;font-size:15px}
+.rr{display:flex;flex-direction:column;justify-content:center;gap:2px}.rbig{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15;margin-bottom:8px}
+.rl .kz-sum{font-size:14px;gap:6px}
+@media (max-width:340px){.rates{grid-template-columns:1fr}}.rates>*{min-width:0}
+.tabs button.dot,#tabs button.dot{position:relative}#tabs button.dot::after{content:'';position:absolute;top:6px;right:calc(50% - 20px);width:9px;height:9px;border-radius:50%;background:var(--bad);border:2px solid var(--card)}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
 .bigbtn.voice{background:var(--dark);color:var(--dark-ink);margin:18px 0 12px}
 .soon{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:99px;background:var(--acc-soft);color:var(--gold-ink);font-size:12px;font-weight:600;vertical-align:middle;letter-spacing:0}
 .fbtn{position:relative;overflow:hidden;flex:1 1 150px}
@@ -397,9 +415,9 @@ html[data-style="glass"] body::before{content:"";position:fixed;inset:0;z-index:
   radial-gradient(420px 420px at -8% -4%,rgba(29,92,255,.7),transparent 70%),
   radial-gradient(380px 380px at 108% 88%,rgba(19,196,106,.42),transparent 70%),
   radial-gradient(340px 340px at -12% 58%,rgba(122,60,255,.42),transparent 70%)}
-html[data-style="glass"] :is(.card,.tile,.kpis,.next,.bigbtn,.star,.verdict .v){border:1px solid var(--edge);-webkit-backdrop-filter:blur(22px) saturate(1.6);backdrop-filter:blur(22px) saturate(1.6)}
+html[data-style="glass"] :is(.card,.accbtn,.tile,.kpis,.next,.bigbtn,.star,.verdict .v){border:1px solid var(--edge);-webkit-backdrop-filter:blur(22px) saturate(1.6);backdrop-filter:blur(22px) saturate(1.6)}
 html[data-style="glass"] .card .next{border:0;-webkit-backdrop-filter:none;backdrop-filter:none}
-html[data-style="glass"] :is(.card,.tile,.kpis){border-radius:22px}
+html[data-style="glass"] :is(.card,.accbtn,.tile,.kpis){border-radius:22px}
 html[data-style="glass"] .tabs{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;border:1px solid var(--bar-line);border-radius:30px;padding-bottom:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 30px rgba(0,0,0,.4)}
 html[data-style="glass"] .tabs button.on{text-shadow:0 0 12px rgba(77,163,255,.9)}
 html[data-style="glass"] .toast{bottom:calc(88px + env(safe-area-inset-bottom))}
@@ -689,6 +707,9 @@ function cleanScen(src) {
   return o;
 }
 
+/* Миниатюра проекта: маленькое фото (jpeg, data-URL) для карточки; чужие и слишком большие значения отбрасываем */
+function cleanThumb(v) { return typeof v === 'string' && v.length <= 24000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(v) ? v : ''; }
+
 /* ===== Хранилище ===== */
 function load() {
   let s = null;
@@ -853,6 +874,7 @@ function cleanDeal(d) {
     calc: d.calc ? clean(DEFAULT_CALC, d.calc, CALC_ENUMS) : null,
     expenses: Array.isArray(d.expenses) ? d.expenses.filter(e => e && typeof e === 'object').map(e =>
       ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note), stage: WORK_STAGES.some(w => w[1] === e.stage) ? e.stage : '', chk: /^[a-z0-9]{1,40}$/i.test(str(e.chk)) ? str(e.chk) : '', room: cleanRoom(e.room), sid: /^[a-z0-9]{1,40}$/i.test(str(e.sid)) ? str(e.sid) : ''})) : [],
+    thumb: cleanThumb(d.thumb), thumbId: typeof d.thumbId === 'string' ? d.thumbId.slice(0, 40) : '',
     shop: cleanShop(d.shop), reservePct: cleanReservePct(d.reservePct), insp: cleanInsp(d.insp),
     checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
     risks: cleanRisks(d.risks),
@@ -924,6 +946,7 @@ function openExpSheet(d) {
   $('#xbox').innerHTML = '<h3>Новый расход</h3>' +
     '<label class="f">Сумма<div class="inwrap"><input type="text" inputmode="decimal" id="xSum" placeholder="например, 45к" autocomplete="off" aria-describedby="xHint"><span>₽</span></div></label>' +
     '<div class="xh" id="xHint">Можно «45к», «45 тыс», «1,2м»</div>' +
+    '<div class="row" style="margin:0 0 8px"><button type="button" class="btn" id="xNumTgl" data-a="x-numpad">Цифры на экране</button><button type="button" class="btn" data-a="x-voice">' + ICO.mic + '<span>Голосом</span></button></div><div id="xNum"></div>' +
     '<div class="xq" role="group" aria-label="Прибавить к сумме">' + X_QUICK.map(v => '<button type="button" data-a="x-add" data-v="' + v + '">+' + num(v) + '</button>').join('') + '</div>' +
     '<div class="xl">Статья</div><div class="chips" id="xCats">' + xChipsHtml(EXP_CATS, XS.cat, 'x-cat') + '</div>' +
     '<div class="xl">Этап ремонта (необязательно)</div><div class="chips" id="xStages">' + xChipsHtml(WORK_STAGES.map(w => w[1]), '', 'x-stage') + '</div>' +
@@ -932,7 +955,7 @@ function openExpSheet(d) {
     '<label class="f">Комментарий<input type="text" id="xNote" placeholder="например, плитка" autocomplete="off"></label></div>' +
     '<div class="xl">Фото чека (необязательно)</div><div class="row"><label class="btn" style="cursor:pointer">Приложить чек<input type="file" id="xChk" accept="image/*,application/pdf" style="display:none"></label><span class="small muted" id="xChkName" style="min-width:0;overflow-wrap:anywhere"></span></div>' +
     '<div class="row" style="margin-top:12px"><button type="button" class="btn pri" data-a="x-save">Добавить</button><button type="button" class="btn" data-a="x-more">Добавить и ещё</button></div>';
-  el.classList.add('on');
+  el.classList.add('on'); xNumPaint();
   const s = $('#xSum'); if (s && s.focus) s.focus();
 }
 function closeXSheet() { const el = $('#xsheet'); if (el) { if (el.dataset.vh) voiceStop(); el.classList.remove('on'); delete el.dataset.vh; } XS = null; }
@@ -959,6 +982,87 @@ function xSave(more) {
     toast('Добавлено: ' + XS.n + '. Вводите следующий');
   } else { const n = XS.n; closeXSheet(); toast(n > 1 ? 'Добавлено расходов: ' + n : 'Расход добавлен'); }
 }
+
+/* ===== Миниатюра проекта на карточке: последнее фото ===== */
+const thumbHtml = d => '<span class="dthumb" data-did="' + esc(d.id) + '">' + (d.thumb ? '<img alt="" src="' + d.thumb + '">' : '') + '</span>';
+async function thumbMake(blob) {
+  let bmp = null;
+  try {
+    bmp = await createImageBitmap(blob); const px = 96;
+    const cv = document.createElement('canvas'); cv.width = cv.height = px;
+    const x = cv.getContext('2d'), sc = Math.max(px / bmp.width, px / bmp.height), w = bmp.width * sc, h = bmp.height * sc;
+    x.drawImage(bmp, (px - w) / 2, (px - h) / 2, w, h);
+    return cleanThumb(cv.toDataURL('image/jpeg', 0.7));
+  } catch (e) { return ''; } finally { if (bmp && bmp.close) { try { bmp.close(); } catch (e) {} } }
+}
+let THUMB_BUSY = false, THUMB_DIRTY = true;
+async function thumbsFill() {
+  if (!THUMB_DIRTY || THUMB_BUSY || !S.deals.length || typeof createImageBitmap !== 'function' || typeof phTx !== 'function') return;
+  THUMB_BUSY = true; THUMB_DIRTY = false;
+  try {
+    let list = [];
+    try { list = (await phTx('readonly', st => st.getAll())) || []; } catch (e) { THUMB_DIRTY = true; return; }
+    for (const d of S.deals.slice()) {
+      const last = list.filter(x => x && x.dealId === d.id && isBlob(x.blob)).sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+      if (!last) {
+        if (d.thumb) { d.thumb = ''; d.thumbId = ''; save(); document.querySelectorAll('.dthumb').forEach(el => { if (el.dataset.did === d.id) el.innerHTML = ''; }); }
+        continue;
+      }
+      if (d.thumb && d.thumbId === last.id) continue;
+      const t = await thumbMake(last.blob); if (!t) continue;
+      const dd = S.deals.find(x => x.id === d.id); if (!dd) continue;
+      dd.thumb = t; dd.thumbId = String(last.id || '').slice(0, 40);
+      save();
+      document.querySelectorAll('.dthumb').forEach(el => { if (el.dataset.did === dd.id) el.innerHTML = '<img alt="" src="' + t + '">'; });
+    }
+  } finally { THUMB_BUSY = false; }
+}
+
+/* ===== Переключатель этапа вверху проекта ===== */
+function stageBarHtml(d) {
+  return '<nav class="stagebar" aria-label="Этап проекта">' +
+    STAGES.map(s => '<button type="button" data-a="deal-stage" data-v="' + s + '" class="' + (d.stage === s ? 'on' : '') + '" aria-pressed="' + (d.stage === s) + '">' + s + '</button>').join('<i aria-hidden="true">›</i>') + '</nav>';
+}
+
+/* ===== Цифровой блок в шторке расхода (по желанию), диктовка расхода по долгому нажатию на «+ Расход» ===== */
+const NP = {on: false};
+try { NP.on = localStorage.getItem('fl-numpad') === '1'; } catch (e) {}
+// Что станет с полем суммы после нажатия клавиши: «7», «000», «bs» (стереть), «c» (очистить)
+function xKeyApply(v, k) {
+  let raw = String(v == null ? '' : v).replace(/[\s\u00a0\u202f]/g, '');
+  if (k === 'c') return '';
+  if (raw && !/^\d+$/.test(raw)) { const n = Math.round(parseAmount(raw)); raw = n > 0 ? String(n) : ''; }
+  let t = raw;
+  if (k === 'bs') t = raw.slice(0, -1);
+  else if (/^\d{1,3}$/.test(k)) t = raw + k;
+  else return String(v == null ? '' : v);
+  if (/^\d+$/.test(t)) { t = t.replace(/^0+/, '').slice(0, 12); const n = Number(t); return n > 0 ? num(n) : ''; }
+  return t;
+}
+function xNumPaint() {
+  const box = document.getElementById('xNum'), sm = document.getElementById('xSum'), tg = document.getElementById('xNumTgl');
+  if (!box || !sm) return;
+  box.innerHTML = NP.on ? '<div class="xnum" role="group" aria-label="Цифровой блок">' +
+    ['7', '8', '9', '4', '5', '6', '1', '2', '3', '000', '0', 'bs'].map(k => '<button type="button" data-a="x-key" data-v="' + k + '" aria-label="' + (k === 'bs' ? 'Стереть' : k) + '">' + (k === 'bs' ? '⌫' : k) + '</button>').join('') +
+    '<button type="button" class="xc" data-a="x-key" data-v="c">Очистить</button></div>' : '';
+  sm.setAttribute('inputmode', NP.on ? 'none' : 'decimal');
+  if (tg) { tg.textContent = NP.on ? 'Системная клавиатура' : 'Цифры на экране'; }
+}
+let FAB_LONG = false, fabTimer = 0;
+function fabVoice() {
+  const d = curDeal(); if (!d) return;
+  openVoiceHelper();
+  const vb = document.querySelector('#xsheet [data-a="vh-voice"]'); if (vb) voiceToggle($('#vhText'), vb, $('#vhSt'));
+}
+document.addEventListener('pointerdown', e => {
+  const f = e.target.closest && e.target.closest('.fab[data-a="exp-new"]'); if (!f) return;
+  FAB_LONG = false; clearTimeout(fabTimer);
+  fabTimer = setTimeout(() => { FAB_LONG = true; haptic(30); fabVoice(); }, 550);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(t => document.addEventListener(t, () => clearTimeout(fabTimer), true));
+document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.fab')) e.preventDefault(); });
+document.addEventListener('keydown', e => { if (e.target && e.target.closest && e.target.closest('.fab')) FAB_LONG = false; });
+
 /* ===== Голосовой помощник =====
    Одна фраза → черновик: с суммой — расход в проект (шторка расхода, заполненная заранее), без суммы — запись в календарь.
    Ничего не сохраняется само: сначала предпросмотр, и вы нажимаете «Добавить». Разбор локальный, без сервера. */
@@ -1898,7 +2002,7 @@ function renderDeals() {
   } else {
     S.deals.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).forEach(d => {
       const p = dealPlan(d), spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
-      h += '<button class="card deal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
+      h += '<button class="card deal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + thumbHtml(d) + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
         (d.address ? '<div class="small muted">' + esc(d.address) + '</div>' : '') +
         '<div class="small" style="margin-top:6px">План: ' + (p ? '<b>' + rub(p.net) + '</b> · ' + pct(p.annual) + ' годовых' : 'нет расчёта') + ' · Потрачено: ' + rub(spent) + '</div>' + progLine(d) + lateLine(d) + '</button>';
     });
@@ -1909,7 +2013,9 @@ function renderDeals() {
   h += '<div class="card"><h3>Резервная копия</h3><p class="small ' + (stale ? '' : 'muted') + '" style="margin-top:0">Данные хранятся только в этом телефоне. ' +
     (days < 0 ? 'Копию ещё не делали.' : 'Последняя копия — ' + (days === 0 ? 'сегодня' : days + ' дн. назад') + '.') + (stale ? (days < 0 ? ' <b>Скачайте копию.</b>' : ' <b>Скачайте свежую копию.</b>') : '') + '</p>' +
     '<div class="row"><button class="btn" data-a="backup-save">Скачать копию</button><label class="btn">Загрузить копию<input type="file" accept="application/json,.json" id="backupFile" class="hide"></label></div></div>';
+  h += '<button type="button" class="fab" data-a="deal-new" aria-label="Добавить проект">+ Проект</button><div style="height:64px" aria-hidden="true"></div>';
   $('#view').innerHTML = h;
+  setTimeout(thumbsFill, 50);
 }
 const CHECK_LINKS = [
   ['Росреестр: выписка из ЕГРН', 'https://rosreestr.gov.ru/'],
@@ -1943,7 +2049,7 @@ function renderDeal(d) {
   const checks = d.checks || {};
   const done = CHECKLIST.filter(([k]) => checks[k]).length;
   setTitle(d.name || 'Сделка', '', true);
-  let h = '';
+  let h = stageBarHtml(d);
   if (d.demo) h += '<div class="card demo-note"><p><b>Это учебный пример.</b> Здесь всё заполнено: расчёт, график ремонта, расходы, проверка объекта. Меняйте цифры и нажимайте кнопки — ничего не сломается. Отчёт инвестору — внизу страницы.</p><button class="btn danger" data-a="deal-del">Удалить пример</button></div>';
   if (S.mode !== 'full' && !d.demo && (STAGE_PHASE[d.stage] || 1) < 2) h += '<div class="card"><p class="small" style="margin:0 0 10px">Простой режим: смета, график ремонта, расходы и покупки откроются, когда вы переведёте проект на этап «Ремонт».</p><button class="btn block" data-a="mode" data-v="full">Показать всё сейчас</button></div>';
   h += '<div class="card"><label class="f">Название<input type="text" data-d="name" value="' + esc(d.name) + '"></label>' +
@@ -1954,8 +2060,7 @@ function renderDeal(d) {
     '<div id="dealRayon">' + dealRayonHtml(d) + '</div>' : '') +
     '<div style="height:10px"></div><label class="f">Ссылка на объявление или лот<input type="url" data-d="link" value="' + esc(d.link || '') + '" placeholder="https://"></label>' +
     '<p class="note" id="dealLink">' + dealLinkHtml(d) + '</p>' +
-    '<h3 style="margin-top:14px">Этап</h3><div class="chips">' +
-    STAGES.map(s => '<button data-a="deal-stage" data-v="' + s + '" class="' + (d.stage === s ? 'on' : '') + '">' + s + '</button>').join('') + '</div></div>';
+    '</div>';
   h += '<div class="card"><h3>План по расчёту</h3>' + (p
     ? '<table><tr><td>Покупка</td><td class="n">' + rub(c.price) + '</td></tr><tr><td>Ремонт по плану</td><td class="n">' + rub(c.repair) + '</td></tr><tr><td>Продажа по плану</td><td class="n">' + rub(c.sale) + '</td></tr><tr class="total"><td>Чистая прибыль</td><td class="n">' + rub(p.net) + ' · ' + pct(p.annual) + '</td></tr></table>'
     : '<p class="muted">Расчёта ещё нет.</p>') +
@@ -1971,8 +2076,8 @@ function renderDeal(d) {
     '<button class="btn pri block" data-a="exp-new">+ Добавить расход</button>';
   if (exp.length) {
     h += '<table style="margin-top:12px">' + exp.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(e =>
-      '<tr><td>' + esc(e.cat) + (e.stage ? ' · ' + esc(e.stage) : '') + (e.room ? ' · ' + esc(e.room) : '') + (e.note ? '<br><span class="small muted">' + esc(e.note) + '</span>' : '') + '<br><span class="small muted">' + esc((e.date || '').split('-').reverse().join('.')) + '</span></td>' +
-      '<td class="n">' + rub(e.sum) + '<br>' + (e.chk ? '<button class="back small" style="padding:4px 10px 4px 0" data-a="exp-chk" data-id="' + esc(e.chk) + '">чек</button>' : '') + '<button class="back small" style="padding:4px 0;color:var(--bad)" data-a="exp-del" data-id="' + esc(e.id) + '">удалить</button></td></tr>').join('') +
+      '<tr class="exr"><td>' + esc(e.cat) + (e.stage ? ' · ' + esc(e.stage) : '') + (e.room ? ' · ' + esc(e.room) : '') + (e.note ? '<br><span class="small muted">' + esc(e.note) + '</span>' : '') + '<br><span class="small muted">' + esc((e.date || '').split('-').reverse().join('.')) + '</span></td>' +
+      '<td class="n">' + rub(e.sum) + '<br>' + '<div class="exa">' + (e.chk ? '<button type="button" class="exb" data-a="exp-chk" data-id="' + esc(e.chk) + '">чек</button>' : '') + '<button type="button" class="exb bad" data-a="exp-del" data-id="' + esc(e.id) + '" aria-label="Удалить расход">удалить</button></div></td></tr>').join('') +
       '<tr class="total"><td>Всего потрачено</td><td class="n">' + rub(spent) + '</td></tr></table>' +
       '<button class="btn block" style="margin-top:10px" data-a="exp-csv">Выгрузить расходы в CSV (Excel)</button>';
   }
@@ -2003,6 +2108,7 @@ function renderDeal(d) {
   $('#view').dataset.deal = d.id;
   ['shopName', 'shopStore', 'shopSum'].forEach((id, i) => { const el = document.getElementById(id); if (el && dr[i] != null) el.value = dr[i]; });
   dealFilesLoad(d.id); baLoad(d); mbPaint();
+  const sbOn = document.querySelector('.stagebar .on'); if (sbOn && sbOn.scrollIntoView) { try { sbOn.scrollIntoView({inline: 'center', block: 'nearest'}); } catch (e) {} }
 }
 const WORK_STATUS = {done: ['Готово', 'pos'], work: ['В работе', ''], wait: ['Ждёт', 'muted']};
 function workInfoHtml(r) {
@@ -2566,6 +2672,13 @@ $('#xsheet').addEventListener('click', e => {
   else if (a === 'x-more') xSave(true);
   else if (a === 'x-cat') { XS.cat = b.dataset.v; $('#xCats').innerHTML = xChipsHtml(EXP_CATS, XS.cat, 'x-cat'); }
   else if (a === 'x-add') { const sm = $('#xSum'); if (sm) { sm.value = num(xAdd(parseAmount(sm.value), Number(b.dataset.v))); xHint(); if (sm.focus) sm.focus(); } }
+  else if (a === 'x-key') { const sm = $('#xSum'); if (sm) { sm.value = xKeyApply(sm.value, b.dataset.v); xHint(); haptic(10); } }
+  else if (a === 'x-numpad') { NP.on = !NP.on; try { localStorage.setItem('fl-numpad', NP.on ? '1' : '0'); } catch (e) {} xNumPaint(); const sm = $('#xSum'); if (!NP.on && sm && sm.focus) sm.focus(); }
+  else if (a === 'x-voice') {
+    const sm = $('#xSum'), nt = $('#xNote');
+    if (((sm && sm.value.trim()) || (nt && nt.value.trim())) && !confirm('Введённое в расходе пропадёт. Перейти к голосовому вводу?')) return;
+    closeXSheet(); fabVoice();
+  }
   else if (a === 'x-room') { XS.room = XS.room === b.dataset.v ? '' : b.dataset.v; $('#xRooms').innerHTML = xChipsHtml(ROOMS, XS.room, 'x-room'); }
   else if (a === 'x-stage') { XS.stage = XS.stage === b.dataset.v ? '' : b.dataset.v; $('#xStages').innerHTML = xChipsHtml(WORK_STAGES.map(w => w[1]), XS.stage, 'x-stage'); }
 });
@@ -2805,6 +2918,14 @@ function setStyle(v) {
   document.querySelectorAll('#styleSeg button').forEach(x => { const on = x.dataset.v === v; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
 }
 /* ===== Раздел «Справка» ===== */
+// Резервная копия: живёт в «Справочнике» (с главной убрана)
+function backupCardHtml() {
+  const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
+  const stale = S.deals.length && (days < 0 || days > 14);
+  return '<div class="card"><h3>Резервная копия</h3><p class="small ' + (stale ? '' : 'muted') + '" style="margin-top:0">Данные хранятся только в этом телефоне. ' +
+    (days < 0 ? 'Копию ещё не делали.' : 'Последняя копия — ' + (days === 0 ? 'сегодня' : days + ' дн. назад') + '.') + (stale ? (days < 0 ? ' <b>Скачайте копию.</b>' : ' <b>Скачайте свежую копию.</b>') : '') + '</p>' +
+    '<div class="row"><button class="btn" data-a="backup-save">Скачать копию</button><label class="btn">Загрузить копию<input type="file" accept="application/json,.json" id="backupFile" class="hide"></label></div></div>';
+}
 function renderRef() {
   if (rayonView === 'list') return renderRayonList();
   if (rayonView) return renderRayon(rayonView);
@@ -2822,6 +2943,7 @@ function renderRef() {
     '<div class="card"><h3>Оформление</h3><div class="chips" id="styleSeg">' +
     '<button type="button" data-a="style" data-v="glass" class="' + (st === 'glass' ? 'on' : '') + '" aria-pressed="' + (st === 'glass') + '">Жидкое стекло</button>' +
     '<button type="button" data-a="style" data-v="light" class="' + (st === 'light' ? 'on' : '') + '" aria-pressed="' + (st === 'light') + '">Светлый</button></div></div>' +
+    backupCardHtml() +
     '<button class="card deal" data-a="rayon-list"><span class="t">Районы</span><br><span class="small muted">Нотариусы, МФЦ, строймагазины, супермаркеты, рынки и цена м² по районам Москвы</span></button>' +
     '<button class="card deal" data-a="home-push" data-v="kursy"><span class="t">Курсы и ставки</span><br><span class="small muted">Ключевая ставка ЦБ, курсы валют, конвертер и цена объекта в других валютах</span></button>' +
     '<a class="card deal" href="https://t.me/flipologia" target="_blank" rel="noopener" style="text-decoration:none"><span class="t">Новости и лоты недели</span><br><span class="small muted">Свежие новости рынка, цены м² и лоты с дисконтом — в Telegram-канале «Флипология»</span></a>' +
@@ -2880,7 +3002,7 @@ function homeDealHtml(d) {
   const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
   const f = p ? dealForecast(d, p, c) : null;
   const moved = f && Math.round(f.fore) !== Math.round(p.net);
-  return '<button class="hdeal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
+  return '<button class="hdeal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + thumbHtml(d) + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
     '<div class="small muted">' + (p ? 'План ' + rub(p.net) + (moved ? ' · прогноз <b class="' + (f.fore < p.net ? 'neg' : 'pos') + '">' + rub(f.fore) + '</b>' : '') : 'Расчёта ещё нет') + '</div>' + progLine(d) + lateLine(d) + '</button>';
 }
 // Ключевая ставка и курсы на главной (курсы берутся из сохранённого кэша, обновляются в фоне)
@@ -2893,56 +3015,66 @@ function homeRatesHtml() {
   }).join('');
   return '<p class="small muted" style="margin:0 0 6px">Курс ЦБ РФ на ' + esc(isoRu(c.date)) + (kzStatus === 'err' ? ' · нет связи, показан сохранённый' : '') + '</p>' + rows;
 }
+const HOME_OPEN = {eval: false, proj: false, calc: false, cal: false};
+const homeAccBtn = (key, ico, title, sub, big) => '<button type="button" class="' + (big ? 'bigbtn acc' : 'accbtn') + '" data-a="home-acc" data-v="' + key + '" aria-expanded="' + (HOME_OPEN[key] ? 'true' : 'false') + '">' +
+  (ico || '') + '<span class="t">' + title + (sub ? '<small>' + sub + '</small>' : '') + '</span><i class="chev" aria-hidden="true">›</i></button>';
+const homeLinkBtn = (act, v, title, sub) => '<button type="button" class="accbtn" data-a="' + act + '"' + (v ? ' data-v="' + v + '"' : '') + '><span class="t">' + title + (sub ? '<small>' + sub + '</small>' : '') + '</span><i class="chev" aria-hidden="true">›</i></button>';
 function homeHtml() {
   const c = S.calc, linked = S.calcDeal && S.deals.find(d => d.id === S.calcDeal);
   const full = S.mode === 'full', ph = homePhase(), sh = n => full || ph >= n;
-  let h = '';
-  if (!full) h += '<button class="bigbtn" data-a="home-eval">' + ICO.calc + '<span>Оценить новый объект</span></button>';
-  if (sh(1)) h += '<button class="bigbtn" data-a="home-push" data-v="photo">' + ICO.cam + '<span>Сделать фото</span></button>';
   const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
-  h += hotHtml();
-  h += '<div class="card"><h3>Мои проекты</h3>' +
+  const projHtml = '<div class="card"><h3>Мои проекты</h3>' +
     (deals.length ? deals.slice(0, 3).map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Проектов пока нет. Посчитайте объект и создайте проект или добавьте его сразу. Хотите увидеть, как выглядит готовый проект, — откройте пример.</p>') +
     '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="deal-new">+ Новый проект</button>' + (S.deals.some(x => x.demo) ? '' : '<button class="btn" data-a="demo-open">Пример проекта</button>') +
     (deals.length > 3 ? '<button class="btn" data-a="go-tab" data-v="deals">Все (' + deals.length + ')</button>' : '') + '</div></div>';
-  h += '<div class="card"><h3>Экспресс-расчёт</h3><div class="grid2">' +
+  const expressHtml = '<div class="card"><h3>Экспресс-расчёт нового объекта</h3><div class="grid2">' +
     QUICK.map(([k, l, suf, term]) => '<label class="f"><span>' + l + hintBtn(term) + '</span><div class="inwrap"><input type="text" inputmode="decimal" data-q="' + k + '" value="' + (k === 'months' ? String(c[k]).replace('.', ',') : num(c[k])) + '"><span>' + suf + '</span></div></label>').join('') +
     '</div><button class="btn" style="margin-top:10px" data-a="home-repair">Не знаете, сколько стоит ремонт? Подсказать</button>' + (linked ? '<div class="row" style="justify-content:space-between;margin-top:12px"><span class="small">Сейчас здесь расчёт сделки <b>' + esc(linked.name) + '</b></span><button class="btn" data-a="calc-detach">Новый расчёт</button></div>' : '') +
     '<div id="homeHero" style="margin-top:12px">' + quickHeroHtml(c) + '</div>' +
     '<p class="small muted" style="margin:10px 2px">Те же цифры, что в «Расчёте»: налог, ипотека и остальное — там.</p>' +
     '<button class="btn pri block" data-a="go-tab" data-v="calc">Открыть полный расчёт</button></div>';
-  if (sh(2)) h += portfolioHtml(S.deals);
-  if (sh(1)) h += '<h3 class="hh">Справочники</h3><div class="card hlist">' +
-    '<button data-a="home-push" data-v="notes"><span>Записная книжка' + (S.book.length ? ' · ' + S.book.length : '') + '</span><i>›</i></button>' +
-    (full ? '' : '<button data-a="home-push" data-v="mat"><span>Материалы: сколько купить на комнату</span><i>›</i></button>') +
-    '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
-    '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
-    '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button>' + (full ? '' : '<button data-a="home-push" data-v="kursy"><span>Курсы и ставки</span><i>›</i></button>') + '</div>';
-  if (sh(2)) h += '<h3 class="hh">Календарь</h3>' + calHomeHtml();
-  const kr = keyRateNow(S.kursy), stale = kzDaysOld(kr.date) > KEY_STALE_DAYS;
-  if (full) h += '<h3 class="hh">Ставки и курсы</h3><div class="card"><div class="kz-sum"><span>Ключевая ставка ЦБ</span><b>' + fmtPct(kr.v) + '</b></div>' +
-    '<div class="kz-sum"><span>Ставка рефинансирования</span><b>' + fmtPct(kr.v) + '</b></div>' +
-    '<p class="small muted" style="margin:6px 0 12px">' + (stale ? 'Ставка на ' + esc(isoRu(kr.date)) + ' могла измениться — проверьте на cbr.ru. ' : 'На ' + esc(isoRu(kr.date)) + '. ') + 'Ставка рефинансирования с 2016 года равна ключевой.</p>' +
-    '<div id="homeRates">' + homeRatesHtml() + '</div>' +
-    '<button class="btn block" data-a="home-push" data-v="kursy" style="margin-top:12px">Все курсы и конвертер</button></div>';
-  if (sh(1)) h += '<h3 class="hh">Калькуляторы</h3><div class="tiles">' +
+  const tilesHtml = '<div class="tiles">' +
     '<button class="tile" data-a="go-tab" data-v="calc">' + ICO.calc + '<b>Расчёт сделки</b><span>Прибыль и предел цены</span></button>' +
     '<button class="tile" data-a="home-push" data-v="smeta">' + ICO.smeta + '<b>Смета ремонта</b><span>По площади и уровню</span></button>' +
     '<button class="tile" data-a="home-push" data-v="torgi">' + ICO.torgi + '<b>Торги</b><span>Предел ставки на лоте</span></button>' +
     '<button class="tile" data-a="home-push" data-v="mat">' + ICO.smeta + '<b>Материалы</b><span>Сколько купить на комнату</span></button>' +
     '<button class="tile" data-a="home-parse">' + ICO.parse + '<b>Из объявления</b><span>Вставить текст Авито, ЦИАН</span></button></div>';
+  let h = '';
+  // 1. Экспресс-расчёт: синяя кнопка, расчёт раскрывается под ней
+  h += homeAccBtn('eval', ICO.calc, 'Экспресс-расчёт нового объекта', '', true) + (HOME_OPEN.eval ? '<div class="accp">' + expressHtml + '</div>' : '');
+  // 2. Сделать фото: остаётся на прежнем месте
+  if (sh(1)) h += '<button class="bigbtn" data-a="home-push" data-v="photo">' + ICO.cam + '<span>Сделать фото</span></button>';
+  h += hotHtml();
+  // 3. Новый проект: «Мои проекты» раскрываются из кнопки
+  h += homeAccBtn('proj', '', 'Новый проект', deals.length ? 'Мои проекты: ' + deals.length : 'Мои проекты, пример проекта') + (HOME_OPEN.proj ? '<div class="accp">' + projHtml + '</div>' : '');
+  if (sh(2)) h += portfolioHtml(S.deals);
+  // 4. Калькуляторы
+  h += homeAccBtn('calc', '', 'Калькуляторы', 'Расчёт, смета, торги, материалы, из объявления') + (HOME_OPEN.calc ? '<div class="accp">' + tilesHtml + '</div>' : '');
+  // 5. Календарь
+  h += homeAccBtn('cal', '', 'Календарь', S.cal.filter(e => e.date === today()).length ? 'Сегодня записей: ' + S.cal.filter(e => e.date === today()).length : 'Записи на сегодня и другие дни') + (HOME_OPEN.cal ? '<div class="accp">' + calHomeHtml() + '</div>' : '');
+  // 6. Записная книжка
+  h += homeLinkBtn('home-push', 'notes', 'Записная книжка', S.book.length ? 'Записей: ' + S.book.length : 'Заметки голосом и текстом');
+  // 7. Курсы валют слева, ставки справа
+  const kr = keyRateNow(S.kursy), stale = kzDaysOld(kr.date) > KEY_STALE_DAYS;
+  h += '<h3 class="hh">Курсы и ставки</h3><div class="rates"><div class="card rl"><h3>Курсы валют</h3><div id="homeRates">' + homeRatesHtml() + '</div></div>' +
+    '<div class="card rr"><div class="small muted">Ключевая ставка ЦБ</div><div class="rbig">' + fmtPct(kr.v) + '</div>' +
+    '<div class="small muted">Ставка рефинансирования</div><div class="rbig">' + fmtPct(kr.v) + '</div></div></div>' +
+    '<p class="small muted" style="margin:-4px 4px 10px">' + (stale ? 'Ставка на ' + esc(isoRu(kr.date)) + ' могла измениться — проверьте на cbr.ru. ' : 'Ставки на ' + esc(isoRu(kr.date)) + '. ') + 'Ставка рефинансирования с 2016 года равна ключевой.</p>' +
+    '<button class="btn block" data-a="home-push" data-v="kursy" style="margin-bottom:12px">Все курсы и конвертер</button>';
+  // 8. Справочники (остаются, как были)
+  if (sh(1)) h += '<h3 class="hh">Справочники</h3><div class="card hlist">' +
+    '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
+    '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
+    '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button></div>';
+  // 9. Новости
   if (sh(1)) h += '<h3 class="hh">Новости</h3><div class="card hlist"><a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
-  const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
-  if (S.deals.length && (days < 0 || days > 14)) {
-    h += '<div class="card"><h3>Резервная копия</h3><p class="small" style="margin-top:0">Данные хранятся только в этом телефоне. ' + (days < 0 ? 'Копию ещё не делали.' : 'Последней копии ' + days + ' дн.') + '</p>' +
-      '<button class="btn block" data-a="backup-save">Скачать копию</button></div>';
-  }
-  if (sh(2)) h += '<button class="bigbtn voice" data-a="soon" data-v="voice">' + ICO.mic + '<span>Голосовой помощник</span></button>';
+  // 10. Голосовой помощник — в самом низу
+  h += '<button class="bigbtn voice" data-a="soon" data-v="voice">' + ICO.mic + '<span>Голосовой помощник</span></button>';
   h += full ? '<button class="btn block" data-a="mode" data-v="simple" style="margin-top:6px">Упростить главную</button>'
-    : '<p class="small muted" style="margin:14px 2px 8px">Простой режим: остальное откроется по мере ремонта.</p><button class="btn block" data-a="mode" data-v="full">Показать все возможности</button>';
+    : '<p class="small muted" style="margin:14px 2px 8px">Простой режим: фото, итоги, справочники и новости откроются по мере ремонта.</p><button class="btn block" data-a="mode" data-v="full">Показать все возможности</button>';
   return h;
 }
-function renderHome() { $('#view').innerHTML = homeHtml(); kzLoad(false); }
+function renderHome() { $('#view').innerHTML = homeHtml(); kzLoad(false); setTimeout(thumbsFill, 50); }
 
 /* ===== Раздел «Курсы и ставки» ===== */
 const fmtD = (v, d) => isFinite(v) ? new Intl.NumberFormat('ru-RU', {minimumFractionDigits: d, maximumFractionDigits: d}).format(v) : '—';
@@ -3469,6 +3601,7 @@ function phDb() {
   return phDbP;
 }
 const phTx = (mode, fn, store) => phDb().then(db => new Promise((res, rej) => {
+  if (mode === 'readwrite' && (!store || store === 'photos')) THUMB_DIRTY = true;
   const tx = db.transaction(store || 'photos', mode), r = fn(tx.objectStore(store || 'photos'));
   tx.oncomplete = () => res(r && r.result); tx.onerror = tx.onabort = () => rej(tx.error || new Error('tx'));
 }));
@@ -3987,9 +4120,16 @@ window.addEventListener('scroll', onScroll, {passive: true});
 function animate(cls) {
   const v = $('#view'); v.classList.remove('anim-up', 'anim-right', 'anim-left'); void v.offsetWidth; v.classList.add(cls);
 }
+// Красная точка на вкладке «Справочник»: резервная копия не делалась или устарела
+function backupDot() {
+  const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
+  const stale = S.deals.filter(d => !d.demo).length > 0 && (days < 0 || days > 14);
+  const b = document.querySelector('#tabs button[data-tab="ref"]'); if (b && b.classList) { b.classList.toggle('dot', stale); b.setAttribute('aria-label', stale ? 'Справочник: пора сделать резервную копию' : 'Справочник'); }
+  return stale;
+}
 function go(tab, cls, y) {
   voiceStop(); BK.edit = ''; BK.etext = '';
-  S.tab = tab; save();
+  S.tab = tab; save(); backupDot();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
   ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, tax: renderTax, photo: renderPhoto, newobj: renderNewObj, cal: renderCal, notes: renderNotes, mat: renderMat})[tab]();
@@ -4468,7 +4608,14 @@ view.addEventListener('click', e => {
       const now = STAGE_PHASE[d.stage] || 1;
       if (S.mode !== 'full' && now > was) toast(now === 2 ? 'Открыл смету, график ремонта, расходы и покупки' : 'Открыл итоги продажи');
     } break;
-    case 'home-eval': { const el = document.querySelector('[data-q="price"]'); if (el) { el.scrollIntoView({block: 'center', behavior: 'smooth'}); if (el.focus) el.focus({preventScroll: true}); } break; }
+    case 'home-acc': {
+      const k = b.dataset.v; if (!Object.prototype.hasOwnProperty.call(HOME_OPEN, k)) break;
+      HOME_OPEN[k] = !HOME_OPEN[k];
+      const y = window.scrollY; renderHome(); window.scrollTo(0, y);
+      const nb = document.querySelector('[data-a="home-acc"][data-v="' + k + '"]'); if (nb && nb.focus) nb.focus({preventScroll: true});
+      if (HOME_OPEN[k] && k === 'eval') { const el = document.querySelector('[data-q="price"]'); if (el && el.focus) el.focus({preventScroll: true}); }
+      break;
+    }
     case 'mode': {
       S.mode = b.dataset.v === 'full' ? 'full' : 'simple'; save();
       const f = ({home: renderHome, deals: renderDeals, ref: renderRef})[S.tab]; if (f) { const y = window.scrollY; f(); window.scrollTo(0, y); }
@@ -4495,7 +4642,7 @@ view.addEventListener('click', e => {
     case 'work-del':
       if (d && confirm('Убрать график ремонта?')) { d.works = null; d.updated = Date.now(); save(); renderDeal(d); }
       break;
-    case 'exp-new': if (d) openExpSheet(d); break;
+    case 'exp-new': if (FAB_LONG) { FAB_LONG = false; break; } if (d) openExpSheet(d); break;
     case 'mb-room': MB.room = cleanRoom(b.dataset.v); mbPaint(); break;
     case 'mb-del': mbDel(b.dataset.id); break;
     case 'mb-open': mbOpen(b.dataset.id); break;
@@ -4519,7 +4666,7 @@ view.addEventListener('click', e => {
       }
       break;
     case 'backup-save': {
-      S.lastBackup = Date.now(); save();
+      S.lastBackup = Date.now(); save(); backupDot();
       const blob = new Blob([JSON.stringify(S, null, 2)], {type: 'application/json'});
       const url = URL.createObjectURL(blob), link = document.createElement('a');
       link.href = url; link.download = 'flipologia-kopiya-' + today() + '.json';

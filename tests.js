@@ -594,7 +594,7 @@ vm.runInContext(`
   ctx.check('сохранение: расчёт не пишется в память', !('calc' in saved) && !('calcDeal' in saved) && saved.deals.length === 1, Object.keys(saved));
   const q = vm.runInContext('(function(){const a = analyse(S.calc); return heroNumbers(S.calc, a.base).net;})()', ctx3);
   ctx.check('пустой расчёт: прибыль — прочерк, не ложное число', q === '—', q);
-  ctx.check('главная: заголовок «Экспресс-расчёт»', /<h3>Экспресс-расчёт<\/h3>/.test(html) && !/<h3>Экспресс-оценка покупки<\/h3>/.test(html) && !/<h3>Быстрая оценка<\/h3>/.test(html));
+  ctx.check('главная: заголовок «Экспресс-расчёт»', /<h3>Экспресс-расчёт нового объекта<\/h3>/.test(html) && !/<h3>Экспресс-оценка покупки<\/h3>/.test(html) && !/<h3>Быстрая оценка<\/h3>/.test(html));
 }
 
 
@@ -759,27 +759,35 @@ vm.runInContext(`
   };
   const { c, view } = mk({deals: [{id: 'a1', name: 'Однушка', stage: 'Ремонт', expenses: [], works: null}]});
   vm.runInContext("S.mode = 'full'; S.tab = 'home'; renderHome();", c);
+  const hc = view.innerHTML;
+  ctx.check('главная: панели по умолчанию свёрнуты', !/<h3>Мои проекты<\/h3>/.test(hc) && !/data-q="price"/.test(hc) && !/class="tiles"/.test(hc) && (hc.match(/aria-expanded="false"/g) || []).length === 4, (hc.match(/aria-expanded="\w+"/g) || []));
+  ctx.check('главная: кнопки раскрытия подписаны', /Экспресс-расчёт нового объекта/.test(hc) && />Новый проект</.test(hc) && />Калькуляторы</.test(hc) && />Календарь</.test(hc));
+  vm.runInContext("HOME_OPEN.eval = true; HOME_OPEN.proj = true; HOME_OPEN.calc = true; HOME_OPEN.cal = true; renderHome();", c);
   const h = view.innerHTML;
-  const order = ['Сделать фото', 'Мои проекты', 'Экспресс-расчёт', 'Справочники', 'Календарь', 'Ключевая ставка ЦБ', 'Ставка рефинансирования', 'Ставки и курсы', 'Калькуляторы', 'Новости', 'Голосовой помощник'];
+  ctx.check('главная: раскрытые панели показывают содержимое', /<h3>Мои проекты<\/h3>/.test(h) && /data-q="price"/.test(h) && /class="tiles"/.test(h) && (h.match(/aria-expanded="true"/g) || []).length === 4);
+  const order = ['Экспресс-расчёт нового объекта', 'Сделать фото', 'Новый проект', 'Калькуляторы', 'Календарь', 'Записная книжка', 'Курсы и ставки', 'Справочники', 'Новости', 'Голосовой помощник'];
   const idx = order.map(t => h.indexOf(t));
-  ctx.check('дашборд: все блоки на месте', idx.every(i => i >= 0), order.filter((t, i) => idx[i] < 0));
-  const want = ['Сделать фото', 'Мои проекты', 'Экспресс-расчёт', 'Справочники', 'Календарь', 'Ставки и курсы', 'Калькуляторы', 'Новости', 'Голосовой помощник'].map(t => h.indexOf(t));
-  ctx.check('дашборд: порядок блоков как в задаче', want.every((v, i) => i === 0 || v > want[i - 1]), want);
-  ctx.check('дашборд: «Новый проект» рядом с «Мои проекты»', /Мои проекты[\s\S]*\+ Новый проект[\s\S]*Экспресс-расчёт/.test(h));
-  ctx.check('дашборд: фото первой кнопкой, голос последней', h.indexOf('data-v="photo"') < h.indexOf('Мои проекты') && h.indexOf('data-a="soon" data-v="voice"') > h.indexOf('Новости') && h.indexOf('Упростить главную') > h.indexOf('data-v="voice"'));
-  ctx.check('дашборд: ключевая ставка равна ставке рефинансирования', (() => { const m = h.match(/Ключевая ставка ЦБ<\/span><b>([^<]+)<\/b>[\s\S]*?Ставка рефинансирования<\/span><b>([^<]+)<\/b>/); return !!m && m[1] === m[2] && /%/.test(m[1]); })(), h.match(/Ключевая ставка ЦБ<\/span><b>[^<]*/));
-  ctx.check('дашборд: без курсов — подсказка, а не пустота', /homeRates">[^]*?(Загружаем|загрузятся|не загрузились)/.test(h));
+  ctx.check('главная: все блоки на месте', idx.every(i => i >= 0), order.filter((t, i) => idx[i] < 0));
+  ctx.check('главная: порядок блоков как в заметке «Правки»', idx.every((v, i) => i === 0 || v > idx[i - 1]), idx);
+  ctx.check('главная: экспресс-расчёт раскрывается под синей кнопкой', /bigbtn acc" data-a="home-acc" data-v="eval"[^>]*aria-expanded="true"[\s\S]*?data-q="price"[\s\S]*?Сделать фото/.test(h));
+  ctx.check('главная: «Мои проекты» внутри раскрытия «Новый проект», с «+ Новый проект» и «Пример проекта»', /data-v="proj"[\s\S]*?<h3>Мои проекты<\/h3>[\s\S]*?\+ Новый проект[\s\S]*?Пример проекта[\s\S]*?data-v="calc"/.test(h));
+  ctx.check('главная: фото до проектов, голос последней, потом переключатель режима', h.indexOf('data-v="photo"') < h.indexOf('data-v="proj"') && h.indexOf('data-a="soon" data-v="voice"') > h.indexOf('Новости') && h.indexOf('Упростить главную') > h.indexOf('data-v="voice"'));
+  ctx.check('главная: записная книжка — кнопка перехода', /data-a="home-push" data-v="notes"/.test(h));
+  ctx.check('главная: резервной копии на главной нет', !/Резервная копия|backup-save/.test(h));
+  ctx.check('главная: курсы слева, ставки крупно справа; ключевая равна рефинансирования', (() => { const m = h.match(/Ключевая ставка ЦБ<\/div><div class="rbig">([^<]+)<\/div>[\s\S]*?Ставка рефинансирования<\/div><div class="rbig">([^<]+)<\/div>/); return !!m && m[1] === m[2] && /%/.test(m[1]) && h.indexOf('class="card rl"') < h.indexOf('class="card rr"'); })());
+  ctx.check('главная: без курсов — подсказка, а не пустота', /homeRates">[^]*?(Загружаем|загрузятся|не загрузились)/.test(h));
   vm.runInContext("S.kursy.cache = {date: '2026-11-05', ts: Date.now(), r: {USD: {v: 90.5, p: 90}, EUR: {v: 100, p: 99}, CNY: {v: 12.5, p: 12.4}}}; renderHome();", c);
   const h2 = view.innerHTML;
-  ctx.check('дашборд: курсы USD/EUR/CNY показаны с датой', /Курс ЦБ РФ на 05\.11\.2026/.test(h2) && /90,50 ₽/.test(h2) && /100,00 ₽/.test(h2) && /12,50 ₽/.test(h2), h2.match(/homeRates">[^]*?<button/));
+  ctx.check('главная: курсы USD/EUR/CNY показаны с датой', /Курс ЦБ РФ на 05\.11\.2026/.test(h2) && /90,50 ₽/.test(h2) && /100,00 ₽/.test(h2) && /12,50 ₽/.test(h2), h2.match(/homeRates">[^]*?<\/div><\/div>/));
   vm.runInContext("S.kursy.cache = {date: '2026-11-05', ts: Date.now(), r: {USD: null, EUR: {v: NaN, p: 1}}}; renderHome();", c);
-  ctx.check('дашборд: битый кэш курсов не роняет главную', view.innerHTML.includes('Голосовой помощник'));
+  ctx.check('главная: битый кэш курсов не роняет главную', view.innerHTML.includes('Голосовой помощник'));
   vm.runInContext("S.deals = []; renderHome();", c);
-  ctx.check('дашборд: без проектов — подсказка и «Пример проекта»', /Проектов пока нет/.test(view.innerHTML) && /Пример проекта/.test(view.innerHTML));
+  ctx.check('главная: без проектов — подсказка и «Пример проекта»', /Проектов пока нет/.test(view.innerHTML) && /Пример проекта/.test(view.innerHTML));
   vm.runInContext("S.deals = [{id: 'x', name: '<img src=x onerror=1>', stage: 'Поиск', expenses: [], works: null}]; renderHome();", c);
-  ctx.check('дашборд: название проекта экранировано', !view.innerHTML.includes('<img src=x') && view.innerHTML.includes('&lt;img'));
-  ctx.check('дашборд: заглушка осталась только у голоса, календарь оживлён', (view.innerHTML.match(/data-a="soon"/g) || []).length === 1 && /Календарь[\s\S]*Открыть календарь/.test(view.innerHTML) && !/Календарь[\s\S]{0,300}скоро/.test(view.innerHTML));
-  ctx.check('дашборд: «Сделать фото» ведёт в раздел фото', /data-a="home-push" data-v="photo"/.test(view.innerHTML));
+  ctx.check('главная: название проекта экранировано', !view.innerHTML.includes('<img src=x') && view.innerHTML.includes('&lt;img'));
+  ctx.check('главная: заглушка осталась только у голоса, календарь оживлён', (view.innerHTML.match(/data-a="soon"/g) || []).length === 1 && /Календарь[\s\S]*Открыть календарь/.test(view.innerHTML));
+  ctx.check('главная: «Сделать фото» ведёт в раздел фото', /data-a="home-push" data-v="photo"/.test(view.innerHTML));
+  vm.runInContext("HOME_OPEN.eval = false; HOME_OPEN.proj = false; HOME_OPEN.calc = false; HOME_OPEN.cal = false;", c);
 }
 
 /* --- Фото объекта: адрес, подпись, поиск, ошибки --- */
@@ -1188,18 +1196,18 @@ vm.runInContext(`
   S.mode = 'simple';
   S.deals = [];
   let h0 = homeHtml();
-  check('простая главная без проектов: большая кнопка и расчёт', /Оценить новый объект/.test(h0) && /Экспресс-расчёт/.test(h0) && /Мои проекты/.test(h0) && /Показать все возможности/.test(h0));
-  check('простая главная без проектов: лишнего нет', !/Календарь|Ставки и курсы|Калькуляторы|data-v="photo"|Голосовой помощник|Итоги по сделкам|Справочники|Новости/.test(h0), h0.match(/Календарь|Ставки и курсы|Калькуляторы|data-v="photo"|Голосовой помощник|Итоги по сделкам|Справочники|Новости/));
+  check('простая главная без проектов: синяя кнопка экспресс-расчёта, новый проект, режим', /Экспресс-расчёт нового объекта/.test(h0) && />Новый проект</.test(h0) && /Показать все возможности/.test(h0) && !/Оценить новый объект/.test(h0));
+  check('простая главная без проектов: лишнего нет, а ядро есть', !/data-v="photo"|Итоги по сделкам|Справочники|Новости/.test(h0) && /Калькуляторы/.test(h0) && /Календарь/.test(h0) && /Записная книжка/.test(h0) && /Курсы и ставки/.test(h0) && /Голосовой помощник/.test(h0), h0.match(/data-v="photo"|Итоги по сделкам|Справочники|Новости/));
   S.deals = [mk('Поиск')];
   let h1 = homeHtml();
-  check('простая главная, поиск: открылись справочники, калькуляторы, фото, курсы строкой', /Справочники/.test(h1) && /Калькуляторы/.test(h1) && /data-v="photo"/.test(h1) && /<span>Курсы и ставки<\\/span>/.test(h1));
-  check('простая главная, поиск: календаря и голоса ещё нет', !/Календарь|Голосовой помощник/.test(h1));
+  check('простая главная, поиск: открылись справочники, фото, новости', /Справочники/.test(h1) && /data-v="photo"/.test(h1) && /Новости/.test(h1));
+  check('простая главная, поиск: итогов по сделкам ещё нет', !/Итоги по сделкам/.test(h1));
   S.deals = [mk('Ремонт', {calc: Object.assign({}, DEFAULT_CALC, {price: 5e6, sale: 7e6, repair: 1e5})})];
   let h2 = homeHtml();
-  check('простая главная, ремонт: календарь, голос, итоги', /Календарь/.test(h2) && /Голосовой помощник/.test(h2) && /Итоги по сделкам/.test(h2) && !/Ставки и курсы<\\/h3>/.test(h2));
+  check('простая главная, ремонт: календарь, голос, итоги', /Календарь/.test(h2) && /Голосовой помощник/.test(h2) && /Итоги по сделкам/.test(h2));
   S.mode = 'full'; S.deals = [];
   let hf = homeHtml();
-  check('полный режим: всё на месте даже без проектов', /Календарь/.test(hf) && /Ставки и курсы/.test(hf) && /Калькуляторы/.test(hf) && /Голосовой помощник/.test(hf) && /data-v="photo"/.test(hf) && /Упростить главную/.test(hf) && !/Оценить новый объект/.test(hf));
+  check('полный режим: всё на месте даже без проектов', /Календарь/.test(hf) && /Курсы и ставки/.test(hf) && /Калькуляторы/.test(hf) && /Голосовой помощник/.test(hf) && /data-v="photo"/.test(hf) && /Упростить главную/.test(hf) && !/Оценить новый объект/.test(hf));
   check('главная: без undefined и NaN', !/undefined|NaN/.test(h0 + h1 + h2 + hf));
 
   // блоки в сделке
@@ -1433,6 +1441,56 @@ vm.runInContext(`
 }
 `, ctx);
 
+/* --- Резервная копия переехала в «Справочник» --- */
+vm.runInContext(`
+{
+  const keep = S.lastBackup, keepDeals = S.deals;
+  S.deals = []; S.lastBackup = 0;
+  const h0 = backupCardHtml();
+  check('резервная копия: карточка есть и без проектов', /Резервная копия/.test(h0) && /data-a="backup-save"/.test(h0) && /id="backupFile"/.test(h0) && !/Скачайте копию/.test(h0));
+  S.deals = [cleanDeal({id: 'bk1', name: 'п'})];
+  check('резервная копия: с проектами и без копии — просьба скачать', /Скачайте копию/.test(backupCardHtml()) && /Копию ещё не делали/.test(backupCardHtml()));
+  S.lastBackup = Date.now();
+  check('резервная копия: свежая — «сегодня», без просьбы', /Последняя копия — сегодня/.test(backupCardHtml()) && !/Скачайте/.test(backupCardHtml()));
+  S.lastBackup = Date.now() - 20 * 864e5;
+  check('резервная копия: старая — просьба скачать свежую', /20 дн\. назад/.test(backupCardHtml()) && /Скачайте свежую копию/.test(backupCardHtml()));
+  S.lastBackup = keep; S.deals = keepDeals;
+}
+`, ctx);
+
+/* --- Эргономика, пакет 2: цифровой блок, миниатюры, переключатель этапа --- */
+vm.runInContext(`
+{
+  const N = s => String(s).replace(/[\\s\\u00a0\\u202f]/g, '');
+  check('цифровой блок: цифры набираются и группируются', xKeyApply('', '4') === '4' && xKeyApply('4', '5') === '45' && N(xKeyApply('45', '000')) === '45000' && xKeyApply('45', '000').length === 6, JSON.stringify(xKeyApply('45', '000')));
+  check('цифровой блок: «45 000» + «5» = 450 005 без потери разрядов', N(xKeyApply(xKeyApply('45', '000'), '5')) === '450005');
+  check('цифровой блок: стереть последнюю цифру и пробелы', N(xKeyApply(xKeyApply('45', '000'), 'bs')) === '4500' && xKeyApply('', 'bs') === '' && xKeyApply('7', 'bs') === '');
+  check('цифровой блок: очистить', xKeyApply('45 000', 'c') === '' && xKeyApply('', 'c') === '');
+  check('цифровой блок: нули в начале не копятся, «000» в пустом поле ничего не пишет', xKeyApply('', '0') === '' && xKeyApply('', '000') === '' && xKeyApply('0', '0') === '' && N(xKeyApply('0', '5')) === '5');
+  check('цифровой блок: не длиннее 12 цифр', N(xKeyApply('999999999999', '9')).length <= 12);
+  check('цифровой блок: неизвестная клавиша и пустое значение не ломают', xKeyApply(undefined, '5') === '5' && xKeyApply(null, 'x') === '' && xKeyApply('12', 'zz') === '12');
+  check('цифровой блок: «45к» и «1,5м» сначала приводятся к числу', N(xKeyApply('45к', '7')) === '450007' && N(xKeyApply('1,5м', '0')) === '15000000' && xKeyApply('45к', 'c') === '');
+  check('цифровой блок: непонятный текст не склеивается с цифрами', xKeyApply('abc', '5') === '5');
+  check('цифровой блок: результат читается как сумма', parseAmount(xKeyApply('1', '000')) === 1000 && parseAmount(xKeyApply(xKeyApply('1', '5'), '000')) === 15000);
+
+  const okThumb = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD=';
+  check('миниатюра: правильный jpeg принимается', cleanThumb(okThumb) === okThumb);
+  check('миниатюра: чужие форматы, разметка и мусор отбрасываются', cleanThumb('data:image/png;base64,AAAA') === '' && cleanThumb('javascript:alert(1)') === '' && cleanThumb('data:image/jpeg;base64,AA"><script>') === '' && cleanThumb('http://x/y.jpg') === '' && cleanThumb(5) === '' && cleanThumb(null) === '' && cleanThumb({}) === '');
+  check('миниатюра: слишком большая отбрасывается', cleanThumb('data:image/jpeg;base64,' + 'A'.repeat(30000)) === '' && cleanThumb('data:image/jpeg;base64,' + 'A'.repeat(20000)) !== '');
+  const dt = cleanDeal({id: 't1', name: 'п', thumb: okThumb, thumbId: 'ph1'});
+  check('миниатюра: сохраняется в проекте вместе с датой снимка', dt.thumb === okThumb && dt.thumbId === 'ph1');
+  const dbad = cleanDeal({id: 't2', name: 'п', thumb: 'data:text/html;base64,AAAA', thumbId: 5});
+  check('миниатюра: подделка в резервной копии чистится', dbad.thumb === '' && dbad.thumbId === '');
+  check('миниатюра: проект без фото — пустая метка, без картинки', thumbHtml(cleanDeal({id: 't3', name: 'п'})) === '<span class="dthumb" data-did="t3"></span>');
+  check('миниатюра: с фото — картинка внутри метки', /<img alt="" src="data:image\\/jpeg;base64,/.test(thumbHtml(dt)) && /data-did="t1"/.test(thumbHtml(dt)));
+  check('миниатюра: id в метке экранируется', !/"><img/.test(thumbHtml({id: '"><img src=x>', thumb: ''})) && /&quot;/.test(thumbHtml({id: '"><img src=x>', thumb: ''})));
+  const sb = stageBarHtml(cleanDeal({id: 's1', name: 'п', stage: 'Ремонт'}));
+  check('этап: шесть кнопок по порядку, активна только текущая', (sb.match(/data-a="deal-stage"/g) || []).length === 6 && (sb.match(/aria-pressed="true"/g) || []).length === 1 && /data-v="Ремонт" class="on" aria-pressed="true"/.test(sb) && sb.indexOf('Поиск') < sb.indexOf('Ремонт') && sb.indexOf('Ремонт') < sb.indexOf('Закрыта'));
+  check('этап: подпись для экранных дикторов', /aria-label="Этап проекта"/.test(sb));
+}
+`, ctx);
+
+ctx.check('сделка: этап в карточке не дублируется, переключатель только сверху', (code.match(/<h3 style="margin-top:14px">Этап<\/h3>/g) || []).length === 0);
 Promise.all(ctx.pendingTests || []).then(() => {
   console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
   process.exit(fail ? 1 : 0);
