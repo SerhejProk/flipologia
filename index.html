@@ -2,6 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
+<!-- Флипология. © 2026 Сергей Прокопик. Все права защищены. Копирование и распространение без письменного согласия автора запрещены. -->
+<meta name="author" content="Сергей Прокопик">
+<meta name="copyright" content="© 2026 Сергей Прокопик. Все права защищены.">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F6F7FA">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://www.cbr-xml-daily.ru https://nominatim.openstreetmap.org; object-src 'none'; base-uri 'self'; form-action 'none'">
@@ -168,6 +171,22 @@ html[data-style="glass"] .fab{bottom:calc(108px + env(safe-area-inset-bottom))}
 .gf.s-done{background:var(--good)}.gf.s-work{background:var(--gold)}.gf.s-late{background:var(--bad)}.gf.s-wait{background:#9AA6B8}
 .gtoday{position:absolute;top:0;bottom:44px;width:0;border-left:2px dashed var(--bad);pointer-events:none}.gtoday span{position:absolute;bottom:-14px;left:0;transform:translateX(-50%);font-size:11px;color:var(--bad);background:var(--card);white-space:nowrap}.gtoday.l span{transform:none;left:-2px}.gtoday.r span{transform:translateX(-100%);left:2px}
 .gax{display:flex;justify-content:space-between;margin-top:20px}.gkey{margin-top:2px}.gkey u{display:inline-block;width:14px;height:7px;border-radius:3px;margin:0 4px 0 8px;vertical-align:middle;text-decoration:none}.gkey u.gp{background:#B8C0CC;margin-left:0}.gkey u.gf{background:var(--gold)}
+.tpl{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.5 ui-monospace,Consolas,monospace;background:var(--input);border-radius:12px;padding:12px;margin:0;max-height:60vh;overflow:auto}
+#msr{display:none;position:fixed;inset:0;z-index:98;background:#080A0E;overflow:auto;-webkit-overflow-scrolling:touch}#msr.on{display:block}
+.rl-cv{display:block;margin:0 auto 10px;border-radius:12px;background:#000;touch-action:none;cursor:crosshair;max-width:100%}
+.rl-chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}.rl-chips button{min-height:40px}
+#msr .rl-in{width:100%;min-height:46px;font-size:16px;padding:8px 12px;border-radius:10px;border:1px solid #4A5361;background:#10141B;color:#fff;box-sizing:border-box}
+.rl-list{margin:6px 0 10px;padding-left:20px;color:#fff}
+.lv-wrap{display:flex;justify-content:center;align-items:center;min-height:250px;margin:14px 0 4px}
+.lv-ring{position:relative;width:240px;height:240px;border-radius:50%;border:3px solid #6B7380;background:#10141B}
+.lv-h,.lv-v{position:absolute;background:#2A313C}.lv-h{left:0;right:0;top:50%;height:1px}.lv-v{top:0;bottom:0;left:50%;width:1px}
+.lv-dot{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:#F5A524;border:2px solid #fff}
+.lv-line{position:relative;width:min(320px,86vw);height:120px}
+.lv-ref{position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:#6B7380}
+.lv-bar{position:absolute;left:-8%;right:-8%;top:50%;height:8px;margin-top:-4px;border-radius:4px;background:#F5A524}
+.lv-ok .lv-dot,.lv-ok .lv-bar{background:#2FB36B}
+.lv-num{text-align:center;font-size:40px;font-weight:700;color:#fff;line-height:1.1}
+.lv-mm{text-align:center;color:#C9CED6;margin:2px 0 8px;min-height:1.4em}
 #camview{display:none;position:fixed;inset:0;z-index:97;background:#080A0E;overflow:auto}#camview.on{display:block}.cam-box{max-width:820px;margin:0 auto;padding:16px;color:#fff}.cam-box video{display:block;width:100%;max-height:70vh;object-fit:contain;border-radius:14px;background:#000;margin-bottom:10px}
 #tlview{display:none;position:fixed;inset:0;z-index:96;background:#080A0E;overflow:auto;overscroll-behavior:contain}#tlview.on{display:block}
 .tl-box{max-width:720px;margin:0 auto;padding:16px;color:#fff}.tl-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
@@ -479,7 +498,9 @@ try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splas
 <div id="pview" role="dialog" aria-modal="true" aria-label="Фото объекта"></div>
 <div id="tlview" role="dialog" aria-modal="true" aria-label="Таймлапс ремонта"></div>
 <div id="camview" role="dialog" aria-modal="true" aria-label="Снимок с камеры"></div>
+<div id="msr" role="dialog" aria-modal="true" aria-label="Линейка и уровень"></div>
 <script src="rayony-data.js"></script>
+<script src="shablony-data.js"></script>
 <script>
 'use strict';
 /* ===== Настройки и данные по умолчанию ===== */
@@ -712,6 +733,24 @@ function cleanScen(src) {
 /* Миниатюра проекта: маленькое фото (jpeg, data-URL) для карточки; чужие и слишком большие значения отбрасываем */
 function cleanThumb(v) { return typeof v === 'string' && v.length <= 24000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(v) ? v : ''; }
 
+/* Контакты: подрядчики, поставщики, юристы и другие. Чистка записей (нужна до load) */
+const CONTACT_MAX = 500;
+const CONTACT_ROLES = ['Подрядчик', 'Прораб', 'Электрик', 'Сантехник', 'Плиточник', 'Маляр', 'Мебельщик', 'Поставщик', 'Риелтор', 'Юрист', 'Нотариус', 'Оценщик', 'Банк', 'Собственник', 'Покупатель', 'Другое'];
+const cutTxt = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
+function cleanContacts(a) {
+  if (!Array.isArray(a)) return [];
+  const seen = new Set();
+  return a.filter(c => c && typeof c === 'object' && (cutTxt(c.name, 80) || cutTxt(c.phone, 30))).slice(0, CONTACT_MAX).map(c => {
+    let id = typeof c.id === 'string' && c.id ? c.id.slice(0, 40) : '';
+    if (!id || seen.has(id)) id = uid();
+    seen.add(id);
+    const ts = Number(c.ts), ph = v => String(v == null ? '' : v).replace(/[^0-9+()\-\s.]/g, '').trim().slice(0, 30);
+    return {id, name: cutTxt(c.name, 80), role: CONTACT_ROLES.includes(c.role) ? c.role : (cutTxt(c.role, 30).replace(/[<>"'&]/g, '') || 'Другое'), phone: ph(c.phone), phone2: ph(c.phone2),
+      company: cutTxt(c.company, 100), address: cutTxt(c.address, 200), note: cutTxt(c.note, 1000),
+      dealId: typeof c.dealId === 'string' ? c.dealId.slice(0, 40) : '', fav: c.fav === true, ts: isFinite(ts) && ts > 0 ? ts : Date.now()};
+  });
+}
+
 /* ===== Хранилище ===== */
 function load() {
   let s = null;
@@ -737,9 +776,10 @@ function load() {
     book: cleanBook(s.book),
     mat: cleanMat(s.mat),
     scen: cleanScen(s.scen),
+    contacts: cleanContacts(s.contacts),
     // Режим «Просто / Полный»: новая установка — просто; у тех, у кого уже есть проекты, — полный
     mode: s.mode === 'full' || s.mode === 'simple' ? s.mode : (Array.isArray(s.deals) && s.deals.some(d => d && !d.demo) ? 'full' : 'simple'),
-    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'notes', 'mat'].includes(s.tab) ? s.tab : 'home'
+    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'notes', 'mat', 'docs'].includes(s.tab) ? s.tab : 'home'
   };
 }
 // Приводит сохранённые данные к ожидаемым типам: числа — к числам, варианты — к допустимым.
@@ -1115,6 +1155,83 @@ function parseVoiceCmd(raw) {
   let stage = ''; if (cat === 'Ремонт' || cat === 'Материалы') for (const [st, r] of VH_STAGES) if (r.test(lo)) { stage = st; break; }
   return {sum, cat, stage, note: note.slice(0, 300), day, time, text: t.slice(0, 300)};
 }
+
+/* ===== Голосовая навигация: «открой календарь», «покажи смету», «открой проект Однушка» ===== */
+const VOICE_DEST = [
+  ['eval', 'Экспресс-расчёт', /(экспресс|оценить объект|оценка объекта|быстр\S* расчет)/],
+  ['newobj', 'Новый объект', /(нов\S* (объект|проект|сделк|квартир)|добав\S* (объект|проект|квартир)|создать (объект|проект|сделк))/],
+  ['demo', 'Пример проекта', /пример/],
+  ['mode-full', 'Полный режим', /(полн\S* режим|все возможности|показать все)/],
+  ['mode-simple', 'Простой режим', /(прост\S* режим|упрост\S*)/],
+  ['contrast', 'Яркий свет', /(контраст|яркий свет|яркост)/],
+  ['contacts', 'Контакты', /(контакт|подрядчик|телефонн\S* книг|адресн\S* книг|мастер\S*|номер\S* телефон)/],
+  ['notes', 'Записная книжка', /(записн\S* книж|заметк|блокнот|записк|книжк)/],
+  ['docs', 'Юридический справочник', /(юридич|шаблон|договор|документ|юрист)/],
+  ['smeta', 'Смета ремонта', /смет/],
+  ['mat', 'Материалы', /(материал|сколько купить)/],
+  ['torgi', 'Торги', /(торг|аукцион|лот)/],
+  ['tax', 'Налог при продаже', /(налог|ндфл|вычет)/],
+  ['kursy', 'Курсы и ставки', /(курс|валют|ставк|конвертер|доллар|евро)/],
+  ['cal', 'Календарь', /(календар|расписан|график встреч)/],
+  ['photo', 'Фото объекта', /(фото|камер|снять|снимок|снимк|сфотограф)/],
+  ['rayony', 'Районы', /район/],
+  ['gloss', 'Словарь', /(словар|термин|что значит)/],
+  ['news', 'Новости', /(новост|телеграм|канал)/],
+  ['deals', 'Мои сделки', /(сделк|проекты|мои проект|мои объект|объекты)/],
+  ['calc', 'Расчёт сделки', /(расчет|калькулятор|посчита|прибыль)/],
+  ['ref', 'Справочник', /(справочник|справк|настройк|резервн|копи)/],
+  ['home', 'Главная', /(главн|домой|в начало)/]
+];
+const VOICE_VERB = /(^|\s)(откр\S*|покаж\S*|перейд\S*|перейти|зайд\S*|включ\S*|запуст\S*|вернис\S*)(\s|$)/;
+// Слова про деньги, встречи и записи: такая фраза — не переход, даже если в ней есть название раздела
+const VOICE_ACT = /(заплат|оплат|потрат|купи|куплю|купил|вложи|встреч|созвон|звонок|позвон|звон|напомн|надо|нужн|хочу|договор\S*\s+с)/;
+// Фраза → куда идти. Цифры в фразе — это уже расход или запись, навигацией не считаем.
+function voiceNav(raw, deals) {
+  const lo = normRu(raw).replace(/[.,!?;:«»"()]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!lo || /\d/.test(lo)) return null;
+  const verb = VOICE_VERB.test(lo), words = lo.split(' ').length;
+  if (!verb && (words > 3 || VOICE_ACT.test(lo))) return null;
+  // Проект по названию: целиком или по основам слов («двушку» найдёт «Двушка»)
+  let best = null;
+  for (const d of (deals || [])) {
+    const n = normRu(d.name || '').trim();
+    if (n.length < 3) continue;
+    let score = lo.includes(n) ? 100 : 0;
+    n.split(/[^а-яa-z0-9]+/).filter(w => w.length >= 4).forEach(w => { if (lo.includes(w.slice(0, Math.max(4, w.length - 2)))) score++; });
+    if (score > 0 && (!best || score > best.score)) best = {score, nav: {kind: 'deal', id: d.id, label: d.name || 'Проект'}};
+  }
+  const dest = VOICE_DEST.find(d => d[2].test(lo));
+  // Название проекта целиком — это проект; по основам слов проект уступает разделу («покажи смету ремонта» — это смета, а не проект «Двушка Ремонт»)
+  if (best && (best.score >= 100 || !dest || dest[0] === 'deals')) return best.nav;
+  if (dest) return {kind: 'dest', id: dest[0], label: dest[1]};
+  return null;
+}
+// Выполняет переход; возвращает подпись для подтверждения
+function vhNavigate(nav) {
+  if (!nav) return '';
+  if (nav.kind === 'deal') { if (S.tab !== 'deals') navTab('deals'); openDealView(nav.id); return nav.label; }
+  const push = tab => navPush(navRoot(tab), 'anim-right');
+  switch (nav.id) {
+    case 'home': navTab('home'); break;
+    case 'eval': HOME_OPEN.eval = true; navTab('home'); renderHome(); break;
+    case 'calc': navTab('calc'); break;
+    case 'deals': navTab('deals'); break;
+    case 'ref': navTab('ref'); break;
+    case 'tax': txInit(); push('tax'); break;
+    case 'contacts': BK.mode = 'people'; push('notes'); break;
+    case 'notes': BK.mode = 'notes'; push('notes'); break;
+    case 'rayony': navTab('ref'); navPush({tab: 'ref', deal: null, rayon: 'list', from: null}); break;
+    case 'gloss': openGlossary(); break;
+    case 'newobj': push('newobj'); break;
+    case 'demo': { const dd = demoDeal(); if (S.tab === 'home') navTab('deals'); openDealView(dd.id); break; }
+    case 'mode-full': case 'mode-simple': S.mode = nav.id === 'mode-full' ? 'full' : 'simple'; save(); navTab('home'); renderHome(); break;
+    case 'contrast': applyContrast(!contrastOn()); break;
+    case 'news': { const a = document.createElement('a'); a.href = 'https://t.me/flipologia'; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); break; }
+    case 'smeta': case 'torgi': case 'kursy': case 'photo': case 'cal': case 'mat': case 'docs': push(nav.id); break;
+    default: return '';
+  }
+  return nav.label;
+}
 const VH = {dealId: ''};
 function openVoiceHelper() {
   const el = $('#xsheet'); if (!el) return;
@@ -1122,7 +1239,7 @@ function openVoiceHelper() {
   VH.dealId = (deals.find(x => x.id === openDeal) || deals[0] || {}).id || '';
   XS = null;
   $('#xbox').innerHTML = '<h3>Голосовой помощник</h3>' +
-    '<p class="small muted" style="margin:0 0 8px">Скажите, например: «45 тысяч электрика» — подготовлю расход. «Встреча с прорабом завтра в 15:00» — подготовлю запись в календарь. Перед сохранением вы всё увидите и сможете поправить.</p>' +
+    '<p class="small muted" style="margin:0 0 8px">Скажите, например: «открой календарь», «покажи смету», «открой проект Однушка» — перейду туда. «45 тысяч электрика» — подготовлю расход. «Встреча с прорабом завтра в 15:00» — подготовлю запись в календарь. Перед сохранением вы всё увидите и сможете поправить.</p>' +
     '<textarea id="vhText" rows="3" maxlength="300" placeholder="Нажмите «Диктовать» или впишите фразу"></textarea>' +
     '<button type="button" class="btn block" data-a="vh-voice" aria-pressed="false" style="margin-top:8px">' + ICO.mic + '<span>Диктовать</span></button>' +
     '<p class="small muted" id="vhSt" role="status" style="margin:8px 0 0"></p>' +
@@ -1136,6 +1253,19 @@ async function vhGo() {
   await voiceFlush();
   const ta = $('#vhText'), text = String(ta ? ta.value : '').trim();
   if (!text) { toast('Скажите или впишите фразу'); return; }
+  const nav = voiceNav(text, S.deals);
+  const lowT = normRu(text);
+  const payWord = /(заплат|оплат|потрат|купи|расход|вложи)/.test(lowT);
+  if (/(^|\s)(добав|запиш|сохран|созда|нов)\S*\s+(?:нов\S*\s+)?(контакт|подрядчик|мастер|телефон|номер)/.test(lowT) || (!nav && !payWord && findPhones(text).length)) {
+    closeVoiceHelper(); BK.mode = 'people'; ctOpenForm(Object.assign(ctFilled(parseContact(text)), {dict: text, dealId: VH.dealId && S.deals.some(d => d.id === VH.dealId) && openDeal ? VH.dealId : ''}));
+    navPush(navRoot('notes'), 'anim-right'); toast('Проверьте контакт и нажмите «Сохранить»'); return;
+  }
+  const nm = /^\s*(запиш\S*|добав\S*|сделай)\s+(заметк\S*|запис\S*)\s*[:,]?\s*(.*)$/i.exec(normRu(text) === lowT ? text : text);
+  if (nm && nm[3] && nm[3].trim()) {
+    closeVoiceHelper(); BK.mode = 'notes'; BK.text = nm[3].trim().slice(0, BOOK_LEN);
+    navPush(navRoot('notes'), 'anim-right'); toast('Проверьте запись и нажмите «Добавить запись»'); return;
+  }
+  if (nav) { closeVoiceHelper(); const lb = vhNavigate(nav); toast('Открываю: ' + lb); return; }
   const r = parseVoiceCmd(text);
   const sel = $('#vhDeal'), did = sel ? sel.value : VH.dealId;
   if (r.sum > 0) {
@@ -2100,6 +2230,7 @@ function renderDeal(d) {
   h += inspectCardHtml(d);
   h += '<div class="card"><h3>Заметки</h3><textarea data-d="notes" placeholder="Контакты продавца, прораба, договорённости">' + esc(d.notes || '') + '</textarea></div>';
   h += bookDealHtml(d);
+  h += contactsDealHtml(d);
   h += '<button class="btn pri block" style="margin-bottom:10px" data-a="deal-report">Отчёт инвестору</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-link">Ссылка на отчёт для соинвестора</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-share">Поделиться сделкой</button>';
@@ -2407,6 +2538,228 @@ document.addEventListener('click', e => {
   if (b.dataset.a === 'cam-close') camClose(); else if (b.dataset.a === 'cam-snap') camSnap();
 }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && CAM.stream) camClose(); });
+
+/* ===== Цифровая линейка по фото и уровень =====
+   Линейка: две точки на предмет известной длины (эталон), потом отрезки; размеры вписываются в снимок. Расчёт ориентировочный:
+   предметы должны лежать в одной плоскости с эталоном, снимать лучше прямо. Уровень: датчик наклона телефона (на компьютере его нет). */
+const RL = {img: null, cal: [], calCm: 0, calText: '', stage: 'cal', segs: [], drag: null};
+const rlDist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function rlFmt(cm) {
+  if (!(cm >= 0) || !isFinite(cm)) return '';
+  if (cm >= 100) return (cm / 100).toFixed(2).replace('.', ',') + ' м';
+  if (cm >= 10) return Math.round(cm) + ' см';
+  return cm.toFixed(1).replace('.', ',') + ' см';
+}
+const rlParseCm = v => { const n = Number(String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.')); return n > 0 && n <= 100000 ? n : 0; };
+// Сантиметров в одном пикселе снимка; 0, пока эталон не задан
+const rlScale = (cal, cm) => (cal && cal.length === 2 && cm > 0 && rlDist(cal[0], cal[1]) > 1) ? cm / rlDist(cal[0], cal[1]) : 0;
+function rlOverlay(ctx, f, handles) {
+  const k = RL.stage === 'msr' ? rlScale(RL.cal, RL.calCm) : 0, w = ctx.canvas.width, h = ctx.canvas.height;
+  const label = (a, b, col, txt) => {
+    if (!txt) return;
+    ctx.font = 'bold ' + Math.round(14 * f) + 'px sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+    const tw = ctx.measureText(txt).width + 12 * f, th = 22 * f;
+    const x = Math.max(tw / 2 + 2, Math.min(w - tw / 2 - 2, (a.x + b.x) / 2)), y = Math.max(th / 2 + 2, Math.min(h - th / 2 - 2, (a.y + b.y) / 2 - 18 * f));
+    ctx.fillStyle = 'rgba(8,10,14,.82)'; ctx.fillRect(x - tw / 2, y - th / 2, tw, th);
+    ctx.fillStyle = col; ctx.fillText(txt, x, y);
+  };
+  const line = (s, col, txt) => {
+    if (s.length === 0) return;
+    if (s.length === 2) {
+      ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(0,0,0,.65)'; ctx.lineWidth = 5 * f; ctx.beginPath(); ctx.moveTo(s[0].x, s[0].y); ctx.lineTo(s[1].x, s[1].y); ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = 2.5 * f; ctx.stroke();
+    }
+    s.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, (handles ? 7 : 4) * f, 0, 7); ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 1.5 * f; ctx.strokeStyle = '#fff'; ctx.stroke(); });
+    if (s.length === 2) label(s[0], s[1], col, txt);
+  };
+  line(RL.cal, '#5BB4FF', RL.calCm > 0 ? 'эталон ' + rlFmt(RL.calCm) : '');
+  RL.segs.forEach(s => line(s, '#FFB020', k && s.length === 2 ? rlFmt(rlDist(s[0], s[1]) * k) : ''));
+}
+function rlDraw() {
+  const cv = document.getElementById('rlCv'); if (!cv || !RL.img) return;
+  const ctx = cv.getContext('2d'), r = cv.getBoundingClientRect(), f = r.width ? cv.width / r.width : 1;
+  ctx.clearRect(0, 0, cv.width, cv.height); ctx.drawImage(RL.img, 0, 0);
+  rlOverlay(ctx, f, true);
+  if (RL.drag) {   // лупа: палец закрывает точку, поэтому показываем увеличенный участок в углу
+    const p = RL.drag, z = 3, R = 62 * f, cx = p.x < cv.width / 2 ? cv.width - R - 8 * f : R + 8 * f, cy = R + 8 * f;
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.clip();
+    ctx.fillStyle = '#000'; ctx.fillRect(cx - R, cy - R, 2 * R, 2 * R);
+    ctx.drawImage(RL.img, p.x - R / z, p.y - R / z, 2 * R / z, 2 * R / z, cx - R, cy - R, 2 * R, 2 * R);
+    ctx.strokeStyle = '#FF3B30'; ctx.lineWidth = 1.5 * f; ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
+    ctx.restore(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3 * f; ctx.stroke();
+  }
+}
+function rlLayout() {
+  const cv = document.getElementById('rlCv'); if (!cv || !RL.img) return;
+  const box = cv.parentNode.clientWidth || 340, k = Math.min(1, box / cv.width, (window.innerHeight * 0.58) / cv.height);
+  cv.style.width = Math.round(cv.width * k) + 'px'; cv.style.height = Math.round(cv.height * k) + 'px';
+  rlDraw();
+}
+function rlSay(t) { const s = document.getElementById('rlSt'); if (s) s.textContent = t; }
+function rlStat() {
+  const done = RL.segs.filter(s => s.length === 2);
+  if (RL.stage === 'cal') return rlSay(RL.cal.length < 2 ? 'Поставьте две точки на концы предмета известной длины: дверь, лист А4, рулетка. Точку можно перетащить пальцем.' : 'Впишите длину эталона и нажмите «Принять эталон».');
+  const k = rlScale(RL.cal, RL.calCm);
+  rlSay(done.length ? 'Последний отрезок: ' + rlFmt(rlDist(done[done.length - 1][0], done[done.length - 1][1]) * k) + '. Ставьте следующие точки.' : 'Теперь ставьте точки на концы того, что нужно измерить.');
+}
+function rlPaintCtl() {
+  const c = document.getElementById('rlCtl'); if (!c) return;
+  const inp = document.getElementById('rlCm'); if (inp) RL.calText = inp.value;
+  if (RL.stage === 'cal') {
+    c.innerHTML = '<label class="small tl-cap" for="rlCm" style="display:block">Длина эталона, см</label>' +
+      '<input id="rlCm" class="rl-in" type="text" inputmode="decimal" maxlength="9" autocomplete="off" placeholder="Например 200" value="' + esc(RL.calText) + '">' +
+      '<div class="rl-chips">' + [['Дверь 200', '200'], ['А4 длинная 29,7', '29,7'], ['А4 короткая 21', '21'], ['Метр 100', '100']].map(x => '<button type="button" class="btn" data-a="rl-chip" data-v="' + x[1] + '">' + x[0] + '</button>').join('') + '</div>' +
+      '<div class="tl-ctl"><button type="button" class="btn pri" data-a="rl-accept">Принять эталон</button><button type="button" class="btn" data-a="rl-reset-cal">Сбросить точки</button></div>';
+  } else {
+    const done = RL.segs.filter(s => s.length === 2), k = rlScale(RL.cal, RL.calCm);
+    c.innerHTML = (done.length ? '<ol class="rl-list">' + done.map(s => '<li>' + rlFmt(rlDist(s[0], s[1]) * k) + '</li>').join('') + '</ol>' : '') +
+      '<div class="tl-ctl"><button type="button" class="btn pri" data-a="rl-done"' + (done.length ? '' : ' disabled') + '>Вписать в снимок</button><button type="button" class="btn" data-a="rl-undo">Отменить точку</button><button type="button" class="btn" data-a="rl-recal">Новый эталон</button></div>';
+  }
+  rlStat();
+}
+function rlOpen() {
+  const el = document.getElementById('msr');
+  if (!el || !(PH && PH.base)) { toast('Сначала снимите или выберите фото'); return; }
+  RL.img = PH.clean || PH.base; RL.cal = []; RL.calCm = 0; RL.calText = ''; RL.stage = 'cal'; RL.segs = []; RL.drag = null;
+  el.innerHTML = '<div class="cam-box"><div class="tl-top"><b>Линейка по фото</b><button type="button" class="btn" data-a="msr-close">Закрыть</button></div>' +
+    '<div id="rlWrap"><canvas id="rlCv" class="rl-cv" aria-label="Фото для измерения: коснитесь концов предмета"></canvas></div>' +
+    '<p class="small tl-cap" role="status" id="rlSt"></p><div id="rlCtl"></div>' +
+    '<p class="small tl-cap">Расчёт ориентировочный: эталон и измеряемое должны быть в одной плоскости (на одной стене), снимайте прямо. Для заказа мебели и материалов под размер проверьте рулеткой.</p></div>';
+  const cv = document.getElementById('rlCv'); cv.width = RL.img.width; cv.height = RL.img.height;
+  cv.addEventListener('pointerdown', rlDown); cv.addEventListener('pointermove', rlMove); cv.addEventListener('pointerup', rlUp); cv.addEventListener('pointercancel', rlUp);
+  el.classList.add('on'); rlPaintCtl(); rlLayout();
+}
+function rlPos(e) { const cv = e.currentTarget, r = cv.getBoundingClientRect(); return {x: Math.max(0, Math.min(cv.width, (e.clientX - r.left) * cv.width / r.width)), y: Math.max(0, Math.min(cv.height, (e.clientY - r.top) * cv.height / r.height))}; }
+function rlDown(e) {
+  const cv = e.currentTarget, p = rlPos(e), r = cv.getBoundingClientRect(), f = cv.width / r.width;
+  let best = null, bd = 28 * f;
+  RL.cal.concat(...RL.segs).forEach(q => { const d = rlDist(p, q); if (d <= bd) { bd = d; best = q; } });
+  if (!best) {
+    if (RL.stage === 'cal') { if (RL.cal.length >= 2) { rlSay('Эталон уже стоит: перетащите точку или нажмите «Сбросить точки».'); return; } best = {x: p.x, y: p.y}; RL.cal.push(best); }
+    else { let s = RL.segs[RL.segs.length - 1]; if (!s || s.length >= 2) { s = []; RL.segs.push(s); } best = {x: p.x, y: p.y}; s.push(best); }
+  }
+  RL.drag = best; e.preventDefault();
+  try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+  rlDraw();
+}
+function rlMove(e) { if (!RL.drag) return; const p = rlPos(e); RL.drag.x = p.x; RL.drag.y = p.y; rlDraw(); }
+function rlUp() { if (!RL.drag) return; RL.drag = null; rlDraw(); rlPaintCtl(); }
+function rlBurn() {
+  if (!RL.segs.some(s => s.length === 2)) { toast('Поставьте хотя бы один отрезок'); return; }
+  const c = document.createElement('canvas'); c.width = RL.img.width; c.height = RL.img.height;
+  const ctx = c.getContext('2d'); ctx.drawImage(RL.img, 0, 0);
+  rlOverlay(ctx, Math.max(1, c.width / 420), false);
+  PH.clean = RL.img; PH.base = c; msrClose(); phRestamp(); toast('Размеры вписаны в снимок');
+}
+function rlAction(a, b) {
+  switch (a) {
+    case 'rl-chip': { const inp = document.getElementById('rlCm'); RL.calText = b.dataset.v; if (inp) inp.value = b.dataset.v; break; }
+    case 'rl-accept': {
+      const inp = document.getElementById('rlCm'), cm = rlParseCm(inp ? inp.value : RL.calText);
+      if (RL.cal.length < 2) { rlSay('Сначала поставьте две точки на эталон.'); break; }
+      if (!cm) { rlSay('Впишите длину эталона числом, в сантиметрах.'); break; }
+      RL.calCm = cm; RL.calText = String(inp ? inp.value : RL.calText); RL.stage = 'msr'; rlDraw(); rlPaintCtl(); break;
+    }
+    case 'rl-reset-cal': RL.cal = []; RL.calCm = 0; RL.stage = 'cal'; rlDraw(); rlPaintCtl(); break;
+    case 'rl-undo': { const s = RL.segs[RL.segs.length - 1]; if (s) { s.pop(); if (!s.length) RL.segs.pop(); } rlDraw(); rlPaintCtl(); break; }
+    case 'rl-recal': RL.stage = 'cal'; RL.calCm = 0; rlDraw(); rlPaintCtl(); break;
+    case 'rl-done': rlBurn(); break;
+  }
+}
+
+// Уровень. Сила тяжести в системе телефона из углов beta/gamma: x = sin γ·cos β, y = −sin β, z = −cos γ·cos β
+const LV = {got: 0, g: null, raf: 0, timer: 0, on: false, zx: 0, zy: 0, za: 0};
+const lvGravity = (beta, gamma) => { const b = beta * Math.PI / 180, g = gamma * Math.PI / 180; return {x: Math.sin(g) * Math.cos(b), y: -Math.sin(b), z: -Math.cos(g) * Math.cos(b)}; };
+const lvFold = a => ((a + 45) % 90 + 90) % 90 - 45;   // телефон можно держать любым из четырёх боков
+const lvMmPerM = deg => Math.round(Math.tan(Math.abs(deg) * Math.PI / 180) * 1000);
+const lvDeg = d => (Math.round(Math.abs(d) * 10) / 10).toFixed(1).replace('.', ',') + '°';
+function lvScreen(x, y) {   // в оси экрана, если он повёрнут
+  const a = ((screen.orientation && screen.orientation.angle) || window.orientation || 0);
+  const n = ((a % 360) + 360) % 360;
+  if (n === 90) return {x: -y, y: x};
+  if (n === 270) return {x: y, y: -x};
+  if (n === 180) return {x: -x, y: -y};
+  return {x, y};
+}
+function lvPaint() {
+  const g = LV.g, fl = document.getElementById('lvFlat'), up = document.getElementById('lvUp'); if (!g || !fl || !up) return;
+  const flat = Math.abs(g.z) > 0.75;
+  fl.style.display = flat ? '' : 'none'; up.style.display = flat ? 'none' : '';
+  let deg = 0;
+  if (flat) {
+    const s = lvScreen(g.x, g.y), dx = s.x - LV.zx, dy = s.y - LV.zy, mag = Math.hypot(dx, dy);
+    deg = Math.asin(Math.min(1, mag)) * 180 / Math.PI;
+    const R = 98, v = mag > 0 ? Math.min(mag / 0.17, 1) * R / mag : 0, dot = document.getElementById('lvDot');
+    if (dot) dot.style.transform = 'translate(' + (-dx * v).toFixed(1) + 'px,' + (dy * v).toFixed(1) + 'px)';
+  } else {
+    deg = lvFold(lvFold(Math.atan2(g.x, -g.y) * 180 / Math.PI) - LV.za);
+    const bar = document.getElementById('lvBar'); if (bar) bar.style.transform = 'rotate(' + (-deg).toFixed(2) + 'deg)';
+  }
+  const ok = Math.abs(deg) < 0.5, wrap = document.getElementById('lvBox');
+  if (wrap) wrap.classList.toggle('lv-ok', ok);
+  const num = document.getElementById('lvNum'), mm = document.getElementById('lvMm');
+  if (num) num.textContent = lvDeg(deg);
+  if (mm) mm.textContent = ok ? 'Ровно' : '≈ ' + lvMmPerM(deg) + ' мм на 1 м';
+}
+function lvOnOri(e) {
+  if (e.beta == null || e.gamma == null) return;
+  if (++LV.got === 1) lvSay('Положите телефон экраном вверх или приложите ребром к стене.');
+  const g = lvGravity(e.beta, e.gamma);
+  LV.g = LV.g ? {x: LV.g.x + (g.x - LV.g.x) * 0.25, y: LV.g.y + (g.y - LV.g.y) * 0.25, z: LV.g.z + (g.z - LV.g.z) * 0.25} : g;
+  if (!LV.raf) LV.raf = requestAnimationFrame(() => { LV.raf = 0; lvPaint(); });
+}
+function lvSay(t) { const s = document.getElementById('lvSt'); if (s) s.textContent = t; }
+async function lvStart() {
+  const sb = document.querySelector('#msr [data-a="lv-start"]');
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const r = await DeviceOrientationEvent.requestPermission();
+      if (r !== 'granted') { lvSay('Доступ к датчику не дан. На iPhone: нажмите «Включить датчик» и выберите «Разрешить». Если запрос не появляется: Настройки → Safari → Движение и ориентация.'); if (sb) sb.classList.remove('hide'); return; }
+    }
+  } catch (e) { lvSay('Не получилось включить датчик. Нажмите «Включить датчик» ещё раз.'); if (sb) sb.classList.remove('hide'); return; }
+  if (sb) sb.classList.add('hide');
+  LV.got = 0; LV.on = true; window.addEventListener('deviceorientation', lvOnOri);
+  lvSay('Положите телефон экраном вверх или приложите ребром к стене.');
+  clearTimeout(LV.timer);
+  LV.timer = setTimeout(() => { if (!LV.got) lvSay('Датчик наклона не отвечает. Уровень работает на телефоне или планшете, на компьютере датчика нет.'); }, 1800);
+}
+function lvOpen() {
+  const el = document.getElementById('msr'); if (!el) return;
+  LV.g = null; LV.zx = 0; LV.zy = 0; LV.za = 0;
+  el.innerHTML = '<div class="cam-box"><div class="tl-top"><b>Уровень</b><button type="button" class="btn" data-a="msr-close">Закрыть</button></div>' +
+    '<div id="lvBox"><div class="lv-wrap"><div id="lvFlat" style="display:none"><div class="lv-ring"><i class="lv-h"></i><i class="lv-v"></i><span class="lv-dot" id="lvDot"></span></div></div>' +
+    '<div id="lvUp" style="display:none"><div class="lv-line"><i class="lv-ref"></i><span class="lv-bar" id="lvBar"></span></div></div></div>' +
+    '<div class="lv-num" id="lvNum">—</div><div class="lv-mm" id="lvMm"></div></div>' +
+    '<p class="small tl-cap" role="status" id="lvSt">Включаем датчик…</p>' +
+    '<div class="tl-ctl"><button type="button" class="btn" data-a="lv-zero">Обнулить здесь</button><button type="button" class="btn" data-a="lv-unzero">Сбросить ноль</button><button type="button" class="btn pri hide" data-a="lv-start">Включить датчик</button></div>' +
+    '<p class="small tl-cap">«Обнулить здесь» пригодится, если телефон в чехле или поверхность заведомо ровная: так убирается погрешность. Для точных работ сверяйте с обычным строительным уровнем.</p></div>';
+  el.classList.add('on'); lvStart();
+}
+function lvAction(a) {
+  if (a === 'lv-start') { lvStart(); return; }
+  if (a === 'lv-unzero') { LV.zx = 0; LV.zy = 0; LV.za = 0; lvPaint(); return; }
+  if (a === 'lv-zero' && LV.g) {
+    if (Math.abs(LV.g.z) > 0.75) { const s = lvScreen(LV.g.x, LV.g.y); LV.zx = s.x; LV.zy = s.y; }
+    else LV.za = lvFold(Math.atan2(LV.g.x, -LV.g.y) * 180 / Math.PI);
+    lvPaint(); toast('Ноль задан по этой поверхности');
+  }
+}
+function msrClose() {
+  window.removeEventListener('deviceorientation', lvOnOri); LV.on = false; clearTimeout(LV.timer); if (LV.raf) { cancelAnimationFrame(LV.raf); LV.raf = 0; }
+  RL.drag = null;
+  const el = document.getElementById('msr'); if (el) { el.classList.remove('on'); el.innerHTML = ''; }
+}
+(function () {
+  const el = document.getElementById('msr'); if (!el) return;
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-a]'); if (!b) return;
+    const a = b.dataset.a;
+    if (a === 'msr-close') msrClose(); else if (a.indexOf('rl-') === 0) rlAction(a, b); else if (a.indexOf('lv-') === 0) lvAction(a);
+  });
+  el.addEventListener('input', e => { if (e.target && e.target.id === 'rlCm') RL.calText = e.target.value; });
+  window.addEventListener('resize', () => { if (el.classList.contains('on') && document.getElementById('rlCv')) rlLayout(); });
+})();
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('msr') && document.getElementById('msr').classList.contains('on')) msrClose(); });
 
 /* ===== Таймлапс ремонта: слайдшоу фото объекта по датам ===== */
 const TL = {urls: [], items: [], i: 0, timer: 0, ms: 1000, play: false, busy: false, opener: null};
@@ -3007,6 +3360,7 @@ function renderRef() {
     '<button type="button" data-a="style" data-v="glass" class="' + (st === 'glass' ? 'on' : '') + '" aria-pressed="' + (st === 'glass') + '">Жидкое стекло</button>' +
     '<button type="button" data-a="style" data-v="light" class="' + (st === 'light' ? 'on' : '') + '" aria-pressed="' + (st === 'light') + '">Светлый</button></div></div>' +
     backupCardHtml() +
+    '<button class="card deal" data-a="home-push" data-v="docs"><span class="t">Юридический справочник</span><br><span class="small muted">Шаблоны договоров, актов, расписок и инструкции: задаток, ДКП, подряд, торги, налог, инвестор</span></button>' +
     '<button class="card deal" data-a="rayon-list"><span class="t">Районы</span><br><span class="small muted">Нотариусы, МФЦ, строймагазины, супермаркеты, рынки и цена м² по районам Москвы</span></button>' +
     '<button class="card deal" data-a="home-push" data-v="kursy"><span class="t">Курсы и ставки</span><br><span class="small muted">Ключевая ставка ЦБ, курсы валют, конвертер и цена объекта в других валютах</span></button>' +
     '<a class="card deal" href="https://t.me/flipologia" target="_blank" rel="noopener" style="text-decoration:none"><span class="t">Новости и лоты недели</span><br><span class="small muted">Свежие новости рынка, цены м² и лоты с дисконтом — в Telegram-канале «Флипология»</span></a>' +
@@ -3040,7 +3394,14 @@ function renderRef() {
     '<li><b>Не брать</b> — убыток или доходность ниже цели даже при сильном торге.</li>' +
     '<li>Плохой сценарий: продажа на 10% дешевле, срок на 3 месяца дольше, ремонт на 20% дороже.</li></ul></details>' +
     '</div><p class="note">Расчёты и справка — ориентир, а не гарантия прибыли и не юридическая консультация. Перед сделкой сверьтесь с юристом и бухгалтером.</p>' +
-    '<p class="note">Флипология · прототип v0.5</p>';
+    '<details><summary>Авторские права и условия использования</summary><ul>' +
+    '<li>Приложение «Флипология»: программа, дизайн, тексты, шаблоны и расчётные модели. © 2026 Сергей Прокопик. Все права защищены.</li>' +
+    '<li>Разрешено: пользоваться приложением для своих сделок и проектов.</li>' +
+    '<li>Запрещено без письменного согласия автора: копировать, изменять, декомпилировать, распространять приложение или его части, перепродавать, выдавать за своё, использовать данные и шаблоны для создания похожего сервиса.</li>' +
+    '<li>Приложение предоставляется «как есть». Результаты расчётов — ориентир, автор не отвечает за решения, принятые на их основе.</li>' +
+    '<li>Данные OpenStreetMap используются по лицензии ODbL, права на них принадлежат их участникам.</li>' +
+    '<li>Ваши проекты и данные хранятся только на вашем устройстве и принадлежат вам.</li></ul></details>' +
+    '<p class="note">Флипология · прототип v0.5 · © 2026 Сергей Прокопик</p>';
 }
 
 /* ===== Раздел «Главная» ===== */
@@ -3116,7 +3477,7 @@ function homeHtml() {
   // 5. Календарь
   h += homeAccBtn('cal', '', 'Календарь', S.cal.filter(e => e.date === today()).length ? 'Сегодня записей: ' + S.cal.filter(e => e.date === today()).length : 'Записи на сегодня и другие дни') + (HOME_OPEN.cal ? '<div class="accp">' + calHomeHtml() + '</div>' : '');
   // 6. Записная книжка
-  h += homeLinkBtn('home-push', 'notes', 'Записная книжка', S.book.length ? 'Записей: ' + S.book.length : 'Заметки голосом и текстом');
+  h += homeLinkBtn('home-push', 'notes', 'Записная книжка и контакты', (S.book.length || S.contacts.length) ? 'Заметок: ' + S.book.length + ' · контактов: ' + S.contacts.length : 'Заметки, адреса, телефоны, подрядчики');
   // 7. Курсы валют слева, ставки справа
   const kr = keyRateNow(S.kursy), stale = kzDaysOld(kr.date) > KEY_STALE_DAYS;
   h += '<h3 class="hh">Курсы и ставки</h3><div class="rates"><div class="card rl"><h3>Курсы валют</h3><div id="homeRates">' + homeRatesHtml() + '</div></div>' +
@@ -3127,6 +3488,7 @@ function homeHtml() {
   // 8. Справочники (остаются, как были)
   if (sh(1)) h += '<h3 class="hh">Справочники</h3><div class="card hlist">' +
     '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
+    '<button data-a="home-push" data-v="docs"><span>Юридический справочник: шаблоны документов</span><i>›</i></button>' +
     '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
     '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button></div>';
   // 9. Новости
@@ -3478,10 +3840,273 @@ function matAdd() {
   toast('В список покупок добавлено: ' + pick.length);
 }
 
+/* ===== Контакты: адреса и телефоны, подрядчики; ввод голосом ===== */
+const CT = {q: '', role: '', deal: '', form: null, st: ''};
+function normPhone(raw) {
+  const d = String(raw == null ? '' : raw).replace(/\D/g, '');
+  const f = x => '+7 ' + x.slice(0, 3) + ' ' + x.slice(3, 6) + '-' + x.slice(6, 8) + '-' + x.slice(8);
+  // Белорусский формат «8 0XX …» не трогаем: в России после 8 никогда не идёт 0
+  if (d.length === 11 && d.slice(0, 2) !== '80' && (d[0] === '8' || d[0] === '7')) return f(d.slice(1));
+  if (d.length === 10) return f(d);
+  if (d.length === 12 && d.startsWith('375')) return '+375 ' + d.slice(3, 5) + ' ' + d.slice(5, 8) + '-' + d.slice(8, 10) + '-' + d.slice(10);
+  return String(raw == null ? '' : raw).replace(/[^0-9+()\-\s.]/g, '').trim().slice(0, 30);
+}
+// Телефоны в тексте: 10–12 цифр подряд с пробелами, скобками, точками и дефисами; ИНН, счета и даты за телефон не считаются
+function findPhones(text) {
+  const out = [], re = /(?:\+?\d[\s\-().]*){10,12}/g; let m;
+  const t = String(text == null ? '' : text);
+  while ((m = re.exec(t))) {
+    const d = m[0].replace(/\D/g, '');
+    if (d.length < 10 || d.length > 12 || (d.length === 12 && !d.startsWith('375'))) continue;
+    if (/^\d{1,2}[.\s]\d{1,2}[.\s]\d{4}/.test(m[0].trim())) continue;
+    if (/(инн|огрн|кпп|бик|счет|счёт)\s*[:№N#]?\s*$/i.test(t.slice(Math.max(0, m.index - 12), m.index))) continue;
+    out.push({raw: m[0].trim(), norm: normPhone(m[0]), from: m.index, to: m.index + m[0].length});
+  }
+  return out;
+}
+const CT_ROLE_WORDS = [
+  ['Электрик', /электрик/], ['Сантехник', /сантехник/], ['Плиточник', /плиточник|кафельщик/], ['Маляр', /маляр|штукатур/],
+  ['Прораб', /прораб/], ['Подрядчик', /подрядчик|бригад|мастер|строител|отделочник|ремонтник/], ['Мебельщик', /мебельщик|мебел/],
+  ['Поставщик', /поставщик|магазин|склад/], ['Риелтор', /риелтор|риэлтор|агент/], ['Юрист', /юрист|адвокат/], ['Нотариус', /нотариус/],
+  ['Оценщик', /оценщик/], ['Банк', /банк|ипотек/], ['Собственник', /собственник|хозяин|владелец/], ['Покупатель', /покупател/]
+];
+const CT_STOP = /^(и|с|со|по|для|на|в|во|к|у|от|это|вот|тел|телефон|номер|звать|зовут|зовут|имя|контакт|добавь|запиши|сохрани)$/;
+// Фраза → черновик контакта: «Иван электрик 8 903 123 45 67 Москва Кузьминки» → имя, роль, телефон, адрес
+function parseContact(raw) {
+  let t = String(raw == null ? '' : raw).replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ').trim();
+  const out = {name: '', role: '', phone: '', phone2: '', company: '', address: '', note: ''};
+  if (!t) return out;
+  t = t.replace(/^(добав\S*|запиш\S*|сохран\S*|созда\S*|нов\S*)\s+(?:(?:новый|нового|новое)\s+)?(контакт\S*|подрядчик\S*|мастер\S*|телефон\S*|номер\S*)?\s*/i, '');
+  const ph = findPhones(t);
+  if (ph[0]) out.phone = ph[0].norm;
+  if (ph[1]) out.phone2 = ph[1].norm;
+  let rest = t;
+  for (let i = ph.length - 1; i >= 0; i--) rest = rest.slice(0, ph[i].from) + ' ' + rest.slice(ph[i].to);
+  rest = rest.replace(/\s+/g, ' ').trim();
+  const am = /(^|\s)(по адресу|адрес[а-я]*|живет|находится|на улице|улица|ул\.?|проспект|пр-т|переулок|шоссе|бульвар|набережная|город|г\.|москва|московская область|подмосковье)(?=\s|$|[.,])/i.exec(rest);
+  if (am) {
+    out.address = rest.slice(am.index + am[1].length).replace(/^(по адресу|адрес[а-я]*|живет|находится)\s*/i, '').replace(/[.,\s]+$/, '').trim().slice(0, 200);
+    rest = rest.slice(0, am.index).trim();
+  }
+  let words = rest.split(' ').filter(Boolean);
+  for (const [role, re] of CT_ROLE_WORDS) {
+    const i = words.findIndex(w => re.test(normRu(w)));
+    if (i >= 0) { out.role = role; words.splice(i, 1); break; }
+  }
+  words = words.filter(w => !CT_STOP.test(normRu(w).replace(/[.,]/g, '')));
+  const nameWords = [];
+  while (words.length && nameWords.length < 2 && /^[A-Za-zА-Яа-яЁё\-]+[.,]?$/.test(words[0])) nameWords.push(words.shift().replace(/[.,]$/, ''));
+  out.name = nameWords.map(w => w[0].toUpperCase() + w.slice(1)).join(' ').slice(0, 80);
+  out.note = words.join(' ').replace(/^[.,\s]+|[.,\s]+$/g, '').slice(0, 1000);
+  if (out.note) out.note = out.note[0].toUpperCase() + out.note.slice(1);
+  return out;
+}
+const waHref = ph => { const h = telHref(ph); const d = h.replace(/\D/g, ''); return d.length >= 10 ? 'https://wa.me/' + d : ''; };
+const mapHref = a => a ? 'https://yandex.ru/maps/?text=' + encodeURIComponent(a) : '';
+function ctMatch(c, q, role, dealId) {
+  if (role && c.role !== role) return false;
+  if (dealId === 'none' ? c.dealId && S.deals.some(x => x.id === c.dealId) : dealId && c.dealId !== dealId) return false;
+  const k = normRu(q).trim(); if (!k) return true;
+  let digits = k.replace(/\D/g, '');
+  if (digits.length >= 11) digits = digits.slice(-10);   // «89031234567» находит «+7 903…»
+  return normRu([c.name, c.role, c.company, c.address, c.note].join(' ')).includes(k) || (digits.length >= 3 && (c.phone + c.phone2).replace(/\D/g, '').includes(digits));
+}
+const ctSort = (a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || normRu(a.name || a.phone).localeCompare(normRu(b.name || b.phone), 'ru');
+function ctCardHtml(c, showDeal) {
+  const dl = showDeal && c.dealId && S.deals.find(x => x.id === c.dealId);
+  const call = ph => { const h = telHref(ph); return h ? '<a class="btn" href="' + esc(h) + '">Позвонить ' + esc(ph) + '</a>' : (ph ? '<span class="small muted">' + esc(ph) + '</span>' : ''); };
+  const wa = c.phone ? waHref(c.phone) : '';
+  return '<div class="bke ctc' + (c.fav ? ' pinned' : '') + '"><div class="rml"><b>' + esc(c.name || c.phone || 'Без имени') + '</b><span class="pill st">' + esc(c.role) + '</span></div>' +
+    (c.company ? '<div class="small">' + esc(c.company) + '</div>' : '') +
+    (c.address ? '<div class="small">' + esc(c.address) + (mapHref(c.address) ? ' · <a href="' + esc(mapHref(c.address)) + '" target="_blank" rel="noopener">на карте</a>' : '') + '</div>' : '') +
+    (c.note ? '<div class="bkt small" style="margin-top:4px">' + esc(c.note) + '</div>' : '') +
+    (dl ? '<div class="small muted">Проект: ' + esc(dl.name || 'Проект') + '</div>' : '') +
+    '<div class="bka">' + (c.phone ? call(c.phone) : '') + (c.phone2 ? call(c.phone2) : '') + (wa ? '<a class="btn" href="' + esc(wa) + '" target="_blank" rel="noopener">WhatsApp</a>' : '') + '</div>' +
+    '<div class="bka"><button type="button" class="btn" data-a="ct-fav" data-id="' + esc(c.id) + '">' + (c.fav ? 'Убрать из важных' : 'В важные') + '</button>' +
+    '<button type="button" class="btn" data-a="ct-edit" data-id="' + esc(c.id) + '">Править</button>' +
+    '<button type="button" class="btn danger" data-a="ct-del" data-id="' + esc(c.id) + '" aria-label="Удалить контакт">Удалить</button></div></div>';
+}
+function ctListHtml() {
+  if (!S.contacts.length) return '<p class="small muted" style="margin:0">Контактов пока нет. Нажмите «Новый контакт» или надиктуйте: «Иван электрик 8 903 123 45 67».</p>';
+  const l = S.contacts.filter(c => ctMatch(c, CT.q, CT.role, CT.deal)).sort(ctSort);
+  return l.length ? l.map(c => ctCardHtml(c, true)).join('') + '<p class="small muted" style="margin:10px 0 0">Контактов: ' + l.length + '</p>' : '<p class="small muted" style="margin:0">Ничего не найдено.</p>';
+}
+function ctFormHtml() {
+  const f = CT.form; if (!f) return '';
+  const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
+  const inp = (k, l, ph, type) => '<label class="f"><span>' + l + '</span><input type="' + (type || 'text') + '"' + (type === 'tel' ? ' inputmode="tel"' : '') + ' data-ct="' + k + '" maxlength="' + (k === 'name' ? 80 : k === 'address' ? 200 : k === 'company' ? 100 : 30) + '" placeholder="' + esc(ph || '') + '" value="' + esc(f[k] || '') + '"></label>';
+  return '<div class="card" id="ctForm"><h3>' + (f.id ? 'Правка контакта' : 'Новый контакт') + '</h3>' +
+    (f.id ? '' : '<label class="f"><span>Надиктуйте одной фразой</span><textarea id="ctDict" data-ct="dict" rows="2" maxlength="400" placeholder="Иван электрик 8 903 123 45 67 Москва Кузьминки">' + esc(f.dict || '') + '</textarea></label>' +
+      '<div class="row" style="margin-top:8px"><button type="button" class="btn" data-a="ct-voice" aria-pressed="false">' + ICO.mic + '<span>Диктовать</span></button><button type="button" class="btn" data-a="ct-parse">Разобрать по полям</button></div>' +
+      '<p class="small muted" id="ctSt" role="status" style="margin:8px 0 0"></p>') +
+    inp('name', 'Имя', 'Иван Петров') +
+    '<label class="f"><span>Кто это</span><select data-ct="role">' + CONTACT_ROLES.map(r => '<option' + (f.role === r ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></label>' +
+    inp('phone', 'Телефон', '+7 903 123-45-67', 'tel') + inp('phone2', 'Второй телефон', '', 'tel') + inp('company', 'Фирма или бригада', 'ИП Петров, бригада №2') + inp('address', 'Адрес', 'Москва, ул. Кузьминская, 11') +
+    '<label class="f"><span>Заметка</span><textarea data-ct="note" rows="2" maxlength="1000" placeholder="Цены, сроки, как работает">' + esc(f.note || '') + '</textarea></label>' +
+    (deals.length ? '<label class="f"><span>Проект</span><select data-ct="dealId"><option value="">Без проекта</option>' + deals.map(d => '<option value="' + esc(d.id) + '"' + (f.dealId === d.id ? ' selected' : '') + '>' + esc(d.name || 'Проект') + '</option>').join('') + '</select></label>' : '') +
+    '<div class="row" style="margin-top:12px"><button type="button" class="btn pri" data-a="ct-save">Сохранить</button><button type="button" class="btn" data-a="ct-cancel">Отмена</button></div></div>';
+}
+function bkSegHtml() {
+  return '<div class="chips" id="bkSeg" role="group" aria-label="Раздел книжки" style="margin-bottom:12px">' +
+    '<button type="button" data-a="bk-mode" data-v="notes" class="' + (BK.mode === 'notes' ? 'on' : '') + '" aria-pressed="' + (BK.mode === 'notes') + '">Заметки · ' + S.book.length + '</button>' +
+    '<button type="button" data-a="bk-mode" data-v="people" class="' + (BK.mode === 'people' ? 'on' : '') + '" aria-pressed="' + (BK.mode === 'people') + '">Контакты · ' + S.contacts.length + '</button></div>';
+}
+function renderPeople() {
+  if (CT.deal && CT.deal !== 'none' && !S.deals.some(d => d.id === CT.deal)) CT.deal = '';
+  const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
+  const usedRoles = CONTACT_ROLES.filter(r => S.contacts.some(c => c.role === r));
+  $('#view').innerHTML = bkSegHtml() +
+    (CT.form ? ctFormHtml() : '<button type="button" class="btn pri block" data-a="ct-new" style="margin-bottom:12px">+ Новый контакт</button>') +
+    '<div class="card"><h3>Контакты</h3>' +
+    '<label class="f"><span>Поиск</span><input type="text" enterkeyhint="search" id="ctQ" data-ct="q" maxlength="100" placeholder="Имя, телефон, адрес, слово из заметки" value="' + esc(CT.q) + '"></label>' +
+    '<div class="grid2"><label class="f"><span>Кто</span><select data-ct="frole"><option value="">Все</option>' + usedRoles.map(r => '<option' + (CT.role === r ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></label>' +
+    '<label class="f"><span>Проект</span><select data-ct="fdeal"><option value="">Все</option><option value="none"' + (CT.deal === 'none' ? ' selected' : '') + '>Без проекта</option>' + deals.map(d => '<option value="' + esc(d.id) + '"' + (CT.deal === d.id ? ' selected' : '') + '>' + esc(d.name || 'Проект') + '</option>').join('') + '</select></label></div>' +
+    '<div id="ctList" style="margin-top:8px">' + ctListHtml() + '</div></div>' +
+    '<p class="small muted" style="margin:0 4px">Контакты хранятся в этом телефоне и входят в резервную копию. В отчёт инвестору и в ссылку для соинвестора они не попадают.</p>';
+}
+function ctPaint() { const l = document.getElementById('ctList'); if (l && S.tab === 'notes' && BK.mode === 'people') l.innerHTML = ctListHtml(); const d = typeof curDeal === 'function' ? curDeal() : null; if (d) ctDealPaint(d); }
+function ctDealListHtml(d) {
+  const l = S.contacts.filter(c => c.dealId === d.id).sort(ctSort);
+  return l.length ? l.map(c => ctCardHtml(c, false)).join('') : '<p class="small muted" style="margin:10px 0 0">Контактов по этому проекту пока нет.</p>';
+}
+function contactsDealHtml(d) {
+  return '<div class="card" id="ctDealCard"><h3>Контакты проекта</h3><p class="small muted" style="margin:0 0 8px">Подрядчики, поставщики, нотариус, собственник: телефоны под рукой.</p>' +
+    '<div id="ctDealList">' + ctDealListHtml(d) + '</div>' +
+    '<button type="button" class="btn block" style="margin-top:10px" data-a="ct-deal-new" data-id="' + esc(d.id) + '">+ Добавить контакт в проект</button></div>';
+}
+function ctDealPaint(d) { const l = document.getElementById('ctDealList'); if (l) l.innerHTML = ctDealListHtml(d); }
+// Разбор фразы не затирает пустым значением то, что уже стоит в форме (роль по умолчанию, руками введённое)
+const ctFilled = r => { const o = {}; Object.keys(r).forEach(k => { if (r[k] !== '') o[k] = r[k]; }); return o; };
+function ctOpenForm(draft) {
+  CT.form = Object.assign({id: '', name: '', role: 'Подрядчик', phone: '', phone2: '', company: '', address: '', note: '', dealId: '', dict: ''}, draft || {});
+}
+function ctAction(a, b) {
+  const id = b.dataset.id, c = id && S.contacts.find(x => x.id === id), f = CT.form;
+  switch (a) {
+    case 'ct-new': ctOpenForm({dealId: CT.deal && CT.deal !== 'none' ? CT.deal : ''}); renderPeople(); { const n = document.querySelector('[data-ct="name"]'); if (n && n.focus) n.focus(); } break;
+    case 'ct-deal-new': { const d = S.deals.find(x => x.id === id); if (!d) break; BK.mode = 'people'; ctOpenForm({dealId: d.id}); navPush(navRoot('notes'), 'anim-right'); break; }
+    case 'ct-edit': if (c) {
+      ctOpenForm(Object.assign({}, c));
+      if (S.tab === 'deals') { BK.mode = 'people'; navPush(navRoot('notes'), 'anim-right'); } else { renderPeople(); window.scrollTo(0, 0); }
+    } break;
+    case 'ct-cancel': CT.form = null; voiceStop(); renderPeople(); break;
+    case 'ct-fav': if (c) { c.fav = !c.fav; save(); ctPaint(); } break;
+    case 'ct-del': if (c && confirm('Удалить контакт «' + (c.name || c.phone) + '»?')) { S.contacts = S.contacts.filter(x => x.id !== c.id); save(); if (S.tab === 'notes') renderPeople(); else ctPaint(); } break;
+    case 'ct-voice': voiceToggle($('#ctDict'), b, $('#ctSt')); break;
+    case 'ct-parse': {
+      const t = $('#ctDict'), txt = t ? t.value : ''; if (!f) break;
+      if (!txt.trim()) { toast('Надиктуйте или впишите фразу'); break; }
+      Object.assign(f, ctFilled(parseContact(txt)), {dict: txt, dealId: f.dealId});
+      const keep = $('#ctDict') ? $('#ctDict').value : ''; renderPeople(); const t2 = $('#ctDict'); if (t2) t2.value = keep;
+      toast('Проверьте поля и нажмите «Сохранить»'); break;
+    }
+    case 'ct-save': ctSave(); break;
+  }
+}
+async function ctSave() {
+  voiceStop(); await voiceFlush();
+  const f = CT.form; if (!f) return;
+  const rec = cleanContacts([{id: f.id || uid(), name: f.name, role: f.role, phone: f.phone ? normPhone(f.phone) : '', phone2: f.phone2 ? normPhone(f.phone2) : '', company: f.company, address: f.address, note: f.note,
+    dealId: f.dealId && S.deals.some(d => d.id === f.dealId) ? f.dealId : '', fav: !!(f.id && (S.contacts.find(x => x.id === f.id) || {}).fav), ts: Date.now()}])[0];
+  if (!rec) { toast('Впишите имя или телефон'); return; }
+  const i = S.contacts.findIndex(x => x.id === rec.id);
+  if (i >= 0) S.contacts[i] = rec; else { if (S.contacts.length >= CONTACT_MAX) { toast('Контактов слишком много: удалите лишние'); return; } S.contacts.push(rec); }
+  if (!save()) { if (i < 0) S.contacts.pop(); return; }
+  CT.form = null; renderPeople(); toast('Контакт сохранён');
+}
+
+/* ===== Юридический справочник: шаблоны документов для флиппинга =====
+   Тексты лежат в shablony-data.js (справочные образцы). Подстановка данных идёт только в памяти страницы: паспорта и адреса нигде не сохраняются. */
+const shablony = () => typeof SHABLONY !== 'undefined' ? SHABLONY : [];
+const DS = {q: '', group: '', open: '', vals: {}, deal: ''};
+// Подставляет значения в {{поля}}; незаполненные остаются как есть (видно, что осталось вписать)
+function tplFill(body, vals) {
+  return String(body == null ? '' : body).replace(/\{\{([^{}\n]{1,60})\}\}/g, (m, k) => { const v = vals && vals[m]; return v != null && String(v).trim() ? String(v) : m; });
+}
+const tplLeft = text => { const m = String(text).match(/\{\{[^{}\n]{1,60}\}\}/g); return m ? new Set(m).size : 0; };
+function tplRuDate(d) { return two(d.getDate()) + '.' + two(d.getMonth() + 1) + '.' + d.getFullYear(); }
+// Что можно подставить из проекта без вопросов: дата, адрес объекта, имя собственника как продавца
+function tplFromDeal(d) {
+  const v = {'{{дата}}': tplRuDate(new Date())};
+  if (d) { if (d.address) v['{{адрес_объекта}}'] = d.address; if (d.owner && d.owner.name) v['{{продавец_фио}}'] = d.owner.name; }
+  return v;
+}
+function lgFilter(list, q, group) {
+  const k = normRu(q).trim();
+  return list.filter(d => (!group || d.group === group) && (!k || normRu([d.title, d.when, d.group, d.where, d.form].join(' ')).includes(k)));
+}
+function lgText(d) { return tplFill(d.body, DS.vals[d.id] || {}); }
+function lgDownload(d, kind) {
+  const text = lgText(d), name = String(d.id).replace(/[^a-z0-9-]/gi, '') || 'dokument';
+  let blob, ext;
+  if (kind === 'doc') {
+    blob = new Blob(['\ufeff<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>' + esc(d.title) + '</title></head><body><pre style="font-family:\'Times New Roman\',serif;font-size:12pt;white-space:pre-wrap">' + esc(text) + '</pre></body></html>'], {type: 'application/msword'});
+    ext = 'doc';
+  } else { blob = new Blob(['\ufeff' + text], {type: 'text/plain;charset=utf-8'}); ext = 'txt'; }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name + '.' + ext; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+function lgListHtml() {
+  const all = shablony();
+  if (!all.length) return '<p class="small muted" style="margin:0">Справочник не загрузился: проверьте, что файл shablony-data.js рядом с приложением.</p>';
+  const l = lgFilter(all, DS.q, DS.group);
+  if (!l.length) return '<p class="small muted" style="margin:0">Ничего не найдено.</p>';
+  let g = '', h = '';
+  l.forEach(d => {
+    if (d.group !== g) { g = d.group; h += '<div class="shopst">' + esc(g) + '</div>'; }
+    h += '<button type="button" class="card deal" style="margin:0 0 8px" data-a="doc-open" data-id="' + esc(d.id) + '"><span class="t">' + esc(d.title) + '</span><br><span class="small muted">' + esc(d.when) + '</span></button>';
+  });
+  return h;
+}
+function lgDetailHtml(d) {
+  const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
+  const vals = DS.vals[d.id] || {}, text = lgText(d), left = tplLeft(text);
+  const used = d.fields.filter(f => d.body.indexOf(f[0]) >= 0);   // поля, которые есть в тексте; в инструкциях подставлять нечего
+  return '<button type="button" class="btn" data-a="doc-back" style="margin-bottom:12px">‹ К списку документов</button>' +
+    '<div class="card"><h3>' + esc(d.title) + '</h3><span class="pill st">' + esc(d.group) + '</span>' +
+    '<div class="xl" style="margin-top:12px"><b>Когда нужен</b></div><p style="margin:2px 0 8px">' + esc(d.when) + '</p>' +
+    '<div class="xl"><b>Кто оформляет</b></div><p style="margin:2px 0 8px">' + esc(d.who) + '</p>' +
+    '<div class="xl"><b>Где взять и сколько стоит</b></div><p style="margin:2px 0 8px">' + esc(d.where) + '</p>' +
+    '<div class="xl"><b>Форма</b></div><p style="margin:2px 0 8px">' + esc(d.form) + '</p>' +
+    (d.risks.length ? '<div class="xl"><b>На что смотреть</b></div><ul style="margin:4px 0 0;padding-left:20px">' + d.risks.map(r => '<li>' + esc(r) + '</li>').join('') + '</ul>' : '') + '</div>' +
+    (used.length ? '<div class="card"><h3>Данные для шаблона</h3><p class="small muted" style="margin:0 0 8px">Паспорта и адреса не сохраняются: данные живут только пока открыта эта страница.</p>' : '<div class="card" style="display:none">') +
+    (deals.length ? '<label class="f"><span>Взять из проекта</span><select id="dsDeal" data-ds="deal"><option value="">Не подставлять</option>' + deals.map(x => '<option value="' + esc(x.id) + '"' + (DS.deal === x.id ? ' selected' : '') + '>' + esc(x.name || 'Проект') + '</option>').join('') + '</select></label>' : '') +
+    used.map(([k, l]) => '<label class="f"><span>' + esc(l) + '</span><input type="text" data-ds="v" data-tk="' + esc(k) + '" maxlength="300" placeholder="' + esc(k) + '" value="' + esc(vals[k] || '') + '"></label>').join('') + '</div>' +
+    '<div class="card"><h3>Текст документа</h3><p class="small muted" id="dsLeft" style="margin:0 0 8px">' + (left ? 'Осталось вписать полей: ' + left + ' (они в тексте в двойных скобках).' : (used.length ? 'Все поля заполнены.' : 'Это инструкция: подставлять в текст нечего.')) + '</p>' +
+    '<pre class="tpl" id="dsText">' + esc(text) + '</pre>' +
+    '<div class="row" style="margin-top:12px"><button type="button" class="btn pri" data-a="doc-copy" data-id="' + esc(d.id) + '">Скопировать</button><button type="button" class="btn" data-a="doc-dl" data-v="doc" data-id="' + esc(d.id) + '">Скачать для Word</button><button type="button" class="btn" data-a="doc-dl" data-v="txt" data-id="' + esc(d.id) + '">Скачать .txt</button></div>' +
+    '<p class="small muted" style="margin:10px 0 0">' + esc((typeof SHABLONY_META !== 'undefined' && SHABLONY_META.disclaimer) || '') + '</p></div>';
+}
+function renderDocs() {
+  setTitle(TITLES.docs, '', true, 'deal-close', '‹ Назад');
+  const d = DS.open && shablony().find(x => x.id === DS.open);
+  if (d) { $('#view').innerHTML = lgDetailHtml(d); return; }
+  DS.open = '';
+  const groups = [...new Set(shablony().map(x => x.group))];
+  $('#view').innerHTML = '<div class="card"><h3>Шаблоны и инструкции</h3><p class="small muted" style="margin:0">' + esc((typeof SHABLONY_META !== 'undefined' && SHABLONY_META.disclaimer) || 'Справочные образцы, не заменяют консультацию юриста.') + '</p></div>' +
+    '<div class="card"><label class="f"><span>Поиск</span><input type="text" enterkeyhint="search" id="dsQ" data-ds="q" maxlength="100" placeholder="Задаток, договор подряда, 3-НДФЛ" value="' + esc(DS.q) + '"></label>' +
+    '<div class="chips" id="dsGroups" style="margin-top:8px"><button type="button" data-a="doc-group" data-v="" class="' + (DS.group ? '' : 'on') + '" aria-pressed="' + !DS.group + '">Все · ' + shablony().length + '</button>' +
+    groups.map(g => '<button type="button" data-a="doc-group" data-v="' + esc(g) + '" class="' + (DS.group === g ? 'on' : '') + '" aria-pressed="' + (DS.group === g) + '">' + esc(g) + '</button>').join('') + '</div></div>' +
+    '<div id="dsList">' + lgListHtml() + '</div>';
+}
+function lgAction(a, b) {
+  const id = b.dataset.id, d = id && shablony().find(x => x.id === id);
+  if (a === 'doc-open' && d) { DS.open = d.id; if (DS.deal) DS.vals[d.id] = Object.assign({}, tplFromDeal(S.deals.find(x => x.id === DS.deal)), DS.vals[d.id] || {}); renderDocs(); window.scrollTo(0, 0); }
+  else if (a === 'doc-back') { DS.open = ''; renderDocs(); window.scrollTo(0, 0); }
+  else if (a === 'doc-group') { DS.group = b.dataset.v || ''; renderDocs(); }
+  else if (a === 'doc-copy' && d) {
+    const text = lgText(d);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast('Текст скопирован'), () => toast('Не получилось скопировать: используйте «Скачать»'));
+    else toast('Копирование недоступно: используйте «Скачать»');
+  }
+  else if (a === 'doc-dl' && d) { lgDownload(d, b.dataset.v === 'doc' ? 'doc' : 'txt'); toast('Файл сохранён в «Загрузки»'); }
+}
+
 /* ===== Записная книжка =====
    Короткие записи с датой: общие и привязанные к проекту. Диктовка, поиск, закрепление, правка.
    Хранится в этом телефоне, входит в резервную копию; в отчёт инвестору и ссылку соинвестора не попадает. */
-const BK = {text: '', deal: '', q: '', f: '', edit: '', etext: '', dtext: '', busy: false};
+const BK = {text: '', deal: '', q: '', f: '', edit: '', etext: '', dtext: '', busy: false, mode: 'notes'};
 const bkFmt = ts => { const d = new Date(ts); return isNaN(d) ? '' : two(d.getDate()) + '.' + two(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + two(d.getHours()) + ':' + two(d.getMinutes()); };
 const bkSort = (a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || b.ts - a.ts;
 function bkMatch(e, q) { return !q || e.text.toLowerCase().includes(q.toLowerCase()); }
@@ -3513,11 +4138,12 @@ function bkListHtml() {
   return all.map(e => bkEntryHtml(e, true)).join('') + (all.length ? '<p class="small muted" style="margin:10px 0 0">Записей: ' + all.length + '</p>' : '');
 }
 function renderNotes() {
+  if (BK.mode === 'people') return renderPeople();
   if (BK.f && BK.f !== 'none' && !S.deals.some(d => d.id === BK.f)) BK.f = '';
   if (BK.deal && !S.deals.some(d => d.id === BK.deal)) BK.deal = '';
   const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
   const opt = (sel, none) => '<option value="">' + none + '</option>' + deals.map(d => '<option value="' + esc(d.id) + '"' + (sel === d.id ? ' selected' : '') + '>' + esc(d.name || 'Проект') + '</option>').join('');
-  $('#view').innerHTML =
+  $('#view').innerHTML = bkSegHtml() +
     '<div class="card"><h3>Новая запись</h3>' +
     '<label class="f"><span>Текст</span><textarea id="bkText" data-bk="text" rows="3" maxlength="' + BOOK_LEN + '" placeholder="Например: прораб Иван, 8 903…, договорились на среду">' + esc(BK.text) + '</textarea></label>' +
     '<button type="button" class="btn block" data-a="bk-voice" aria-pressed="false" style="margin-top:8px">' + ICO.mic + '<span>Диктовать</span></button>' +
@@ -3747,13 +4373,13 @@ async function phPick(file) {
   if (!/^image\//.test(file.type)) { toast('Нужен файл-картинка'); return; }
   if (file.size > PH_FILE_LIMIT) { toast('Фото слишком большое: больше 30 МБ'); return; }
   voiceStop(); PH.busy = true; PH.pick = false; phPaintPrev();
-  try { PH.base = await phDecode(file); PH.ts = Date.now(); PH.note = ''; PH.room = ''; const nt = document.getElementById('phNote'); if (nt) nt.value = ''; const pr0 = document.getElementById('phRooms'); if (pr0) pr0.innerHTML = xChipsHtml(ROOMS, '', 'ph-room'); }
+  try { PH.base = await phDecode(file); PH.clean = null; PH.ts = Date.now(); PH.note = ''; PH.room = ''; const nt = document.getElementById('phNote'); if (nt) nt.value = ''; const pr0 = document.getElementById('phRooms'); if (pr0) pr0.innerHTML = xChipsHtml(ROOMS, '', 'ph-room'); }
   catch (e) { PH.busy = false; phPaintPrev(); toast('Не получилось открыть это фото. Попробуйте формат JPEG или PNG'); return; }
   PH.busy = false; phRestamp();
   if (!hasCoord(PH.lat, PH.lon) && !PH.geoBusy) phLocate();
 }
 function phDrop() {
-  voiceStop(); phTok++; PH.base = null; PH.blob = null; PH.pick = false; PH.note = ''; PH.room = '';
+  voiceStop(); phTok++; PH.base = null; PH.clean = null; PH.blob = null; PH.pick = false; PH.note = ''; PH.room = '';
   const nt = document.getElementById('phNote'); if (nt) nt.value = '';
   const pr = document.getElementById('phRooms'); if (pr) pr.innerHTML = xChipsHtml(ROOMS, '', 'ph-room');
   if (PH.prevUrl) { URL.revokeObjectURL(PH.prevUrl); PH.prevUrl = ''; }
@@ -3766,7 +4392,7 @@ function phPaintPrev() {
   if (PH.busy) { p.innerHTML = '<p class="small muted" style="margin:12px 0 0">Обрабатываем фото…</p>'; a.innerHTML = ''; return; }
   if (!PH.blob) { p.innerHTML = '<p class="small muted" style="margin:12px 0 0">Снимите объект или выберите фото из галереи: адрес и дата впишутся прямо в снимок.</p>'; a.innerHTML = ''; return; }
   p.innerHTML = '<img class="ph-big" alt="Снимок с адресом и датой" src="' + PH.prevUrl + '">';
-  a.innerHTML = '<div class="ph-act"><button class="btn pri block" data-a="ph-new">Создать новый проект</button>' +
+  a.innerHTML = '<div class="ph-act"><button class="btn block" data-a="rl-open">Измерить расстояния на фото</button><button class="btn pri block" data-a="ph-new">Создать новый проект</button>' +
     '<button class="btn block" data-a="ph-pick" aria-expanded="' + PH.pick + '">Добавить в проект</button>' +
     (PH.pick ? '<div class="card hlist" style="margin:0">' + (S.deals.length ? S.deals.map(d => '<button data-a="ph-add" data-id="' + esc(d.id) + '"><span>' + esc(d.name || 'Без названия') + '</span><i>›</i></button>').join('') : '<p class="small muted" style="margin:10px 0">Проектов пока нет. Создайте новый.</p>') + '</div>' : '') +
     '<button class="btn block" data-a="ph-save">Сохранить без проекта</button>' +
@@ -3863,7 +4489,7 @@ function renderPhoto() {
     '<label class="f" style="margin-top:10px"><span>Адрес</span><input type="text" id="phAddr" data-ph="addr" maxlength="200" autocomplete="off" placeholder="Город, улица, дом" value="' + esc(PH.address) + '"></label>' +
     '<p class="small muted" style="margin:8px 0 0">Адрес вписывается в фото и помогает потом его искать. Чтобы найти адрес, координаты отправляются в сервис OpenStreetMap.</p></div>' +
     '<div class="card"><h3>Фото</h3><div class="row"><label class="btn pri fbtn">' + ICO.cam + 'Снять фото<input type="file" accept="image/*" capture="environment" data-ph="file" aria-label="Снять фото"></label>' +
-    '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" data-ph="file" aria-label="Выбрать фото из галереи"></label></div>' +
+    '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" data-ph="file" aria-label="Выбрать фото из галереи"></label><button type="button" class="btn" data-a="lv-open">Уровень</button></div>' +
     '<div id="phPrev"></div>' +
     '<div id="phNoteBox" class="hide" style="margin-top:12px"><div class="xl">Комната (необязательно)</div><div class="chips" id="phRooms">' + xChipsHtml(ROOMS, PH.room, 'ph-room') + '</div><label class="f" style="margin-top:10px"><span>Отметки к фото</span><textarea id="phNote" data-ph="note" rows="3" maxlength="2000" placeholder="Что на фото: состояние, замечания, что сделать">' + esc(PH.note) + '</textarea></label>' +
     '<button type="button" class="btn block" data-a="voice-note" aria-pressed="false" style="margin-top:8px">' + ICO.mic + '<span>Диктовать</span></button>' +
@@ -4166,7 +4792,7 @@ function renderNewObj() {
 }
 
 /* ===== Навигация ===== */
-const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый объект', cal: 'Календарь', notes: 'Записная книжка', mat: 'Материалы'};
+const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый объект', cal: 'Календарь', notes: 'Записная книжка', mat: 'Материалы', docs: 'Юридический справочник'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
 function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
@@ -4191,14 +4817,14 @@ function backupDot() {
   return stale;
 }
 function go(tab, cls, y) {
-  voiceStop(); BK.edit = ''; BK.etext = '';
+  voiceStop(); BK.edit = ''; BK.etext = ''; if (tab !== 'docs') DS.open = '';
   S.tab = tab; save(); backupDot();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
-  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, tax: renderTax, photo: renderPhoto, newobj: renderNewObj, cal: renderCal, notes: renderNotes, mat: renderMat})[tab]();
+  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, tax: renderTax, photo: renderPhoto, newobj: renderNewObj, cal: renderCal, notes: renderNotes, mat: renderMat, docs: renderDocs})[tab]();
   // «Смета» и «Торги» открываются с главной: у них своя кнопка «назад»
   if (tab === 'smeta' || tab === 'torgi' || tab === 'mat') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
-  if (tab === 'kursy' || tab === 'tax') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
+  if (tab === 'kursy' || tab === 'tax' || tab === 'docs') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   if (tab === 'photo' || tab === 'cal' || tab === 'notes') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'newobj') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   window.scrollTo(0, y || 0); animate(cls || 'anim-up'); onScroll();
@@ -4206,7 +4832,7 @@ function go(tab, cls, y) {
 /* ===== История: системная кнопка «назад», кнопка «‹» и свайп идут одним путём =====
    Стопка: «Главная» (глубина 0) → другая вкладка (1) → экраны вглубь (2, 3…).
    Вкладки записи не копят: со вкладки «назад» ведёт на «Главную», а из неё — выход из приложения. */
-const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'photo', 'newobj', 'cal', 'notes', 'mat'];
+const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'photo', 'newobj', 'cal', 'notes', 'mat', 'docs'];
 let navDepth = 0;       // глубина текущего экрана в стопке
 let navPending = null;  // вкладка, которую запишем, когда история вернётся к началу стопки
 const navRoot = tab => ({tab, deal: null, rayon: null, from: null});
@@ -4304,7 +4930,7 @@ function closeDeal() { navBack(); }
 let swipe = null;
 document.addEventListener('touchstart', e => {
   const p = e.touches[0];
-  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'tax' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal' || S.tab === 'notes' || S.tab === 'mat') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'tax' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal' || S.tab === 'notes' || S.tab === 'mat' || S.tab === 'docs') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
 }, {passive: true});
 document.addEventListener('touchend', e => {
   if (!swipe) return;
@@ -4485,6 +5111,8 @@ view.addEventListener('click', e => {
     case 'contrast': applyContrast(b.dataset.v === '1'); toast(b.dataset.v === '1' ? 'Высокий контраст включён' : 'Обычный вид'); break;
     case 'soon': openVoiceHelper(); break;
     case 'ph-geo': phLocate(); break;
+    case 'rl-open': rlOpen(); break;
+    case 'lv-open': lvOpen(); break;
     case 'ph-pick': PH.pick = !PH.pick; phPaintPrev(); break;
     case 'ph-add': phCommit(b.dataset.id, false); break;
     case 'ph-new': phCommit('', true); break;
@@ -4600,7 +5228,10 @@ view.addEventListener('click', e => {
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
       break;
     case 'go-tab': if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
-    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo' || b.dataset.v === 'cal' || b.dataset.v === 'notes' || b.dataset.v === 'mat') navPush(navRoot(b.dataset.v), 'anim-right'); break;
+    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo' || b.dataset.v === 'cal' || b.dataset.v === 'notes' || b.dataset.v === 'mat' || b.dataset.v === 'docs') navPush(navRoot(b.dataset.v), 'anim-right'); break;
+    case 'doc-open': case 'doc-back': case 'doc-group': case 'doc-copy': case 'doc-dl': lgAction(a, b); break;
+    case 'bk-mode': BK.mode = b.dataset.v === 'people' ? 'people' : 'notes'; voiceStop(); renderNotes(); break;
+    case 'ct-new': case 'ct-deal-new': case 'ct-edit': case 'ct-cancel': case 'ct-fav': case 'ct-del': case 'ct-voice': case 'ct-parse': case 'ct-save': ctAction(a, b); break;
     case 'bk-voice': case 'bk-dvoice': case 'bk-add': case 'bk-dadd': case 'bk-pin': case 'bk-edit': case 'bk-cancel': case 'bk-save': case 'bk-del': bkAction(a, b); break;
     case 'mat-add': matAdd(); break;
     case 'tl-open': { const d = curDeal(); if (d) tlOpen(d); break; }
@@ -4804,6 +5435,17 @@ view.addEventListener('input', e => {
     const n = parseNum(t.value); S.scen[t.dataset.sc] = isFinite(n) && t.value.trim() !== '' ? n : -1; save();
     const el = $('#scenTab'); if (el) el.innerHTML = scenTableHtml(S.calc);
   }
+  else if (t.dataset.ct) {
+    const k = t.dataset.ct;
+    if (k === 'q') { CT.q = t.value.slice(0, 100); const l = document.getElementById('ctList'); if (l) l.innerHTML = ctListHtml(); }
+    else if (CT.form && ['name', 'phone', 'phone2', 'company', 'address', 'note', 'dict'].includes(k)) CT.form[k] = t.value;
+  }
+  else if (t.dataset.ds === 'q') { DS.q = t.value.slice(0, 100); const l = document.getElementById('dsList'); if (l) l.innerHTML = lgListHtml(); }
+  else if (t.dataset.ds === 'v' && DS.open) {
+    (DS.vals[DS.open] = DS.vals[DS.open] || {})[t.dataset.tk] = t.value;
+    const d = shablony().find(x => x.id === DS.open), pre = document.getElementById('dsText'), lf = document.getElementById('dsLeft');
+    if (d && pre) { const tx = lgText(d), n = tplLeft(tx); pre.textContent = tx; if (lf) lf.textContent = n ? 'Осталось вписать полей: ' + n + ' (они в тексте в двойных скобках).' : 'Все поля заполнены.'; }
+  }
   else if (t.dataset.bk === 'edit') BK.etext = t.value.slice(0, BOOK_LEN);
   else if (t.dataset.bk === 'text') BK.text = t.value.slice(0, BOOK_LEN);
   else if (t.dataset.bk === 'dtext') BK.dtext = t.value.slice(0, BOOK_LEN);
@@ -4815,6 +5457,22 @@ view.addEventListener('change', e => {
   if (t.dataset.cal === 'date') { if (isDay(t.value)) { CAL.day = t.value; calPaint(); calAddLbl(); } return; }
   if (t.dataset.cal === 'deal') { CAL.deal = t.value; return; }
   if (t.dataset.bk === 'deal') { BK.deal = t.value; return; }
+  if (t.dataset.ds === 'deal') {
+    const oldV = DS.deal ? tplFromDeal(S.deals.find(x => x.id === DS.deal)) : {};
+    DS.deal = S.deals.some(x => x.id === t.value) ? t.value : '';
+    if (DS.open) {
+      // значения, подставленные из прошлого проекта и не тронутые руками, заменяются данными нового
+      const cur = Object.assign({}, DS.vals[DS.open] || {});
+      Object.keys(oldV).forEach(k => { if (cur[k] === oldV[k]) delete cur[k]; });
+      DS.vals[DS.open] = Object.assign({}, DS.deal ? tplFromDeal(S.deals.find(x => x.id === DS.deal)) : {}, cur);
+      renderDocs();
+    }
+    return;
+  }
+  if (t.dataset.ct === 'role' && CT.form) { CT.form.role = CONTACT_ROLES.includes(t.value) ? t.value : 'Другое'; return; }
+  if (t.dataset.ct === 'dealId' && CT.form) { CT.form.dealId = t.value; return; }
+  if (t.dataset.ct === 'frole') { CT.role = t.value; ctPaint(); return; }
+  if (t.dataset.ct === 'fdeal') { CT.deal = t.value; ctPaint(); return; }
   if (t.dataset.mtk) { if (t.checked) MAT.sel.add(t.dataset.mtk); else MAT.sel.delete(t.dataset.mtk); return; }
   if (t.dataset.mt === 'room') { MAT.room = ROOMS.includes(t.value) ? t.value : 'Комната'; return; }
   if (t.dataset.mt === 'deal') { MAT.deal = t.value; return; }

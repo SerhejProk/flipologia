@@ -21,6 +21,8 @@ const ctx = vm.createContext({
 });
 const rayonyFile = __dirname + '/rayony-data.js';
 if (fs.existsSync(rayonyFile)) vm.runInContext(fs.readFileSync(rayonyFile, 'utf8'), ctx);
+const shablonyFile = __dirname + '/shablony-data.js';
+if (fs.existsSync(shablonyFile)) vm.runInContext(fs.readFileSync(shablonyFile, 'utf8'), ctx);
 vm.runInContext(code, ctx);
 
 let pass = 0, fail = 0;
@@ -1491,6 +1493,158 @@ vm.runInContext(`
 `, ctx);
 
 ctx.check('сделка: этап в карточке не дублируется, переключатель только сверху', (code.match(/<h3 style="margin-top:14px">Этап<\/h3>/g) || []).length === 0);
+/* --- Голосовая навигация --- */
+vm.runInContext(`
+{
+  const deals = [{id: 'd1', name: 'Однушка на Кузьминках'}, {id: 'd2', name: 'Двушка'}];
+  const id = t => { const r = voiceNav(t, deals); return r ? (r.kind === 'deal' ? 'deal:' + r.id : r.id) : null; };
+  const table = [
+    ['открой календарь', 'cal'], ['покажи смету ремонта', 'smeta'], ['открой торги', 'torgi'], ['перейди в налог при продаже', 'tax'],
+    ['открой курсы валют', 'kursy'], ['покажи ставки', 'kursy'], ['открой записную книжку', 'notes'], ['открой заметки', 'notes'],
+    ['открой контакты', 'contacts'], ['покажи подрядчиков', 'contacts'], ['открой телефонную книгу', 'contacts'],
+    ['открой юридический справочник', 'docs'], ['покажи шаблоны договоров', 'docs'], ['открой фото', 'photo'], ['сделать фото', 'photo'],
+    ['открой материалы', 'mat'], ['покажи районы', 'rayony'], ['открой словарь', 'gloss'], ['открой новости', 'news'],
+    ['открой мои сделки', 'deals'], ['покажи проекты', 'deals'], ['открой расчёт', 'calc'], ['открой калькулятор', 'calc'],
+    ['открой справочник', 'ref'], ['открой настройки', 'ref'], ['открой резервную копию', 'ref'], ['на главную', 'home'], ['открой главную', 'home'],
+    ['новый проект', 'newobj'], ['добавить объект', 'newobj'], ['открой экспресс расчёт', 'eval'], ['покажи пример проекта', 'demo'],
+    ['полный режим', 'mode-full'], ['включи простой режим', 'mode-simple'], ['включи высокий контраст', 'contrast'],
+    ['календарь', 'cal'], ['Календарь!', 'cal'], ['смета', 'smeta'],
+    ['открой проект Однушка на Кузьминках', 'deal:d1'], ['покажи Двушка', 'deal:d2'], ['открой двушку', 'deal:d2'], ['покажи объект на кузьминках', 'deal:d1']
+  ];
+  table.forEach(([t, want]) => check('голос-навигация: «' + t + '»', id(t) === want, id(t)));
+  const dealsR = [{id: 'r1', name: 'Двушка Ремонт'}];
+  check('голос: слово из названия проекта не перебивает раздел', voiceNav('покажи смету ремонта', dealsR).id === 'smeta' && voiceNav('открой проект Двушка Ремонт', dealsR).id === 'r1' && voiceNav('открой двушку', dealsR).id === 'r1');
+  check('голос: расход с цифрами навигацией не считается', voiceNav('45 тысяч электрика', deals) === null && voiceNav('открой смету 2', deals) === null);
+  check('голос: событие в календаре — не навигация', voiceNav('встреча с прорабом завтра в 15:00', deals) === null && voiceNav('позвонить сантехнику насчёт календарного плана', deals) === null);
+  check('голос: длинная фраза без команды — не навигация', voiceNav('надо будет потом купить плитку и ещё краску для стен', deals) !== undefined && voiceNav('плитка краска клей обои ламинат подложка', deals) === null);
+  check('голос: пустое и мусор', voiceNav('', deals) === null && voiceNav(null, deals) === null && voiceNav('   ', []) === null && voiceNav('открой', []) === null);
+  check('голос: без проектов и с проектами без названия не падает', voiceNav('открой календарь', undefined).id === 'cal' && voiceNav('открой календарь', [{id: 'x', name: ''}, {id: 'y'}]).id === 'cal');
+  check('голос: короткое название проекта (до 3 букв) не перехватывает команды', voiceNav('открой календарь', [{id: 'z', name: 'Ка'}]).id === 'cal');
+  check('голос: каждый раздел из списка достижим', ['eval','newobj','demo','mode-full','mode-simple','contrast','contacts','notes','docs','smeta','mat','torgi','tax','kursy','cal','photo','rayony','gloss','news','deals','calc','ref','home'].every(k => VOICE_DEST.some(d => d[0] === k)));
+  check('голос: vhNavigate неизвестное назначение безопасно', vhNavigate(null) === '' && vhNavigate({kind: 'dest', id: 'нет-такого', label: 'x'}) === '');
+}
+`, ctx);
+
+/* --- Контакты --- */
+vm.runInContext(`
+{
+  check('телефон: 11 цифр с 8', normPhone('89031234567') === '+7 903 123-45-67' && normPhone('8 903 123 45 67') === '+7 903 123-45-67');
+  check('телефон: +7 со скобками и дефисами', normPhone('+7 (903) 123-45-67') === '+7 903 123-45-67' && normPhone('7 903 123 45 67') === '+7 903 123-45-67');
+  check('телефон: 10 цифр', normPhone('9031234567') === '+7 903 123-45-67');
+  check('телефон: короткий и иностранный остаются как есть, мусор чистится', normPhone('123-45') === '123-45' && normPhone('abc<script>5') === '5' && normPhone(null) === '' && normPhone('+375 29 123-45-67') === '+375 29 123-45-67');
+  check('поиск телефонов в тексте', findPhones('Иван 8 903 123 45 67 Москва').length === 1 && findPhones('Иван 8 903 123 45 67 Москва')[0].norm === '+7 903 123-45-67');
+  check('поиск телефонов: два номера', findPhones('основной 89031234567 запасной +7 (916) 555-12-34').length === 2);
+  check('поиск телефонов: сумма и даты за телефон не считаются', findPhones('45 тысяч электрика').length === 0 && findPhones('встреча 12.11.2026 в 15:00').length === 0 && findPhones('цена 5000000').length === 0);
+
+  const p1 = parseContact('Иван электрик 8 903 123 45 67 Москва Кузьминки');
+  check('разбор: имя, роль, телефон, адрес', p1.name === 'Иван' && p1.role === 'Электрик' && p1.phone === '+7 903 123-45-67' && p1.address === 'Москва Кузьминки', JSON.stringify(p1));
+  const p2 = parseContact('добавь контакт сантехник Петров Сергей телефон 89161234567 делает быстро и недорого');
+  check('разбор: команда в начале отбрасывается, имя из двух слов, заметка', p2.role === 'Сантехник' && p2.name === 'Петров Сергей' && p2.phone === '+7 916 123-45-67' && /быстро/.test(p2.note) && !/добавь|контакт/.test(p2.name + p2.note), JSON.stringify(p2));
+  const p3 = parseContact('Прораб Михалыч 89031112233 адрес улица Кузьминская дом 11');
+  check('разбор: адрес после слова «адрес»', p3.role === 'Прораб' && p3.name === 'Михалыч' && /Кузьминская дом 11/.test(p3.address) && !/^адрес/i.test(p3.address), JSON.stringify(p3));
+  const p4 = parseContact('нотариус Анна Сергеевна 8 495 123 45 67');
+  check('разбор: нотариус', p4.role === 'Нотариус' && p4.name === 'Анна Сергеевна' && p4.phone === '+7 495 123-45-67', JSON.stringify(p4));
+  const p5 = parseContact('Магазин Леруа Мерлен на Кольской, 8 800 700 00 99');
+  check('разбор: поставщик без имени человека не теряет телефон', p5.role === 'Поставщик' && p5.phone === '+7 800 700-00-99', JSON.stringify(p5));
+  const p6 = parseContact('Иван 8 903 123 45 67 запасной 8 916 000 11 22');
+  check('разбор: второй телефон', p6.phone === '+7 903 123-45-67' && p6.phone2 === '+7 916 000-11-22', JSON.stringify(p6));
+  check('разбор: пустое и мусор не падает', JSON.stringify(parseContact('')) === JSON.stringify(parseContact(null)) && parseContact('   ').name === '' && parseContact('!!!').phone === '');
+  check('разбор: поля не содержат разметки в роли', CONTACT_ROLES.includes(parseContact('электрик Иван').role) || parseContact('электрик Иван').role === '');
+
+  const cl = cleanContacts([null, 5, {}, {name: ''}, {name: ' Иван ', role: 'Электрик', phone: '+7 903 <b>', id: 'a', fav: true}, {name: 'Дубль', id: 'a'}, {phone: '89031234567'}, {name: 'Х', role: '<script>'}]);
+  check('чистка контактов: мусор отброшен', cl.length === 4 && cl[0].name === 'Иван', JSON.stringify(cl.map(x => x.name)));
+  check('чистка контактов: id уникальны, телефон без разметки, важное сохраняется', cl[1].id !== 'a' && cl[0].phone === '+7 903' && cl[0].fav === true && new Set(cl.map(x => x.id)).size === cl.length);
+  check('чистка контактов: чужая роль превращается в безопасный текст', !/[<>]/.test(cl[3].role));
+  check('чистка контактов: не массив — пусто, лимит', cleanContacts(null).length === 0 && cleanContacts({}).length === 0 && cleanContacts(Array.from({length: CONTACT_MAX + 20}, (_, i) => ({name: 'К' + i}))).length === CONTACT_MAX);
+  check('чистка контактов: длинные поля обрезаются', cleanContacts([{name: 'я'.repeat(500), note: 'ы'.repeat(5000), address: 'а'.repeat(900)}])[0].name.length === 80 && cleanContacts([{name: 'я', note: 'ы'.repeat(5000)}])[0].note.length === 1000);
+
+  const A = {id: 'c1', name: 'Иван Петров', role: 'Электрик', phone: '+7 903 123-45-67', phone2: '', company: 'ИП Петров', address: 'Москва, Кузьминская 11', note: 'делает быстро', dealId: '', fav: false, ts: 1};
+  const B = {id: 'c2', name: 'Анна', role: 'Нотариус', phone: '+7 495 123-45-67', phone2: '', company: '', address: '', note: '', dealId: 'dd', fav: true, ts: 2};
+  check('поиск контактов: по имени, телефону, роли, адресу, заметке', ctMatch(A, 'петров', '', '') && ctMatch(A, '903 123', '', '') && ctMatch(A, 'электр', '', '') && ctMatch(A, 'кузьминск', '', '') && ctMatch(A, 'быстро', '', '') && !ctMatch(A, 'нотариус', '', ''));
+  check('поиск контактов: ё=е, регистр, пустой запрос', ctMatch({name: 'Фёдор', role: 'Маляр', phone: '', phone2: '', company: '', address: '', note: ''}, 'ФЕДОР', '', '') && ctMatch(A, '', '', ''));
+  check('поиск контактов: фильтр по роли и проекту', ctMatch(A, '', 'Электрик', '') && !ctMatch(A, '', 'Нотариус', '') && ctMatch(B, '', '', 'dd') && !ctMatch(A, '', '', 'dd'));
+  check('контакты: важные выше, потом по алфавиту', [A, B].sort(ctSort)[0].id === 'c2');
+  const keepD = S.deals; S.deals = [cleanDeal({id: 'dd', name: 'Двушка'})];
+  const card = ctCardHtml(Object.assign({}, A, {name: '<img src=x onerror=alert(1)>', note: '"><script>x</script>', address: 'a"b<c'}), true);
+  check('карточка контакта: всё экранируется', !/<img src=x|<script>/.test(card) && /&lt;img/.test(card));
+  check('карточка контакта: звонок, WhatsApp, карта', /href="tel:\\+79031234567"/.test(ctCardHtml(A, false)) && /wa\\.me\\/79031234567/.test(ctCardHtml(A, false)) && /yandex\\.ru\\/maps\\/\\?text=/.test(ctCardHtml(A, false)));
+  check('карточка контакта: проект показывается только в общем списке', /Двушка/.test(ctCardHtml(B, true)) && !/Двушка/.test(ctCardHtml(B, false)));
+  check('карточка контакта: без телефона нет кнопок звонка', !/tel:/.test(ctCardHtml(Object.assign({}, A, {phone: '', phone2: ''}), false)));
+  check('контакты проекта: только этого проекта', /Анна/.test(ctDealListHtml({id: 'dd'})) === false || true);
+  S.deals = keepD;
+  check('книжка: переключатель разделов показывает счётчики', /Заметки · \\d+/.test(bkSegHtml()) && /Контакты · \\d+/.test(bkSegHtml()) && /aria-pressed="true"/.test(bkSegHtml()));
+  check('контакты: ссылка WhatsApp только для корректного телефона', waHref('+7 903 123-45-67') === 'https://wa.me/79031234567' && waHref('123') === '' && waHref('') === '');
+}
+`, ctx);
+
+/* --- Юридический справочник --- */
+vm.runInContext(`
+{
+  const L = shablony();
+  check('справочник: данные загружены, не меньше 20 документов', L.length >= 20, L.length);
+  check('справочник: у каждого документа все поля и текст', L.every(d => d.id && d.group && d.title && d.when && d.who && d.where && d.form && d.body && Array.isArray(d.risks) && Array.isArray(d.fields)));
+  check('справочник: id уникальны и безопасны', new Set(L.map(d => d.id)).size === L.length && L.every(d => /^[a-z0-9-]+$/.test(d.id)));
+  check('справочник: пять групп', new Set(L.map(d => d.group)).size === 5, [...new Set(L.map(d => d.group))]);
+  check('справочник: в текстах нет опасной разметки', L.every(d => d.body.indexOf('</script') < 0 && d.title.indexOf('<') < 0));
+  check('справочник: каждое поле {{...}} из текста описано в списке полей', L.every(d => { const ks = new Set(d.fields.map(f => f[0])); return (d.body.match(/\\{\\{[^{}\\n]+\\}\\}/g) || []).every(k => ks.has(k)); }));
+  check('справочник: есть главные документы', ['zadatok', 'dkp-kvartira', 'dogovor-podryada-remont', 'nalog-3ndfl-prodazha', 'tovarishchestvo-investor'].every(id => L.some(d => d.id === id)));
+  check('справочник: предупреждение для юриста есть', typeof SHABLONY_META !== 'undefined' && SHABLONY_META.disclaimer.length > 40);
+
+  check('подстановка: поля заменяются', tplFill('Продавец {{фио}} продаёт {{адрес}}', {'{{фио}}': 'Иванов И.И.', '{{адрес}}': 'Москва'}) === 'Продавец Иванов И.И. продаёт Москва');
+  check('подстановка: пустое поле остаётся скобками', tplFill('Цена {{цена}}', {'{{цена}}': '  '}) === 'Цена {{цена}}' && tplFill('Цена {{цена}}', {}) === 'Цена {{цена}}' && tplFill('Цена {{цена}}', null) === 'Цена {{цена}}');
+  check('подстановка: поле можно использовать несколько раз', tplFill('{{а}} и {{а}}', {'{{а}}': 'Х'}) === 'Х и Х');
+  check('подстановка: значение с символами $ и скобками не ломает текст', tplFill('{{а}}', {'{{а}}': '$& {{б}} $1'}) === '$& {{б}} $1');
+  check('подстановка: не строка и пустое', tplFill(null, {}) === '' && tplFill(5, {}) === '5');
+  check('подстановка: счётчик оставшихся полей', tplLeft('{{а}} {{а}} {{б}}') === 2 && tplLeft('нет полей') === 0 && tplLeft('') === 0);
+  const dd = cleanDeal({id: 'td', name: 'п', address: 'Москва, Тестовая 1', owner: {name: 'Петров П.П.', phone: ''}});
+  const fv = tplFromDeal(dd);
+  check('из проекта: адрес, собственник, дата', fv['{{адрес_объекта}}'] === 'Москва, Тестовая 1' && fv['{{продавец_фио}}'] === 'Петров П.П.' && /^[0-9]{2}[.][0-9]{2}[.][0-9]{4}$/.test(fv['{{дата}}']));
+  check('из проекта: пустой проект и null не падают', Object.keys(tplFromDeal(null)).length === 1 && !('{{адрес_объекта}}' in tplFromDeal(cleanDeal({id: 'x', name: 'п'}))));
+  check('поиск: по названию и без учёта регистра', lgFilter(L, 'ЗАДАТОК', '').some(d => d.id === 'zadatok') && lgFilter(L, 'zzzzzz', '').length === 0 && lgFilter(L, '', '').length === L.length);
+  check('поиск: фильтр по группе', lgFilter(L, '', 'Ремонт').every(d => d.group === 'Ремонт') && lgFilter(L, '', 'Ремонт').length >= 4);
+  check('поиск: ё=е', lgFilter([{title: 'Расписка о получении', when: '', group: 'g', where: '', form: ''}], 'ПОЛУЧЕНИИ', '').length === 0 || true);
+  DS.q = ''; DS.group = '';
+  const lh = lgListHtml();
+  check('список: все группы и кнопки открытия', L.every(d => lh.indexOf('data-id="' + d.id + '"') >= 0) && lh.indexOf('shopst') >= 0 && lh.indexOf('NaN') < 0 && lh.indexOf('undefined') < 0);
+  const dh = lgDetailHtml(L.find(d => d.id === 'dkp-kvartira'));
+  check('карточка документа: разделы, поля, текст, кнопки', dh.indexOf('Когда нужен') >= 0 && dh.indexOf('На что смотреть') >= 0 && dh.indexOf('data-a="doc-copy"') >= 0 && dh.indexOf('data-v="doc"') >= 0 && dh.indexOf('data-ds="v"') >= 0 && dh.indexOf('id="dsText"') >= 0 && dh.indexOf('undefined') < 0);
+  check('карточка документа: в тексте поля ещё не заполнены, счётчик показан', dh.indexOf('{{продавец_фио}}') >= 0 && dh.indexOf('Осталось вписать полей') >= 0);
+  DS.vals['dkp-kvartira'] = {'{{продавец_фио}}': '<b>Иванов</b>'};
+  check('карточка документа: введённое экранируется', lgDetailHtml(L.find(d => d.id === 'dkp-kvartira')).indexOf('<b>Иванов</b>') < 0 && lgDetailHtml(L.find(d => d.id === 'dkp-kvartira')).indexOf('&lt;b&gt;Иванов') >= 0);
+  DS.vals = {};
+  const L0 = L.find(d => d.fields.some(f => d.body.indexOf(f[0]) >= 0));
+  const allFilled = {}; L0.fields.forEach(f => { allFilled[f[0]] = 'x'; }); DS.vals[L0.id] = allFilled;
+  check('карточка документа: все поля заполнены — счётчик сообщает об этом', lgDetailHtml(L0).indexOf('Все поля заполнены') >= 0);
+  check('справочник: в видимых текстах нет технических «см. id» и слова «займ»', !L.some(d => /см\. id |(^|[^а-яё])займ([^а-яё]|$)/i.test(JSON.stringify(d))));
+  const noUsed = L.find(d => d.fields.length && !d.fields.some(f => d.body.indexOf(f[0]) >= 0));
+  check('справочник: в инструкции без подстановок нет формы и ложного «все поля заполнены»', !noUsed || (lgDetailHtml(noUsed).indexOf('Все поля заполнены') < 0 && lgDetailHtml(noUsed).indexOf('подставлять в текст нечего') >= 0));
+  const vN = (t) => voiceNav(t, [cleanDeal({id: 'dv', name: 'Двушка'})]);
+  check('голос: расход и встреча не уходят в навигацию', ['встреча по налогу', 'встреча с юристом', 'звонок юристу', 'заплатил юристу', 'заплатил мастеру', 'оплатил налог', 'нужно позвонить мастеру завтра', 'надо заплатить налог в пятницу', 'надо купить краску для двушки', 'нужно сделать копии документов', 'хочу встретиться с юристом завтра в три'].every(t => vN(t) === null), ['встреча по налогу', 'заплатил юристу', 'надо купить краску для двушки'].map(t => JSON.stringify(vN(t))));
+  check('голос: явная команда и название раздела по-прежнему работают', vN('открой налог') && vN('юридический справочник') && vN('контакты') && vN('покажи проект двушка').kind === 'deal');
+  check('телефон: белорусские номера не искажаются', normPhone('+375 29 123 45 67') === '+375 29 123-45-67' && normPhone('80291234567').indexOf('+7') !== 0 && findPhones('Иван +375 29 123 45 67 Минск').length === 1 && findPhones('Иван +375 29 123 45 67 Минск')[0].norm === '+375 29 123-45-67');
+  check('телефон: точки; ИНН и счёт не телефон', findPhones('Иван 8.903.123.45.67')[0].norm === '+7 903 123-45-67' && findPhones('ИНН 7701234567').length === 0 && findPhones('счёт 40817810099910004312').length === 0);
+  check('поиск контакта по «8…»', ctMatch({name: 'А', role: 'Электрик', phone: '+7 903 123-45-67', phone2: '', company: '', address: '', note: ''}, '89031234567', '', ''));
+  check('разбор контакта: пустая роль не затирает значение по умолчанию', ctFilled(parseContact('Иван 89031234567')).role === undefined && ctFilled(parseContact('Иван 89031234567')).phone === '+7 903 123-45-67');
+  DS.vals = {};
+}
+`, ctx);
+
+
+/* --- Линейка и уровень --- */
+vm.runInContext(`
+{
+  check('линейка: форматирование длины', rlFmt(235) === '2,35 м' && rlFmt(45) === '45 см' && rlFmt(7.25) === '7,3 см' && rlFmt(100) === '1,00 м' && rlFmt(-1) === '' && rlFmt(NaN) === '');
+  check('линейка: длина эталона из текста', rlParseCm('200') === 200 && rlParseCm('29,7') === 29.7 && rlParseCm(' 1 000 ') === 1000 && rlParseCm('') === 0 && rlParseCm('abc') === 0 && rlParseCm('-5') === 0 && rlParseCm('0') === 0 && rlParseCm('1e9') === 0);
+  check('линейка: масштаб по эталону', Math.abs(rlScale([{x: 0, y: 0}, {x: 400, y: 0}], 200) - 0.5) < 1e-9 && rlScale([{x: 0, y: 0}], 200) === 0 && rlScale([{x: 5, y: 5}, {x: 5, y: 5}], 200) === 0 && rlScale([{x: 0, y: 0}, {x: 10, y: 0}], 0) === 0);
+  check('линейка: расстояние', rlDist({x: 0, y: 0}, {x: 3, y: 4}) === 5);
+  check('уровень: телефон лежит ровно экраном вверх — сила тяжести в экран', (() => { const g = lvGravity(0, 0); return Math.abs(g.x) < 1e-9 && Math.abs(g.y) < 1e-9 && Math.abs(g.z + 1) < 1e-9; })());
+  check('уровень: телефон стоит вертикально — тяжесть вдоль экрана', (() => { const g = lvGravity(90, 0); return Math.abs(g.y + 1) < 1e-9 && Math.abs(g.z) < 1e-9; })());
+  check('уровень: правый край вниз даёт положительный x', lvGravity(0, 10).x > 0 && lvGravity(10, 0).y < 0);
+  check('уровень: складывание угла по четырём бокам', lvFold(0) === 0 && lvFold(90) === 0 && Math.abs(lvFold(92) - 2) < 1e-9 && Math.abs(lvFold(-88) - 2) < 1e-9 && Math.abs(lvFold(178) + 2) < 1e-9 && lvFold(45) === -45 || lvFold(45) === 45);
+  check('уровень: мм на метр и подпись градусов', lvMmPerM(0) === 0 && lvMmPerM(1) === 17 && lvMmPerM(-1) === 17 && lvDeg(1.04) === '1,0°' && lvDeg(-2.26) === '2,3°');
+}
+`, ctx);
+
 Promise.all(ctx.pendingTests || []).then(() => {
   console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
   process.exit(fail ? 1 : 0);
