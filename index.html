@@ -2619,7 +2619,7 @@ function rlPaintCtl() {
 }
 function rlOpen() {
   const el = document.getElementById('msr');
-  if (!el || !(PH && PH.base)) { toast('Сначала снимите или выберите фото'); return; }
+  if (!el || !(PH && PH.base)) { toast('Линейка работает по снимку: сначала снимите или выберите фото, потом нажмите «Линейка» или «Измерить расстояния на фото»'); return; }
   RL.img = PH.clean || PH.base; RL.cal = []; RL.calCm = 0; RL.calText = ''; RL.stage = 'cal'; RL.segs = []; RL.drag = null;
   el.innerHTML = '<div class="cam-box"><div class="tl-top"><b>Линейка по фото</b><button type="button" class="btn" data-a="msr-close">Закрыть</button></div>' +
     '<div id="rlWrap"><canvas id="rlCv" class="rl-cv" aria-label="Фото для измерения: коснитесь концов предмета"></canvas></div>' +
@@ -4489,7 +4489,7 @@ function renderPhoto() {
     '<label class="f" style="margin-top:10px"><span>Адрес</span><input type="text" id="phAddr" data-ph="addr" maxlength="200" autocomplete="off" placeholder="Город, улица, дом" value="' + esc(PH.address) + '"></label>' +
     '<p class="small muted" style="margin:8px 0 0">Адрес вписывается в фото и помогает потом его искать. Чтобы найти адрес, координаты отправляются в сервис OpenStreetMap.</p></div>' +
     '<div class="card"><h3>Фото</h3><div class="row"><label class="btn pri fbtn">' + ICO.cam + 'Снять фото<input type="file" accept="image/*" capture="environment" data-ph="file" aria-label="Снять фото"></label>' +
-    '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" data-ph="file" aria-label="Выбрать фото из галереи"></label><button type="button" class="btn" data-a="lv-open">Уровень</button></div>' +
+    '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" data-ph="file" aria-label="Выбрать фото из галереи"></label><button type="button" class="btn" data-a="rl-open">Линейка</button><button type="button" class="btn" data-a="lv-open">Уровень</button></div>' +
     '<div id="phPrev"></div>' +
     '<div id="phNoteBox" class="hide" style="margin-top:12px"><div class="xl">Комната (необязательно)</div><div class="chips" id="phRooms">' + xChipsHtml(ROOMS, PH.room, 'ph-room') + '</div><label class="f" style="margin-top:10px"><span>Отметки к фото</span><textarea id="phNote" data-ph="note" rows="3" maxlength="2000" placeholder="Что на фото: состояние, замечания, что сделать">' + esc(PH.note) + '</textarea></label>' +
     '<button type="button" class="btn block" data-a="voice-note" aria-pressed="false" style="margin-top:8px">' + ICO.mic + '<span>Диктовать</span></button>' +
