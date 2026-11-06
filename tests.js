@@ -359,6 +359,19 @@ vm.runInContext(`
   check('голос: огромное число отбрасывается', P('999999999999999999 руб').sum === 0);
   check('голос: кнопка помощника ведёт в openVoiceHelper', /case 'soon': openVoiceHelper\(\)/.test(SRC));
 }
+/* --- CSV расходов и чек к расходу --- */
+{
+  const csv = expensesCsv({name: 'X', expenses: [
+    {id: 'a', cat: 'Ремонт', sum: 45000, date: '2026-11-02', note: 'Электрика "щиток"', stage: 'Электрика'},
+    {id: 'b', cat: 'Материалы', sum: 1200.4, date: '2026-11-01', note: '=HYPERLINK("x")', stage: ''}]});
+  const L = csv.split('\\r\\n');
+  check('csv: метка UTF-8, заголовок, разделитель «;»', csv.charCodeAt(0) === 0xFEFF && L[0].includes('"Дата";"Статья"') && L[0].endsWith('"Сумма, ₽"'), L[0]);
+  check('csv: строки по дате, кавычки удвоены, суммы числами', L[1].startsWith('"01.11.2026";"Материалы"') && L[1].endsWith(';1200') && L[2].includes('"Электрика ""щиток"""') && L[2].endsWith(';45000'), L.slice(1, 3));
+  check('csv: формула в ячейке обезврежена, итог верный', L[1].includes('"\\'=HYPERLINK(""x"")"') && L[3].endsWith(';46200'), L.slice(1, 4));
+  check('csv: пустые расходы — только заголовок и итог 0', expensesCsv({expenses: []}).split('\\r\\n').length === 3);
+  const cd = cleanDeal({id: 'z', expenses: [{id: 'a', cat: 'Ремонт', sum: 5, chk: 'abc123'}, {id: 'b', cat: 'Ремонт', sum: 5, chk: '"><img src=x>'}, {id: 'c', cat: 'Ремонт', sum: 5}]});
+  check('чек: id файла проходит очистку, мусор — нет', cd.expenses[0].chk === 'abc123' && cd.expenses[1].chk === '' && cd.expenses[2].chk === '', cd.expenses);
+}
 /* --- Отчёт инвестору --- */
 {
   const mk = o => Object.assign({id: 'r1', name: 'Однушка <img src=x>', address: 'ул. "Тест" & <b>', stage: 'Ремонт', calc: Object.assign({}, DEFAULT_CALC), expenses: [{id: 'a', cat: 'Ремонт', sum: 900000, date: '2026-11-01', note: ''}, {id: 'b', cat: 'Чужая', sum: 5000, date: '2026-11-01', note: ''}], works: cleanWorks({start: today(), items: []}), saleFact: 0}, o || {});

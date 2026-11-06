@@ -713,7 +713,7 @@ function cleanDeal(d) {
     stage: STAGES.includes(d.stage) ? d.stage : STAGES[0],
     calc: d.calc ? clean(DEFAULT_CALC, d.calc, CALC_ENUMS) : null,
     expenses: Array.isArray(d.expenses) ? d.expenses.filter(e => e && typeof e === 'object').map(e =>
-      ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note), stage: WORK_STAGES.some(w => w[1] === e.stage) ? e.stage : ''})) : [],
+      ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note), stage: WORK_STAGES.some(w => w[1] === e.stage) ? e.stage : '', chk: /^[a-z0-9]{1,40}$/i.test(str(e.chk)) ? str(e.chk) : ''})) : [],
     checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
     risks: cleanRisks(d.risks),
     owner: cleanOwner(d.owner), people: cleanPeople(d.people), docs: cleanDocs(d.docs), ready: d.ready === 'yes' || d.ready === 'no' ? d.ready : '', place: cleanPlace(d.place),
@@ -780,7 +780,7 @@ function xChipsHtml(list, cur, act) {
 function openExpSheet(d) {
   const el = $('#xsheet'); if (!el || !d) return;
   const last = (d.expenses || []).slice(-1)[0];
-  XS = {id: d.id, cat: last && EXP_CATS.includes(last.cat) ? last.cat : 'Материалы', stage: '', n: 0};
+  XS = {id: d.id, cat: last && EXP_CATS.includes(last.cat) ? last.cat : 'Материалы', stage: '', n: 0, chk: null};
   $('#xbox').innerHTML = '<h3>Новый расход</h3>' +
     '<label class="f">Сумма<div class="inwrap"><input type="text" inputmode="decimal" id="xSum" placeholder="например, 45к" autocomplete="off" aria-describedby="xHint"><span>₽</span></div></label>' +
     '<div class="xh" id="xHint">Можно «45к», «45 тыс», «1,2м»</div>' +
@@ -788,7 +788,8 @@ function openExpSheet(d) {
     '<div class="xl">Этап ремонта (необязательно)</div><div class="chips" id="xStages">' + xChipsHtml(WORK_STAGES.map(w => w[1]), '', 'x-stage') + '</div>' +
     '<div class="grid2" style="margin-top:12px"><label class="f">Дата<input type="date" id="xDate" value="' + today() + '"></label>' +
     '<label class="f">Комментарий<input type="text" id="xNote" placeholder="например, плитка" autocomplete="off"></label></div>' +
-    '<div class="row"><button type="button" class="btn pri" data-a="x-save">Добавить</button><button type="button" class="btn" data-a="x-more">Добавить и ещё</button></div>';
+    '<div class="xl">Фото чека (необязательно)</div><div class="row"><label class="btn" style="cursor:pointer">Приложить чек<input type="file" id="xChk" accept="image/*,application/pdf" style="display:none"></label><span class="small muted" id="xChkName" style="min-width:0;overflow-wrap:anywhere"></span></div>' +
+    '<div class="row" style="margin-top:12px"><button type="button" class="btn pri" data-a="x-save">Добавить</button><button type="button" class="btn" data-a="x-more">Добавить и ещё</button></div>';
   el.classList.add('on');
   const s = $('#xSum'); if (s && s.focus) s.focus();
 }
@@ -805,11 +806,14 @@ function xSave(more) {
   const sum = parseAmount($('#xSum').value);
   if (!(sum > 0)) { toast('Впишите сумму расхода'); $('#xSum').focus(); return; }
   d.expenses = d.expenses || [];
-  d.expenses.push({id: uid(), cat: XS.cat, sum, date: $('#xDate').value || today(), note: $('#xNote').value.trim(), stage: XS.stage});
+  const ex = {id: uid(), cat: XS.cat, sum, date: $('#xDate').value || today(), note: $('#xNote').value.trim(), stage: XS.stage, chk: ''};
+  d.expenses.push(ex);
+  const chkFile = XS.chk; XS.chk = null;
   d.updated = Date.now(); save(); renderDeal(d);
+  if (chkFile) expSaveReceipt(d.id, ex.id, chkFile);
   XS.n++;
   if (more) {
-    $('#xSum').value = ''; $('#xNote').value = ''; xHint(); $('#xSum').focus();
+    $('#xSum').value = ''; $('#xNote').value = ''; const cn = $('#xChkName'); if (cn) cn.textContent = ''; const ci = $('#xChk'); if (ci) ci.value = ''; xHint(); $('#xSum').focus();
     toast('Добавлено: ' + XS.n + '. Вводите следующий');
   } else { const n = XS.n; closeXSheet(); toast(n > 1 ? 'Добавлено расходов: ' + n : 'Расход добавлен'); }
 }
@@ -912,6 +916,57 @@ $('#xsheet').addEventListener('click', e => {
   else if (b.dataset.a === 'vh-voice') voiceToggle($('#vhText'), b, $('#vhSt'));
   else if (b.dataset.a === 'vh-go') vhGo();
 });
+// Чек к расходу: файл лежит в IndexedDB (хранилище docs, как файлы проекта), в расходе — только его id
+const CHK_EXT = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'pdf'];
+async function expSaveReceipt(dealId, expId, f) {
+  const ext = docExt(f.name) || (/^image\/(jpeg|png|webp|heic)/.test(f.type) ? f.type.split('/')[1].replace('jpeg', 'jpg') : '');
+  if (!CHK_EXT.includes(ext)) { toast('Чек не приложен: нужен PDF или фото'); return; }
+  if (f.size > DOC_LIMIT) { toast('Чек больше 15 МБ — не приложен'); return; }
+  const rec = {id: uid(), dealId, expId, ts: Date.now(), name: safeFileName('Чек ' + (f.name || '') ), ext, type: DOC_EXT[ext], size: f.size, tag: '', blob: new Blob([f], {type: DOC_EXT[ext]})};
+  try { await phTx('readwrite', s => s.put(rec), 'docs'); } catch (e) { toast('Чек не сохранился: хранилище браузера недоступно или заполнено'); return; }
+  const d = S.deals.find(x => x.id === dealId), ex = d && (d.expenses || []).find(x => x.id === expId);
+  if (!ex) { phTx('readwrite', s => s.delete(rec.id), 'docs').catch(() => {}); return; }   // расход или проект успели удалить
+  ex.chk = rec.id; save();
+  if (DF.id === dealId) DF.list.unshift(rec);
+  if (openDeal === dealId && S.tab === 'deals') renderDeal(d);
+  toast('Чек приложен к расходу');
+}
+async function expOpenReceipt(id) {
+  let f = null;
+  try { f = await phTx('readonly', s => s.get(id), 'docs'); } catch (e) {}
+  if (!f || !isBlob(f.blob)) { toast('Файл чека не найден'); return; }
+  const url = URL.createObjectURL(f.blob), a = document.createElement('a');
+  a.href = url;
+  if (!DOC_OPEN.includes(f.ext)) a.download = f.name; else { a.target = '_blank'; a.rel = 'noopener'; }
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 300000);
+}
+function expDropReceipt(ex) {
+  if (!ex || !ex.chk) return;
+  const id = ex.chk;
+  phTx('readwrite', s => s.delete(id), 'docs').catch(() => {});
+  DF.list = DF.list.filter(x => x.id !== id);
+}
+// Выгрузка расходов в CSV для Excel: разделитель «;», кодировка UTF-8 с меткой, защита от формул в ячейках
+function csvCell(v) {
+  let t = String(v == null ? '' : v).replace(/\r?\n/g, ' ');
+  if (/^[=+\-@\t]/.test(t)) t = "'" + t;
+  return '"' + t.replace(/"/g, '""') + '"';
+}
+function expensesCsv(d) {
+  const rows = [['Дата', 'Статья', 'Этап ремонта', 'Комментарий', 'Сумма, ₽']];
+  const list = (d.expenses || []).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+  list.forEach(e => rows.push([String(e.date || '').split('-').reverse().join('.'), e.cat, e.stage || '', e.note || '', Math.round(e.sum)]));
+  rows.push(['', '', '', 'Всего', Math.round(list.reduce((x, e) => x + e.sum, 0))]);
+  return '\ufeff' + rows.map(r => r.map((c, i) => i === 4 && typeof c === 'number' ? String(c) : csvCell(c)).join(';')).join('\r\n') + '\r\n';
+}
+function expensesCsvSave(d) {
+  const name = 'rashody-' + String(d.name || 'obekt').replace(/[^A-Za-z0-9А-Яа-яЁё]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) + '-' + today() + '.csv';
+  const url = URL.createObjectURL(new Blob([expensesCsv(d)], {type: 'text/csv;charset=utf-8'})), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Файл расходов сохранён (CSV, открывается в Excel)');
+}
 function openGlossary() {
   navTab('ref');
   const g = $('#gloss'); if (g) { g.open = true; g.scrollIntoView({block: 'start'}); }
@@ -1701,8 +1756,9 @@ function renderDeal(d) {
   if (exp.length) {
     h += '<table style="margin-top:12px">' + exp.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(e =>
       '<tr><td>' + esc(e.cat) + (e.stage ? ' · ' + esc(e.stage) : '') + (e.note ? '<br><span class="small muted">' + esc(e.note) + '</span>' : '') + '<br><span class="small muted">' + esc((e.date || '').split('-').reverse().join('.')) + '</span></td>' +
-      '<td class="n">' + rub(e.sum) + '<br><button class="back small" style="padding:4px 0;color:var(--bad)" data-a="exp-del" data-id="' + esc(e.id) + '">удалить</button></td></tr>').join('') +
-      '<tr class="total"><td>Всего потрачено</td><td class="n">' + rub(spent) + '</td></tr></table>';
+      '<td class="n">' + rub(e.sum) + '<br>' + (e.chk ? '<button class="back small" style="padding:4px 10px 4px 0" data-a="exp-chk" data-id="' + esc(e.chk) + '">чек</button>' : '') + '<button class="back small" style="padding:4px 0;color:var(--bad)" data-a="exp-del" data-id="' + esc(e.id) + '">удалить</button></td></tr>').join('') +
+      '<tr class="total"><td>Всего потрачено</td><td class="n">' + rub(spent) + '</td></tr></table>' +
+      '<button class="btn block" style="margin-top:10px" data-a="exp-csv">Выгрузить расходы в CSV (Excel)</button>';
   }
   h += '</div>';
   h += '<div id="pfBox">' + planFactCardHtml(d, p, c) + '</div>';
@@ -1906,6 +1962,15 @@ $('#xsheet').addEventListener('click', e => {
   else if (a === 'x-stage') { XS.stage = XS.stage === b.dataset.v ? '' : b.dataset.v; $('#xStages').innerHTML = xChipsHtml(WORK_STAGES.map(w => w[1]), XS.stage, 'x-stage'); }
 });
 $('#xsheet').addEventListener('input', e => { if (e.target.id === 'xSum') xHint(); });
+$('#xsheet').addEventListener('change', e => {
+  if (!XS || e.target.id !== 'xChk') return;
+  const f = e.target.files && e.target.files[0], nm = $('#xChkName');
+  if (!f) { XS.chk = null; if (nm) nm.textContent = ''; return; }
+  const ext = docExt(f.name) || (/^image\//.test(f.type) ? 'jpg' : '');
+  if (!CHK_EXT.includes(ext)) { toast('Нужен PDF или фото'); e.target.value = ''; XS.chk = null; if (nm) nm.textContent = ''; return; }
+  if (f.size > DOC_LIMIT) { toast('Файл больше 15 МБ'); e.target.value = ''; XS.chk = null; if (nm) nm.textContent = ''; return; }
+  XS.chk = f; if (nm) nm.textContent = 'Приложен: ' + safeFileName(f.name);
+});
 $('#xsheet').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'xSum') { e.preventDefault(); xSave(false); } });
 $('#report').addEventListener('click', e => {
   const b = e.target.closest('[data-ra]'); if (!b) return;
@@ -3560,8 +3625,10 @@ view.addEventListener('click', e => {
       break;
     case 'exp-new': if (d) openExpSheet(d); break;
     case 'exp-del':
-      if (d && confirm('Удалить этот расход?')) { d.expenses = d.expenses.filter(x => x.id !== b.dataset.id); save(); renderDeal(d); }
+      if (d && confirm('Удалить этот расход?')) { expDropReceipt(d.expenses.find(x => x.id === b.dataset.id)); d.expenses = d.expenses.filter(x => x.id !== b.dataset.id); save(); renderDeal(d); }
       break;
+    case 'exp-chk': expOpenReceipt(b.dataset.id); break;
+    case 'exp-csv': if (d) expensesCsvSave(d); break;
     case 'deal-del':
       if (d && confirm('Удалить сделку «' + d.name + '» со всеми расходами?')) {
         dealFilesPurge(d.id); S.deals = S.deals.filter(x => x.id !== d.id); if (S.calcDeal === d.id) S.calcDeal = null; save(); navBack();
