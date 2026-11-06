@@ -154,6 +154,17 @@ html[data-style="glass"] .fab{bottom:calc(108px + env(safe-area-inset-bottom))}
 .xq{display:flex;gap:6px;margin-top:8px}
 .xq button{flex:1;min-width:0;min-height:44px;font:inherit;font-size:14px;font-weight:600;border:0;border-radius:12px;background:var(--acc-soft);color:var(--gold-ink);cursor:pointer;padding:0 4px}
 .xq button:active{transform:scale(.96)}
+.rmrow{margin:10px 0}.rml{display:flex;justify-content:space-between;gap:10px}.rmbar{height:8px;border-radius:99px;background:var(--input);margin:5px 0 3px;overflow:hidden}.rmbar i{display:block;height:100%;border-radius:99px;background:var(--gold)}
+.stg.scen{table-layout:fixed;width:100%}.stg.scen td,.stg.scen th{font-size:12px;padding:6px 2px;overflow-wrap:anywhere;white-space:normal}.stg.scen td:first-child,.stg.scen th:first-child{width:27%;text-align:left}
+.gantt{position:relative}.gr{margin:9px 0}.gl{display:flex;justify-content:space-between;gap:8px;font-size:13px}.gt{position:relative;height:20px;margin-top:3px;background:var(--input);border-radius:6px;overflow:hidden}
+.gt i{position:absolute;top:0;height:100%;border-radius:6px;box-sizing:border-box}.gt .gp{top:0;height:7px;background:#B8C0CC}.gt .gf{top:8px;height:12px}
+.gf.s-done{background:var(--good)}.gf.s-work{background:var(--gold)}.gf.s-late{background:var(--bad)}.gf.s-wait{background:#9AA6B8}
+.gtoday{position:absolute;top:0;bottom:44px;width:0;border-left:2px dashed var(--bad);pointer-events:none}.gtoday span{position:absolute;bottom:-14px;left:0;transform:translateX(-50%);font-size:11px;color:var(--bad);background:var(--card);white-space:nowrap}.gtoday.l span{transform:none;left:-2px}.gtoday.r span{transform:translateX(-100%);left:2px}
+.gax{display:flex;justify-content:space-between;margin-top:20px}.gkey{margin-top:2px}.gkey u{display:inline-block;width:14px;height:7px;border-radius:3px;margin:0 4px 0 8px;vertical-align:middle;text-decoration:none}.gkey u.gp{background:#B8C0CC;margin-left:0}.gkey u.gf{background:var(--gold)}
+#tlview{display:none;position:fixed;inset:0;z-index:96;background:#080A0E;overflow:auto;overscroll-behavior:contain}#tlview.on{display:block}
+.tl-box{max-width:720px;margin:0 auto;padding:16px;color:#fff}.tl-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.tl-box img{display:block;width:100%;max-height:70vh;object-fit:contain;border-radius:14px;background:#000}.tl-cap{color:#C9CED6;margin:8px 0}.tl-box input[type=range]{width:100%;margin:8px 0}
+.tl-ctl{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}.tl-ctl .btn{min-width:52px;min-height:44px}
 .ba-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 14px}
 .ba-pair figure{margin:0;min-width:0}
 .ba-pair img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;background:var(--input)}
@@ -447,6 +458,7 @@ try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splas
 <div id="xsheet" role="dialog" aria-modal="true" aria-label="Новый расход"><div class="sh-back" data-a="x-close"></div><div class="sh-box" id="xbox"></div></div>
 <div id="report" role="dialog" aria-modal="true" aria-label="Отчёт инвестору"></div>
 <div id="pview" role="dialog" aria-modal="true" aria-label="Фото объекта"></div>
+<div id="tlview" role="dialog" aria-modal="true" aria-label="Таймлапс ремонта"></div>
 <script src="rayony-data.js"></script>
 <script>
 'use strict';
@@ -663,6 +675,20 @@ function cleanMat(src) {
   return o;
 }
 
+/* Три сценария: на сколько отклоняем цену продажи, ремонт и срок (нужно до load) */
+const SCEN_DEF = {sale: 5, repair: 10, months: 2};
+const SCEN_RANGE = {sale: [0, 30], repair: [0, 50], months: [0, 12]};
+function cleanScen(src) {
+  const o = Object.assign({}, SCEN_DEF);
+  if (!src || typeof src !== 'object') return o;
+  Object.keys(SCEN_DEF).forEach(k => {
+    const v = src[k], n = typeof v === 'string' ? Number(v.replace(',', '.')) : Number(v), r = SCEN_RANGE[k];
+    if (v == null || v === '' || typeof v === 'boolean' || !isFinite(n) || n < r[0] || n > r[1]) return;
+    o[k] = k === 'months' ? Math.round(n) : n;
+  });
+  return o;
+}
+
 /* ===== Хранилище ===== */
 function load() {
   let s = null;
@@ -687,6 +713,7 @@ function load() {
     cal: cleanCal(s.cal),
     book: cleanBook(s.book),
     mat: cleanMat(s.mat),
+    scen: cleanScen(s.scen),
     // Режим «Просто / Полный»: новая установка — просто; у тех, у кого уже есть проекты, — полный
     mode: s.mode === 'full' || s.mode === 'simple' ? s.mode : (Array.isArray(s.deals) && s.deals.some(d => d && !d.demo) ? 'full' : 'simple'),
     tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'notes', 'mat'].includes(s.tab) ? s.tab : 'home'
@@ -1256,6 +1283,60 @@ function stressGridHtml(c) {
   return h + '<p class="note">Ориентир по рынку: на вторичке Москвы в 2026 году квартиры продаются за 1–1,5 месяца, а торг в среднем около 5% (по новостным данным, не официальная статистика). Свой срок и цену задавайте по объявлениям рядом.</p></div>';
 }
 
+/* ===== Три сценария: оптимист, реалист, пессимист ===== */
+function scenValid(sc) {
+  return !!sc && Object.keys(SCEN_RANGE).every(k => { const n = Number(sc[k]); return isFinite(n) && n >= SCEN_RANGE[k][0] && n <= SCEN_RANGE[k][1]; });
+}
+function scenTriple(c, sc) {
+  const dm = Math.round(sc.months), ds = sc.sale / 100, dr = sc.repair / 100, m0 = Math.max(1, Math.round(c.months));
+  const mk = (name, cls, sale, repair, months) => ({name, cls, sale, repair, months, r: compute(Object.assign({}, c, {sale, repair, months}))});
+  return [
+    mk('Оптимист', 'opt', c.sale * (1 + ds), c.repair * (1 - dr), Math.max(1, m0 - dm)),
+    mk('Реалист', 'real', c.sale, c.repair, m0),
+    mk('Пессимист', 'pess', c.sale * (1 - ds), c.repair * (1 + dr), m0 + dm)
+  ];
+}
+function scenTableHtml(c) {
+  if (!scenValid(S.scen)) return '<p class="small" style="color:var(--bad);margin:8px 0 0">Отклонения: цена продажи 0–30%, ремонт 0–50%, срок 0–12 мес.</p>';
+  const t = scenTriple(c, S.scen), mo = x => String(Math.round(x * 10) / 10).replace('.', ',') + ' мес.';
+  const verdict = r => r.net < 0 ? ['убыток', 'neg'] : r.annual >= c.target && !(c.minProfit > 0 && r.net < c.minProfit) ? ['цель', 'pos'] : ['ниже цели', ''];
+  return '<table class="stg scen"><tr><th></th>' + t.map(x => '<th class="n">' + x.name + '</th>').join('') + '</tr>' +
+    '<tr><td>Цена продажи, ₽</td>' + t.map(x => '<td class="n">' + num(x.sale) + '</td>').join('') + '</tr>' +
+    '<tr><td>Ремонт, ₽</td>' + t.map(x => '<td class="n">' + num(x.repair) + '</td>').join('') + '</tr>' +
+    '<tr><td>Срок</td>' + t.map(x => '<td class="n">' + mo(x.months) + '</td>').join('') + '</tr>' +
+    '<tr class="total"><td>Чистая прибыль, ₽</td>' + t.map(x => '<td class="n ' + (x.r.net < 0 ? 'neg' : 'pos') + '">' + num(x.r.net) + '</td>').join('') + '</tr>' +
+    '<tr><td>Годовых</td>' + t.map(x => '<td class="n">' + pct(x.r.annual) + '</td>').join('') + '</tr>' +
+    '<tr><td>Итог</td>' + t.map(x => { const v = verdict(x.r); return '<td class="n ' + v[1] + '">' + v[0] + '</td>'; }).join('') + '</tr></table>';
+}
+function scenHtml(c) {
+  if (!(c.price > 0 && c.sale > 0)) return '';
+  const f = (k, l, suf) => '<label class="f"><span>' + l + '</span><div class="inwrap"><input type="text" inputmode="decimal" data-sc="' + k + '" value="' + (S.scen[k] >= 0 ? esc(String(S.scen[k]).replace('.', ',')) : '') + '"><span>' + suf + '</span></div></label>';
+  return '<div class="card"><h3>Три сценария</h3><p class="small muted" style="margin-top:0">Реалист — ваши цифры. Оптимист и пессимист сдвигают цену продажи, ремонт и срок в разные стороны на заданную величину. «Цель» — доходность и прибыль не ниже заданных в расчёте.</p>' +
+    '<div class="grid2">' + f('sale', 'Цена продажи ±', '%') + f('repair', 'Ремонт ±', '%') + f('months', 'Срок ±', 'мес.') + '</div>' +
+    '<div id="scenTab" style="margin-top:10px">' + scenTableHtml(c) + '</div></div>';
+}
+
+/* ===== Свод расходов по комнатам ===== */
+function roomTotals(d) {
+  const by = {}, exp = (d.expenses || []).filter(e => e && e.sum > 0);
+  exp.forEach(e => { const r = cleanRoom(e.room) || ''; const o = by[r] || (by[r] = {room: r, sum: 0, n: 0}); o.sum += e.sum; o.n++; });
+  const total = exp.reduce((x, e) => x + e.sum, 0);
+  const rows = Object.keys(by).map(k => by[k]).sort((a, b) => (a.room === '') - (b.room === '') || b.sum - a.sum).map(o => Object.assign(o, {share: total > 0 ? o.sum / total * 100 : 0}));
+  return {rows, total, tagged: rows.some(r => r.room !== '')};
+}
+function roomCardHtml(d) {
+  const t = roomTotals(d);
+  if (!t.rows.length) return '';
+  const top = Math.max.apply(null, t.rows.map(r => r.sum));
+  const pc = v => (Math.round(v * 10) / 10 + '').replace('.', ',') + '%';
+  return '<div class="card"><h3>Расходы по комнатам</h3>' +
+    t.rows.map(r => '<div class="rmrow"><div class="rml"><span>' + esc(r.room || 'Без комнаты') + '</span><b>' + rub(r.sum) + '</b></div>' +
+      '<div class="rmbar" aria-hidden="true"><i style="width:' + (top > 0 ? Math.max(2, r.sum / top * 100) : 0).toFixed(1) + '%' + (r.room ? '' : ';background:var(--line)') + '"></i></div>' +
+      '<div class="small muted">' + pc(r.share) + ' от всех расходов · записей: ' + r.n + '</div></div>').join('') +
+    '<div class="kz-sum"><span>Всего</span><b>' + rub(t.total) + '</b></div>' +
+    (t.tagged ? '' : '<p class="small muted" style="margin:8px 0 0">Комнаты в расходах пока не отмечены. Выбирайте комнату при добавлении расхода, и здесь появится разбивка.</p>') + '</div>';
+}
+
 /* ===== Итоги по всем сделкам ===== */
 function portfolio(deals) {
   deals = deals.filter(d => !d.demo);   // учебный пример в итоги не входит
@@ -1473,6 +1554,7 @@ function updateCalcResults() {
     a.scen.map(s => '<tr><td>' + s.name + '</td><td class="n ' + (s.r.net < 0 ? 'neg' : '') + '">' + rub(s.r.net) + '</td><td class="n">' + pct(s.r.annual) + '</td></tr>').join('') +
     '</table><p class="note">Минус в сценарии — значит, при таком повороте сделка убыточна.</p></div>';
   h += stressGridHtml(c);
+  h += scenHtml(c);
   $('#calcRes').innerHTML = h;
 }
 
@@ -1895,6 +1977,7 @@ function renderDeal(d) {
       '<button class="btn block" style="margin-top:10px" data-a="exp-csv">Выгрузить расходы в CSV (Excel)</button>';
   }
   h += '</div>';
+  h += roomCardHtml(d);
   if (!dealOpen(d, 2, exp.length > 0)) h = h.slice(0, hs2);
   const hs3 = h.length;
   h += shopCardHtml(d);
@@ -1935,6 +2018,27 @@ function worksSumHtml(wp, c) {
     '<div class="kpi"><span>' + (wp.shift < 0 ? 'Экономия на простое' : 'Потери на простое') + '</span><b' + (wp.shift > 0 ? ' class="neg"' : '') + '>' + rub(Math.abs(cost)) + '</b></div></div>' +
     '<p class="note">Потери — сдвиг в днях, умноженный на стоимость месяца простоя по расчёту (' + rub(idle) + ' в месяц) и делённый на 30.</p>';
 }
+
+/* ===== Полосы графика ремонта (Гант) ===== */
+function ganttGeom(wp, t0) {
+  if (!wp || !wp.rows.length) return null;
+  const start = wp.rows[0].pStart, end = Math.max(wp.planEnd, wp.foreEnd, t0 == null ? 0 : t0, start + 1), total = end - start;
+  const pc = x => (x - start) / total * 100, wd = (a, b) => Math.max(1.5, (b - a) / total * 100);
+  return {start, end, total, todayPct: t0 != null && t0 >= start && t0 <= end ? pc(t0) : null,
+    rows: wp.rows.map(r => ({k: r.k, name: r.name, state: r.state, days: r.days, pl: pc(r.pStart), pw: wd(r.pStart, r.pEnd), fl: pc(r.fStart), fw: wd(r.fStart, r.fEnd)}))};
+}
+function ganttHtml(wp) {
+  const g = ganttGeom(wp, isoDay(today()));
+  if (!g) return '';
+  const stTxt = {done: 'готово', work: 'в работе', late: 'просрочено', wait: 'ждёт'};
+  return '<div class="gantt" role="group" aria-label="Полосы этапов ремонта">' +
+    g.rows.map(r => '<div class="gr"><div class="gl"><span>' + esc(r.name) + '</span><span class="small muted">' + r.days + ' дн. · ' + stTxt[r.state] + '</span></div>' +
+      '<div class="gt"><i class="gp" style="left:' + r.pl.toFixed(2) + '%;width:' + r.pw.toFixed(2) + '%"></i>' +
+      '<i class="gf s-' + r.state + '" style="left:' + r.fl.toFixed(2) + '%;width:' + r.fw.toFixed(2) + '%"></i></div></div>').join('') +
+    (g.todayPct != null ? '<div class="gtoday' + (g.todayPct < 12 ? ' l' : g.todayPct > 88 ? ' r' : '') + '" style="left:' + g.todayPct.toFixed(2) + '%" title="Сегодня"><span>сегодня</span></div>' : '') +
+    '<div class="gax small muted"><span>' + dayRu(g.start) + '</span><span>' + dayRu(g.end) + '</span></div>' +
+    '<div class="small muted gkey"><u class="gp"></u> по плану <u class="gf s-work"></u> факт и прогноз</div></div>';
+}
 function worksCardHtml(d) {
   const w = d.works;
   if (!w) {
@@ -1944,6 +2048,7 @@ function worksCardHtml(d) {
   }
   const wp = worksPlan(w, today()), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
   return '<div class="card"><h3>График ремонта</h3>' + progressHtml(d) + '<label class="f">Начало ремонта<input type="date" data-w="start" value="' + esc(w.start) + '"></label>' +
+    '<div id="ganttBox" style="margin-top:12px">' + ganttHtml(wp) + '</div>' +
     '<table style="margin-top:12px">' + wp.rows.map(r =>
       '<tr><td id="wi-' + r.k + '">' + workInfoHtml(r) + '</td>' +
       '<td class="n"><input type="text" inputmode="numeric" data-w="days" data-wk="' + r.k + '" value="' + r.days + '" style="width:54px;text-align:right" aria-label="Дней: ' + esc(r.name) + '"> дн.<br>' +
@@ -1957,6 +2062,7 @@ function refreshWorks(d) {
   const wp = worksPlan(d.works, today()), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
   wp.rows.forEach(r => { const el = $('#wi-' + r.k); if (el) el.innerHTML = workInfoHtml(r); });
   const sum = $('#worksSum'); if (sum) sum.innerHTML = worksSumHtml(wp, c);
+  const gb = $('#ganttBox'); if (gb) gb.innerHTML = ganttHtml(wp);
   const pg = $('#progBox'); if (pg) pg.outerHTML = progressHtml(d);
   const pf = $('#pfBox'); if (pf) pf.innerHTML = planFactCardHtml(d, dealPlan(d), c);
 }
@@ -2122,14 +2228,87 @@ async function baLoad(d) {
   const by = {};
   list.filter(x => x && x.dealId === d.id && isBlob(x.blob) && cleanRoom(x.room)).forEach(x => { (by[x.room] = by[x.room] || []).push(x); });
   const rooms = ROOMS.filter(r => by[r] && by[r].length >= 2);
-  if (!rooms.length) { box.innerHTML = '<h3>До и после</h3>' + hint; return; }
-  box.innerHTML = '<h3>До и после</h3>' + rooms.map(r => {
+  const nAll = list.filter(x => x && x.dealId === d.id && isBlob(x.blob)).length;
+  const tlBtn = nAll >= 2 ? '<button type="button" class="btn block" style="margin:10px 0" data-a="tl-open">Таймлапс ремонта · ' + nAll + ' фото</button>' : '';
+  if (!rooms.length) { box.innerHTML = '<h3>До и после</h3>' + hint + tlBtn; return; }
+  box.innerHTML = '<h3>До и после</h3>' + tlBtn + rooms.map(r => {
     const a = by[r].slice().sort((x, y) => (x.ts || 0) - (y.ts || 0)), first = a[0], last = a[a.length - 1];
     const u1 = URL.createObjectURL(first.blob), u2 = URL.createObjectURL(last.blob); BA_URLS.push(u1, u2);
     return '<div class="shopst" style="margin-top:6px">' + esc(r) + ' · снимков: ' + a.length + '</div><div class="ba-pair"><figure><img alt="До: ' + esc(r) + '" src="' + u1 + '"><figcaption>До · ' + esc(fmtDT(first.ts)) + '</figcaption></figure>' +
       '<figure><img alt="Сейчас: ' + esc(r) + '" src="' + u2 + '"><figcaption>Сейчас · ' + esc(fmtDT(last.ts)) + '</figcaption></figure></div>';
   }).join('');
 }
+
+/* ===== Таймлапс ремонта: слайдшоу фото объекта по датам ===== */
+const TL = {urls: [], items: [], i: 0, timer: 0, ms: 1000, play: false, busy: false, opener: null};
+const TL_MAX = 80, TL_SPEEDS = [2000, 1000, 500, 250];
+// Равномерная выборка кадров: если фото больше предела, берём равноудалённые, первый и последний кадр остаются
+function tlPick(list, max) {
+  const a = list.slice();
+  if (a.length <= max) return a;
+  const out = [];
+  for (let i = 0; i < max; i++) out.push(a[Math.round(i * (a.length - 1) / (max - 1))]);
+  return out;
+}
+const tlSpeedLbl = ms => (ms / 1000 + '').replace('.', ',') + ' с';
+function tlShow(i) {
+  if (!TL.items.length) return;
+  TL.i = (i + TL.items.length) % TL.items.length;
+  const f = TL.items[TL.i], img = document.getElementById('tlImg'); if (!img) return;
+  img.src = TL.urls[TL.i]; img.alt = 'Кадр ' + (TL.i + 1) + ' из ' + TL.items.length;
+  const cap = document.getElementById('tlCap'); if (cap) cap.textContent = fmtDT(f.ts) + (cleanRoom(f.room) ? ' · ' + f.room : '') + ' · ' + (TL.i + 1) + ' / ' + TL.items.length;
+  const sk = document.getElementById('tlSeek'); if (sk) sk.value = String(TL.i);
+}
+function tlTick() {
+  clearTimeout(TL.timer); TL.timer = 0;
+  if (!TL.play) return;
+  TL.timer = setTimeout(() => { tlShow(TL.i + 1); tlTick(); }, TL.ms);
+}
+function tlSetPlay(on) {
+  TL.play = on; const b = document.getElementById('tlPlay'); if (b) { b.textContent = on ? 'Пауза' : 'Играть'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  tlTick();
+}
+function tlClose() {
+  clearTimeout(TL.timer); TL.timer = 0; TL.play = false;
+  TL.urls.forEach(u => URL.revokeObjectURL(u)); TL.urls = []; TL.items = [];
+  const el = document.getElementById('tlview'), was = el && el.classList.contains('on'); if (el) { el.classList.remove('on'); el.innerHTML = ''; }
+  if (was && TL.opener && TL.opener.isConnected && TL.opener.focus) { try { TL.opener.focus(); } catch (e) {} }
+  TL.opener = null;
+}
+async function tlOpen(d) {
+  if (TL.busy) return; TL.busy = true;
+  try {
+    let list = [];
+    try { list = (await phTx('readonly', s => s.getAll())) || []; } catch (e) { toast('Хранилище фото недоступно'); return; }
+    const all = list.filter(x => x && x.dealId === d.id && isBlob(x.blob)).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    if (all.length < 2) { toast('Для таймлапса нужно хотя бы два фото проекта'); return; }
+    tlClose();
+    TL.items = tlPick(all, TL_MAX); TL.urls = TL.items.map(x => URL.createObjectURL(x.blob)); TL.i = 0;
+    const el = document.getElementById('tlview'); if (!el) return;
+    const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    el.innerHTML = '<div class="tl-box"><div class="tl-top"><b>' + esc(d.name || 'Объект') + '</b><button type="button" class="btn" data-a="tl-close">Закрыть</button></div>' +
+      '<img id="tlImg" alt=""><p class="small tl-cap" id="tlCap" role="status"></p>' +
+      '<input type="range" id="tlSeek" min="0" max="' + (TL.items.length - 1) + '" value="0" aria-label="Кадр">' +
+      '<div class="tl-ctl"><button type="button" class="btn" data-a="tl-prev" aria-label="Предыдущий кадр">‹</button>' +
+      '<button type="button" class="btn pri" id="tlPlay" data-a="tl-play" aria-pressed="false">Играть</button>' +
+      '<button type="button" class="btn" data-a="tl-next" aria-label="Следующий кадр">›</button>' +
+      '<button type="button" class="btn" id="tlSpeed" data-a="tl-speed" aria-label="Время кадра">' + tlSpeedLbl(TL.ms) + '</button></div>' +
+      (TL.items.length < all.length ? '<p class="small tl-cap">Показано ' + TL.items.length + ' из ' + all.length + ' снимков (равномерно).</p>' : '') + '</div>';
+    TL.opener = document.activeElement; el.classList.add('on'); tlShow(0); tlSetPlay(!reduce);
+    const cb = el.querySelector('[data-a="tl-close"]'); if (cb && cb.focus) cb.focus();
+  } finally { TL.busy = false; }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('#tlview [data-a]'); if (!b) return;
+  const a = b.dataset.a;
+  if (a === 'tl-close') tlClose();
+  else if (a === 'tl-play') tlSetPlay(!TL.play);
+  else if (a === 'tl-prev') { tlShow(TL.i - 1); tlTick(); }
+  else if (a === 'tl-next') { tlShow(TL.i + 1); tlTick(); }
+  else if (a === 'tl-speed') { TL.ms = TL_SPEEDS[(TL_SPEEDS.indexOf(TL.ms) + 1) % TL_SPEEDS.length]; b.textContent = tlSpeedLbl(TL.ms); tlTick(); }
+});
+document.addEventListener('input', e => { if (e.target && e.target.id === 'tlSeek') { tlShow(Number(e.target.value) || 0); tlTick(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && TL.items.length) tlClose(); });
 const MB = {room: ''};
 let MB_URLS = [];
 const MOOD_MAX = 40, MOOD_LIMIT = 8 * 1024 * 1024, MOOD_EXT = {jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp'};
@@ -3851,7 +4030,7 @@ function navWrite(method, st, depth) {
   try { window.history[method](Object.assign({nav: 1}, st, {depth, y: st.y || 0}), ''); } catch (e) {}
 }
 function navShow(st, cls, y) {
-  closeReport(); closeSheet(); closeXSheet(); closePView();
+  closeReport(); closeSheet(); closeXSheet(); closePView(); tlClose();
   openDeal = st.deal; rayonView = st.rayon; rayonFrom = st.from;
   go(st.tab, cls, y);
 }
@@ -3885,6 +4064,7 @@ function navTab(tab) {
   }
 }
 window.addEventListener('popstate', e => {
+  if (TL.items.length) tlClose();
   if (navPending) { const p = navPending; navPending = null; navDepth = 0; navCommitTab(p); return; }
   if (!e.state || e.state.nav !== 1) return;
   const st = navClean(e.state), cls = st.depth < navDepth ? 'anim-left' : 'anim-right';
@@ -4219,6 +4399,7 @@ view.addEventListener('click', e => {
     case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo' || b.dataset.v === 'cal' || b.dataset.v === 'notes' || b.dataset.v === 'mat') navPush(navRoot(b.dataset.v), 'anim-right'); break;
     case 'bk-voice': case 'bk-dvoice': case 'bk-add': case 'bk-dadd': case 'bk-pin': case 'bk-edit': case 'bk-cancel': case 'bk-save': case 'bk-del': bkAction(a, b); break;
     case 'mat-add': matAdd(); break;
+    case 'tl-open': { const d = curDeal(); if (d) tlOpen(d); break; }
     case 'cal-voice': voiceToggle($('#calText'), b, $('#calSt')); break;
     case 'cal-add': calAdd(); break;
     case 'cal-del': { const id = b.dataset.id; if (S.cal.some(e => e.id === id) && confirm('Удалить запись?')) { S.cal = S.cal.filter(e => e.id !== id); save(); calPaint(); } break; }
@@ -4407,6 +4588,10 @@ view.addEventListener('input', e => {
     const k = t.dataset.mt, n = parseNum(t.value), rg = MAT_RANGE[k];
     S.mat[k] = isFinite(n) ? n : -1;
     save(); const res = $('#matRes'); if (res) res.innerHTML = matResHtml();
+  }
+  else if (t.dataset.sc && SCEN_DEF[t.dataset.sc] !== undefined) {
+    const n = parseNum(t.value); S.scen[t.dataset.sc] = isFinite(n) && t.value.trim() !== '' ? n : -1; save();
+    const el = $('#scenTab'); if (el) el.innerHTML = scenTableHtml(S.calc);
   }
   else if (t.dataset.bk === 'edit') BK.etext = t.value.slice(0, BOOK_LEN);
   else if (t.dataset.bk === 'text') BK.text = t.value.slice(0, BOOK_LEN);

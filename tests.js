@@ -1366,6 +1366,73 @@ vm.runInContext(`
 }
 `, ctx);
 
+/* --- Три сценария, расходы по комнатам, Гант, таймлапс --- */
+vm.runInContext(`
+{
+  const c = Object.assign({}, DEFAULT_CALC, {price: 5000000, repair: 800000, sale: 7000000, months: 6});
+  const t = scenTriple(c, {sale: 5, repair: 10, months: 2});
+  check('сценарии: три колонки в нужном порядке', t.length === 3 && t[0].name === 'Оптимист' && t[1].name === 'Реалист' && t[2].name === 'Пессимист');
+  check('сценарии: оптимист — цена +5%, ремонт −10%, срок −2', Math.round(t[0].sale) === 7350000 && Math.round(t[0].repair) === 720000 && t[0].months === 4, JSON.stringify([t[0].sale, t[0].repair, t[0].months]));
+  check('сценарии: пессимист — цена −5%, ремонт +10%, срок +2', Math.round(t[2].sale) === 6650000 && Math.round(t[2].repair) === 880000 && t[2].months === 8);
+  check('сценарии: реалист совпадает с обычным расчётом', t[1].r.net === compute(c).net && t[1].sale === c.sale);
+  check('сценарии: прибыль убывает от оптимиста к пессимисту', t[0].r.net > t[1].r.net && t[1].r.net > t[2].r.net, t.map(x => x.r.net));
+  const z = scenTriple(c, {sale: 0, repair: 0, months: 0});
+  check('сценарии: нулевые отклонения — все три равны', z[0].r.net === z[1].r.net && z[2].r.net === z[1].r.net);
+  const tf = scenTriple(Object.assign({}, c, {months: 1.4}), {sale: 5, repair: 10, months: 2});
+  check('сценарии: дробный срок округляется так же, как в расчёте', tf[1].months === 1 && tf[0].months === 1 && tf[2].months === 3 && tf[1].r.net === compute(Object.assign({}, c, {months: 1.4})).net);
+  check('сценарии: срок 0,5 даёт месяц, оптимист не «дольше» реалиста', scenTriple(Object.assign({}, c, {months: 0.5}), {sale: 5, repair: 10, months: 2}).every((x, i, a) => x.months >= 1 && a[0].months <= a[1].months));
+  check('сценарии: срок оптимиста не уходит ниже месяца', scenTriple(Object.assign({}, c, {months: 2}), {sale: 5, repair: 10, months: 12})[0].months === 1);
+  check('сценарии: допустимые значения', scenValid({sale: 5, repair: 10, months: 2}) && scenValid({sale: 0, repair: 0, months: 0}) && scenValid({sale: 30, repair: 50, months: 12}));
+  check('сценарии: вне диапазона и мусор отвергаются', !scenValid({sale: 31, repair: 10, months: 2}) && !scenValid({sale: 5, repair: 51, months: 2}) && !scenValid({sale: 5, repair: 10, months: 13}) && !scenValid({sale: -1, repair: 10, months: 2}) && !scenValid({sale: NaN, repair: 10, months: 2}) && !scenValid(null));
+  const cs = cleanScen({sale: '7,5', repair: 99, months: 3.6});
+  check('сценарии: чистка сохраняемого', cs.sale === 7.5 && cs.repair === 10 && cs.months === 4, JSON.stringify(cs));
+  check('сценарии: чистка не-объекта даёт значения по умолчанию', JSON.stringify(cleanScen(null)) === JSON.stringify(SCEN_DEF) && JSON.stringify(cleanScen('x')) === JSON.stringify(SCEN_DEF));
+  const keepScen = S.scen; S.scen = {sale: 5, repair: 10, months: 2};
+  const th = scenTableHtml(c);
+  check('сценарии: таблица содержит три колонки и итог', /Оптимист/.test(th) && /Реалист/.test(th) && /Пессимист/.test(th) && /Чистая прибыль/.test(th) && !/NaN|undefined|Infinity/.test(th));
+  S.scen = {sale: 99, repair: 10, months: 2};
+  check('сценарии: неверное отклонение — подсказка вместо таблицы', /Отклонения:/.test(scenTableHtml(c)) && !/<table/.test(scenTableHtml(c)));
+  S.scen = keepScen;
+  check('сценарии: без цен карточки нет', scenHtml(Object.assign({}, c, {price: 0})) === '' && scenHtml(Object.assign({}, c, {sale: 0})) === '');
+
+  // расходы по комнатам
+  const dRooms = {expenses: [{sum: 100, room: 'Кухня'}, {sum: 300, room: 'Ванная'}, {sum: 100, room: 'Кухня'}, {sum: 100, room: ''}, {sum: 0, room: 'Кухня'}, {sum: 50, room: 'Выдуманная'}]};
+  const rt = roomTotals(dRooms);
+  check('комнаты: итог и порядок (по убыванию, «без комнаты» в конце)', rt.total === 650 && rt.rows.map(r => r.room).join('|') === 'Ванная|Кухня|', rt.rows.map(r => r.room));
+  check('комнаты: суммы, число записей и доли', rt.rows[0].sum === 300 && rt.rows[1].sum === 200 && rt.rows[1].n === 2 && rt.rows[2].sum === 150 && Math.abs(rt.rows.reduce((x, r) => x + r.share, 0) - 100) < 1e-9);
+  check('комнаты: нулевой расход не считается записью', rt.rows[1].n === 2);
+  check('комнаты: неизвестная комната попадает в «без комнаты»', rt.rows[2].room === '' && rt.rows[2].n === 2);
+  check('комнаты: нет расходов — нет карточки', roomCardHtml({expenses: []}) === '' && roomTotals({expenses: []}).total === 0);
+  check('комнаты: без отмеченных комнат — подсказка', /пока не отмечены/.test(roomCardHtml({expenses: [{sum: 100, room: ''}]})) && !/пока не отмечены/.test(roomCardHtml(dRooms)));
+  check('комнаты: экранирование и рубли', /Ванная/.test(roomCardHtml(dRooms)) && /Без комнаты/.test(roomCardHtml(dRooms)) && !/NaN|undefined/.test(roomCardHtml(dRooms)));
+
+  // Гант
+  const w = cleanWorks({start: '2026-01-10'});
+  const wp = worksPlan(w, '2026-01-12'), g = ganttGeom(wp, isoDay('2026-01-12'));
+  check('гант: ось 64 дня по плану', g.total === 64 && g.rows.length === 5);
+  check('гант: первая полоса с нуля, ширина 5/64', g.rows[0].pl === 0 && Math.abs(g.rows[0].pw - 5 / 64 * 100) < 1e-9);
+  check('гант: полосы плана идут встык и занимают всю ось', Math.abs(g.rows.reduce((x, r) => x + r.pw, 0) - 100) < 1e-6 && Math.abs(g.rows[1].pl - 5 / 64 * 100) < 1e-9);
+  check('гант: линия «сегодня» на 2-м дне', Math.abs(g.todayPct - 2 / 64 * 100) < 1e-9);
+  check('гант: сегодня до начала ремонта — линии нет', ganttGeom(worksPlan(w, '2026-01-01'), isoDay('2026-01-01')).todayPct === null);
+  const late = ganttGeom(worksPlan(w, '2026-06-01'), isoDay('2026-06-01'));
+  check('гант: затянутый ремонт расширяет ось, всё внутри 0–100%', late.total > 64 && late.rows.every(r => r.fl >= 0 && r.fl + r.fw <= 100.0001 && r.pl + r.pw <= 100.0001) && late.todayPct <= 100);
+  const wd = cleanWorks({start: '2026-01-10', items: [{k: 'demo', days: 0}]});
+  check('гант: этап в 0 дней виден тонкой полосой', ganttGeom(worksPlan(wd, '2026-01-12'), isoDay('2026-01-12')).rows[0].pw >= 1.5);
+  check('гант: нет графика — нет полос', ganttGeom(null, 1) === null && ganttHtml(null) === '');
+  const gh = ganttHtml(wp);
+  check('гант: разметка с этапами, подписью и без NaN', /Демонтаж/.test(gh) && /Меблировка/.test(gh) && /сегодня/.test(gh) && !/NaN|undefined/.test(gh));
+  check('гант: статусы в классах полос', /s-work|s-wait|s-done|s-late/.test(gh));
+
+  // таймлапс: выборка кадров
+  const arr = Array.from({length: 200}, (_, i) => i);
+  const pk = tlPick(arr, 80);
+  check('таймлапс: выборка до предела, первый и последний кадр на месте', pk.length === 80 && pk[0] === 0 && pk[79] === 199);
+  check('таймлапс: выборка по порядку, без повторов', pk.every((v, i) => i === 0 || v > pk[i - 1]));
+  check('таймлапс: мало кадров — берём все', JSON.stringify(tlPick([1, 2, 3], 80)) === '[1,2,3]' && tlPick([], 80).length === 0);
+  check('таймлапс: подпись скорости', tlSpeedLbl(1000) === '1 с' && tlSpeedLbl(250) === '0,25 с');
+}
+`, ctx);
+
 Promise.all(ctx.pendingTests || []).then(() => {
   console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
   process.exit(fail ? 1 : 0);
