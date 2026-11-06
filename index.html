@@ -135,6 +135,18 @@ td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left;vertic
 td.n,th.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 tr.total td{font-weight:700;border-bottom:0}
 .neg{color:var(--bad)} .pos{color:var(--good)}
+.pbar{height:10px;border-radius:99px;background:var(--input);overflow:hidden;margin:8px 0}
+.pbar i{display:block;height:100%;min-width:0;border-radius:99px;background:var(--gold);transition:width .3s}
+.pbar.good i{background:var(--good)} .pbar.warn i{background:var(--warn)} .pbar.bad i{background:var(--bad)}
+.shopit{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.shopit .ck{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid var(--line);background:none;color:#fff;font:inherit;font-weight:700;cursor:pointer;padding:0}
+.shopit .ck.on{background:var(--good);border-color:var(--good)}
+.shopit .nm{flex:1;min-width:0;overflow-wrap:anywhere}
+.shopit .nm.dn{text-decoration:line-through;color:var(--muted)}
+.shopit input{width:92px;text-align:right}
+.shopst{font-size:12.5px;font-weight:600;color:var(--muted);margin:14px 0 0;text-transform:uppercase;letter-spacing:.03em}
+.hot button{display:block;width:100%;text-align:left;font:inherit;color:inherit;border:0;border-top:1px solid var(--line);background:none;padding:10px 0;cursor:pointer}
+.hot button:first-of-type{border-top:0}
 .pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--input);color:var(--muted)}
 .pill.st{background:var(--warn-bg);color:var(--warn);border-color:transparent}
 .deal{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;border:0}
@@ -486,6 +498,7 @@ const TERMS = {
   step: ['Шаг аукциона', 'На сколько процентов от начальной цены повышается ставка за один шаг. Обычно около 5%.'],
   drop: ['Снижение за этап', 'На сколько процентов от начальной цены падает цена лота с каждым этапом публичного предложения. Ждать дешевле, но лот может достаться другому.'],
   risk: ['Проблемы объекта и резерв', 'Кнопка «!» у пункта проверки отмечает найденную проблему. В поле «Резерв» впишите, сколько она может стоить (юрист, долги, суд). Сумма вычитается из прогноза прибыли в сделке и в отчёте инвестору.'],
+  safecash: ['Безопасный кэш', 'Деньги, которые вы заранее отложили сверх сметы на непредвиденное: по умолчанию 10% от ремонта и мебели. Из них вычитаются перерасход по статьям и резерв на проблемы объекта. Пока остаток больше нуля, неожиданные траты не ломают расчёт.'],
   planfact: ['План / факт', 'Сравнение того, что заложили в расчёт (план), с тем, что реально потратили (факт). Перерасход и сдвиг сроков уменьшают прогноз прибыли.'],
   flip: ['Флиппинг', 'Купить квартиру, сделать ремонт и продать дороже. Прибыль — разница между продажей и всеми затратами, включая налог.'],
   egrn: ['Выписка ЕГРН', 'Официальный документ о квартире: собственник, площадь, кадастровая стоимость, обременения и аресты. Заказывается на Госуслугах или в МФЦ.'],
@@ -704,6 +717,24 @@ function cleanPlace(pl) {
   if (typeof lat !== 'number' || typeof lon !== 'number' || !isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
   return {lat, lon, address: typeof pl.address === 'string' ? pl.address.trim().slice(0, 200) : ''};
 }
+// Комнаты: метка у расхода и у фото
+const ROOMS = ['Кухня', 'Ванная', 'Комната', 'Коридор', 'Балкон', 'Весь объект'];
+const SHOPS = ['Леруа Мерлен', 'Максидом', 'ОБИ', 'Петрович', 'Рынок', 'Другой'];
+function cleanRoom(v) { return ROOMS.includes(v) ? v : ''; }
+// Список покупок: позиция, магазин, ожидаемая сумма, куплено (тогда в расходах есть запись с sid = id позиции)
+function cleanShop(a) {
+  if (!Array.isArray(a)) return [];
+  const seen = new Set();
+  return a.filter(x => x && typeof x === 'object').slice(0, 200).map(x => {
+    let id = typeof x.id === 'string' && /^[a-z0-9]{1,40}$/i.test(x.id) ? x.id : uid();
+    while (seen.has(id)) id = uid();
+    seen.add(id);
+    const sum = Number(x.sum);
+    return {id, name: String(x.name == null ? '' : x.name).trim().slice(0, 120), store: String(x.store == null ? '' : x.store).trim().slice(0, 40),
+      sum: isFinite(sum) && sum > 0 ? Math.min(1e10, sum) : 0, done: x.done === true};
+  }).filter(x => x.name);
+}
+function cleanReservePct(v) { const n = Number(v); return [5, 10, 15, 20].includes(n) ? n : 10; }
 function cleanDeal(d) {
   if (!d || typeof d !== 'object') return null;
   const str = v => v == null ? '' : String(v);
@@ -713,7 +744,8 @@ function cleanDeal(d) {
     stage: STAGES.includes(d.stage) ? d.stage : STAGES[0],
     calc: d.calc ? clean(DEFAULT_CALC, d.calc, CALC_ENUMS) : null,
     expenses: Array.isArray(d.expenses) ? d.expenses.filter(e => e && typeof e === 'object').map(e =>
-      ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note), stage: WORK_STAGES.some(w => w[1] === e.stage) ? e.stage : '', chk: /^[a-z0-9]{1,40}$/i.test(str(e.chk)) ? str(e.chk) : ''})) : [],
+      ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note), stage: WORK_STAGES.some(w => w[1] === e.stage) ? e.stage : '', chk: /^[a-z0-9]{1,40}$/i.test(str(e.chk)) ? str(e.chk) : '', room: cleanRoom(e.room), sid: /^[a-z0-9]{1,40}$/i.test(str(e.sid)) ? str(e.sid) : ''})) : [],
+    shop: cleanShop(d.shop), reservePct: cleanReservePct(d.reservePct),
     checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
     risks: cleanRisks(d.risks),
     owner: cleanOwner(d.owner), people: cleanPeople(d.people), docs: cleanDocs(d.docs), ready: d.ready === 'yes' || d.ready === 'no' ? d.ready : '', place: cleanPlace(d.place),
@@ -754,9 +786,9 @@ function esc(s) {
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 let toastT;
-function toast(msg) {
+function toast(msg, ms) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms || 2400);
 }
 function round10k(v) { return Math.floor(v / 10000) * 10000; }
 
@@ -780,12 +812,13 @@ function xChipsHtml(list, cur, act) {
 function openExpSheet(d) {
   const el = $('#xsheet'); if (!el || !d) return;
   const last = (d.expenses || []).slice(-1)[0];
-  XS = {id: d.id, cat: last && EXP_CATS.includes(last.cat) ? last.cat : 'Материалы', stage: '', n: 0, chk: null};
+  XS = {id: d.id, cat: last && EXP_CATS.includes(last.cat) ? last.cat : 'Материалы', stage: '', room: '', n: 0, chk: null};
   $('#xbox').innerHTML = '<h3>Новый расход</h3>' +
     '<label class="f">Сумма<div class="inwrap"><input type="text" inputmode="decimal" id="xSum" placeholder="например, 45к" autocomplete="off" aria-describedby="xHint"><span>₽</span></div></label>' +
     '<div class="xh" id="xHint">Можно «45к», «45 тыс», «1,2м»</div>' +
     '<div class="xl">Статья</div><div class="chips" id="xCats">' + xChipsHtml(EXP_CATS, XS.cat, 'x-cat') + '</div>' +
     '<div class="xl">Этап ремонта (необязательно)</div><div class="chips" id="xStages">' + xChipsHtml(WORK_STAGES.map(w => w[1]), '', 'x-stage') + '</div>' +
+    '<div class="xl">Комната (необязательно)</div><div class="chips" id="xRooms">' + xChipsHtml(ROOMS, '', 'x-room') + '</div>' +
     '<div class="grid2" style="margin-top:12px"><label class="f">Дата<input type="date" id="xDate" value="' + today() + '"></label>' +
     '<label class="f">Комментарий<input type="text" id="xNote" placeholder="например, плитка" autocomplete="off"></label></div>' +
     '<div class="xl">Фото чека (необязательно)</div><div class="row"><label class="btn" style="cursor:pointer">Приложить чек<input type="file" id="xChk" accept="image/*,application/pdf" style="display:none"></label><span class="small muted" id="xChkName" style="min-width:0;overflow-wrap:anywhere"></span></div>' +
@@ -806,7 +839,7 @@ function xSave(more) {
   const sum = parseAmount($('#xSum').value);
   if (!(sum > 0)) { toast('Впишите сумму расхода'); $('#xSum').focus(); return; }
   d.expenses = d.expenses || [];
-  const ex = {id: uid(), cat: XS.cat, sum, date: $('#xDate').value || today(), note: $('#xNote').value.trim(), stage: XS.stage, chk: ''};
+  const ex = {id: uid(), cat: XS.cat, sum, date: $('#xDate').value || today(), note: $('#xNote').value.trim(), stage: XS.stage, chk: '', room: XS.room || '', sid: ''};
   d.expenses.push(ex);
   const chkFile = XS.chk; XS.chk = null;
   d.updated = Date.now(); save(); renderDeal(d);
@@ -954,11 +987,11 @@ function csvCell(v) {
   return '"' + t.replace(/"/g, '""') + '"';
 }
 function expensesCsv(d) {
-  const rows = [['Дата', 'Статья', 'Этап ремонта', 'Комментарий', 'Сумма, ₽']];
+  const rows = [['Дата', 'Статья', 'Этап ремонта', 'Комната', 'Комментарий', 'Сумма, ₽']];
   const list = (d.expenses || []).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
-  list.forEach(e => rows.push([String(e.date || '').split('-').reverse().join('.'), e.cat, e.stage || '', e.note || '', Math.round(e.sum)]));
-  rows.push(['', '', '', 'Всего', Math.round(list.reduce((x, e) => x + e.sum, 0))]);
-  return '\ufeff' + rows.map(r => r.map((c, i) => i === 4 && typeof c === 'number' ? String(c) : csvCell(c)).join(';')).join('\r\n') + '\r\n';
+  list.forEach(e => rows.push([String(e.date || '').split('-').reverse().join('.'), e.cat, e.stage || '', e.room || '', e.note || '', Math.round(e.sum)]));
+  rows.push(['', '', '', '', 'Всего', Math.round(list.reduce((x, e) => x + e.sum, 0))]);
+  return '\ufeff' + rows.map(r => r.map((c, i) => i === 5 && typeof c === 'number' ? String(c) : csvCell(c)).join(';')).join('\r\n') + '\r\n';
 }
 function expensesCsvSave(d) {
   const name = 'rashody-' + String(d.name || 'obekt').replace(/[^A-Za-z0-9А-Яа-яЁё]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) + '-' + today() + '.csv';
@@ -1674,6 +1707,10 @@ function updateTorgiResults() {
 
 /* ===== Раздел «Сделки» ===== */
 function dealPlan(d) { return d.calc ? compute(Object.assign({}, DEFAULT_CALC, d.calc)) : null; }
+function progLine(d) {
+  const g = dealProgress(d); if (!g) return '';
+  return '<div class="pbar' + (g.pct >= 100 ? ' good' : '') + '" style="height:6px;margin:8px 0 2px"><i style="width:' + g.pct + '%"></i></div><div class="small muted">Ремонт ' + g.pct + '%' + (g.pct < 100 && g.left > 0 ? ' · ещё ~' + g.left + ' дн.' : '') + '</div>';
+}
 function lateLine(d) {
   const wp = d.works ? worksPlan(d.works, today()) : null;
   return wp && wp.shift > 0 ? '<div class="small neg" style="margin-top:4px">Ремонт: срок сдвинут на ' + wp.shift + ' дн.</div>' : '';
@@ -1690,7 +1727,7 @@ function renderDeals() {
       const p = dealPlan(d), spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
       h += '<button class="card deal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
         (d.address ? '<div class="small muted">' + esc(d.address) + '</div>' : '') +
-        '<div class="small" style="margin-top:6px">План: ' + (p ? '<b>' + rub(p.net) + '</b> · ' + pct(p.annual) + ' годовых' : 'нет расчёта') + ' · Потрачено: ' + rub(spent) + '</div>' + lateLine(d) + '</button>';
+        '<div class="small" style="margin-top:6px">План: ' + (p ? '<b>' + rub(p.net) + '</b> · ' + pct(p.annual) + ' годовых' : 'нет расчёта') + ' · Потрачено: ' + rub(spent) + '</div>' + progLine(d) + lateLine(d) + '</button>';
     });
   }
   h = portfolioHtml(S.deals) + h;
@@ -1755,12 +1792,13 @@ function renderDeal(d) {
     '<button class="btn pri block" data-a="exp-new">+ Добавить расход</button>';
   if (exp.length) {
     h += '<table style="margin-top:12px">' + exp.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(e =>
-      '<tr><td>' + esc(e.cat) + (e.stage ? ' · ' + esc(e.stage) : '') + (e.note ? '<br><span class="small muted">' + esc(e.note) + '</span>' : '') + '<br><span class="small muted">' + esc((e.date || '').split('-').reverse().join('.')) + '</span></td>' +
+      '<tr><td>' + esc(e.cat) + (e.stage ? ' · ' + esc(e.stage) : '') + (e.room ? ' · ' + esc(e.room) : '') + (e.note ? '<br><span class="small muted">' + esc(e.note) + '</span>' : '') + '<br><span class="small muted">' + esc((e.date || '').split('-').reverse().join('.')) + '</span></td>' +
       '<td class="n">' + rub(e.sum) + '<br>' + (e.chk ? '<button class="back small" style="padding:4px 10px 4px 0" data-a="exp-chk" data-id="' + esc(e.chk) + '">чек</button>' : '') + '<button class="back small" style="padding:4px 0;color:var(--bad)" data-a="exp-del" data-id="' + esc(e.id) + '">удалить</button></td></tr>').join('') +
       '<tr class="total"><td>Всего потрачено</td><td class="n">' + rub(spent) + '</td></tr></table>' +
       '<button class="btn block" style="margin-top:10px" data-a="exp-csv">Выгрузить расходы в CSV (Excel)</button>';
   }
   h += '</div>';
+  h += shopCardHtml(d);
   h += '<div id="pfBox">' + planFactCardHtml(d, p, c) + '</div>';
   h += '<div class="card"><h3>Факт после продажи</h3><div class="grid2"><label class="f">Продали за<div class="inwrap"><input type="text" inputmode="decimal" data-d="saleFact" value="' + (d.saleFact ? num(d.saleFact) : '') + '"><span>₽</span></div></label></div>' +
     '<div id="dealFact">' + dealFactHtml(d) + '</div></div>';
@@ -1769,7 +1807,10 @@ function renderDeal(d) {
   h += '<button class="btn pri block" style="margin-bottom:10px" data-a="deal-report">Отчёт инвестору</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-share">Поделиться сделкой</button>';
   h += '<button class="btn danger block" data-a="deal-del">Удалить сделку</button>';
+  const dr = $('#view').dataset.deal === d.id ? ['shopName', 'shopStore', 'shopSum'].map(id => { const el = document.getElementById(id); return el ? el.value : null; }) : [];
   $('#view').innerHTML = h;
+  $('#view').dataset.deal = d.id;
+  ['shopName', 'shopStore', 'shopSum'].forEach((id, i) => { const el = document.getElementById(id); if (el && dr[i] != null) el.value = dr[i]; });
   dealFilesLoad(d.id);
 }
 const WORK_STATUS = {done: ['Готово', 'pos'], work: ['В работе', ''], wait: ['Ждёт', 'muted']};
@@ -1794,7 +1835,7 @@ function worksCardHtml(d) {
       '<button class="btn pri block" style="margin-top:10px" data-a="work-start">Составить график</button></div>';
   }
   const wp = worksPlan(w, today()), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
-  return '<div class="card"><h3>График ремонта</h3><label class="f">Начало ремонта<input type="date" data-w="start" value="' + esc(w.start) + '"></label>' +
+  return '<div class="card"><h3>График ремонта</h3>' + progressHtml(d) + '<label class="f">Начало ремонта<input type="date" data-w="start" value="' + esc(w.start) + '"></label>' +
     '<table style="margin-top:12px">' + wp.rows.map(r =>
       '<tr><td id="wi-' + r.k + '">' + workInfoHtml(r) + '</td>' +
       '<td class="n"><input type="text" inputmode="numeric" data-w="days" data-wk="' + r.k + '" value="' + r.days + '" style="width:54px;text-align:right" aria-label="Дней: ' + esc(r.name) + '"> дн.<br>' +
@@ -1808,6 +1849,7 @@ function refreshWorks(d) {
   const wp = worksPlan(d.works, today()), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
   wp.rows.forEach(r => { const el = $('#wi-' + r.k); if (el) el.innerHTML = workInfoHtml(r); });
   const sum = $('#worksSum'); if (sum) sum.innerHTML = worksSumHtml(wp, c);
+  const pg = $('#progBox'); if (pg) pg.outerHTML = progressHtml(d);
   const pf = $('#pfBox'); if (pf) pf.innerHTML = planFactCardHtml(d, dealPlan(d), c);
 }
 // Прогноз чистой прибыли: план − перерасход по статьям − потери от сдвига срока
@@ -1818,7 +1860,8 @@ function dealForecast(d, p, c) {
   const risk = riskTotal(d);
   return {wp, pf, sched, risk, fore: p.net - pf.over - sched - risk};
 }
-function planFactCardHtml(d, p, c) {
+function planFactCardHtml(d, p, c) { return safeCashHtml(d, p, c) + planFactCore(d, p, c); }
+function planFactCore(d, p, c) {
   const exp = d.expenses || [];
   if (!p) return '';
   const {wp, pf, sched, risk, fore} = dealForecast(d, p, c);
@@ -1833,6 +1876,130 @@ function planFactCardHtml(d, p, c) {
     '<tr class="total"><td>Прогноз чистой прибыли</td><td class="n ' + (fore < 0 ? 'neg' : 'pos') + '">' + rub(fore) + '</td></tr></table>' +
     '<p class="note">Прогноз приблизительный: перерасход считается по статьям, где факт уже выше плана. ' + (pf.skipped > 0 ? 'Платежи по ипотеке и налоги (' + rub(pf.skipped) + ') в сравнение не входят. ' : '') + 'Срок учитывается, если составлен график ремонта' + (wp && wp.shift > 0 ? '; коммуналка за лишние дни уже входит в потери от срока, поэтому перерасход по ней отдельно не вычитается' : '') + '.</p></div>';
   return h;
+}
+/* ===== Прогресс ремонта, безопасный кэш, список покупок, «Горящие дела» ===== */
+// Готовность ремонта: доля дней завершённых этапов от всех дней графика
+function dealProgress(d) {
+  const w = d && d.works; if (!w || !w.items || !w.items.length) return null;
+  const total = w.items.reduce((s, i) => s + i.days, 0); if (!(total > 0)) return null;
+  const doneDays = w.items.filter(i => i.done).reduce((s, i) => s + i.days, 0);
+  const wp = worksPlan(w, today()), t0 = isoDay(today());
+  const all = w.items.filter(i => i.days > 0).every(i => i.done);
+  return {pct: all ? 100 : Math.min(99, Math.floor(doneDays * 100 / total)), left: wp ? Math.max(0, wp.foreEnd - t0) : 0, end: wp ? wp.foreEnd : null};
+}
+function progressHtml(d) {
+  const g = dealProgress(d); if (!g) return '';
+  const fin = g.pct >= 100;
+  return '<div id="progBox"><div class="row" style="justify-content:space-between;align-items:baseline"><b>' + (fin ? 'Ремонт закончен' : 'Объект готов на ' + g.pct + '%') + '</b>' +
+    '<span class="small muted">' + (fin ? 'пора на продажу' : 'до выхода на продажу ~' + g.left + ' дн.' + (g.end != null ? ' · ' + dayRu(g.end) : '')) + '</span></div>' +
+    '<div class="pbar ' + (fin ? 'good' : '') + '" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + g.pct + '" aria-label="Готовность ремонта"><i style="width:' + g.pct + '%"></i></div></div>';
+}
+const CHEER = {
+  demo: 'Демонтаж позади — самый грязный этап пройден. Дальше будет красивее!',
+  rough: 'Черновая отделка закончена. Основа готова, дальше пойдёт быстрее.',
+  elec: 'Электрика готова. Самое сложное и невидимое позади.',
+  finish: 'Чистовая отделка готова. Объект уже похож на товар!',
+  furn: 'Всё готово! Можно выходить на продажу. Вы молодец.'
+};
+function cheerFor(k, pct) { return pct >= 100 ? CHEER.furn : k === 'furn' ? 'Меблировка закончена. Осталось закрыть остальные этапы.' : (CHEER[k] || 'Этап закончен, так держать!'); }
+// Безопасный кэш: запас на непредвиденное минус перерасход и резерв на проблемы
+function safeCash(d, p, c) {
+  const base = (Number(c.repair) || 0) + (Number(c.furniture) || 0);
+  if (!p || !(base > 0)) return null;
+  const f = dealForecast(d, p, c), pct = cleanReservePct(d.reservePct);
+  const reserve = Math.round(base * pct / 100), used = f.pf.over + f.risk;
+  return {pct, base, reserve, used, over: f.pf.over, risk: f.risk, left: reserve - used};
+}
+function safeCashHtml(d, p, c) {
+  const s = safeCash(d, p, c); if (!s) return '';
+  const share = s.reserve > 0 ? s.left / s.reserve : (s.left >= 0 ? 1 : 0);
+  const cls = s.left < 0 ? 'bad' : share < 0.3 ? 'warn' : 'good', w = Math.max(0, Math.min(100, Math.round(share * 100)));
+  return '<div class="card"><h3>Безопасный кэш' + hintBtn('safecash') + '</h3>' +
+    '<div class="row" style="justify-content:space-between;align-items:baseline"><b class="' + (s.left < 0 ? 'neg' : '') + '" style="font-size:24px">' + rub(s.left) + '</b><span class="small muted">запас ' + rub(s.reserve) + '</span></div>' +
+    '<div class="pbar ' + cls + '"><i style="width:' + w + '%"></i></div>' +
+    '<p class="small" style="margin:0 0 10px">' + (s.left < 0 ? 'Запас на непредвиденное исчерпан на ' + rub(-s.left) + '. Дорогие покупки лучше отложить.' : s.left === s.reserve ? 'Запас нетронут: можно спокойно тратить по плану.' : 'Сверх плана можно потратить ещё ' + rub(s.left) + ', не выходя за запас.') + '</p>' +
+    '<p class="small muted" style="margin:0 0 8px">Запас — ' + s.pct + '% от ремонта и мебели (' + rub(s.base) + '). Ушло: ' + rub(s.used) + (s.used > 0 ? ' (перерасход ' + rub(s.over) + ', резерв на проблемы ' + rub(s.risk) + ')' : '') + '.</p>' +
+    '<div class="chips">' + [5, 10, 15, 20].map(v => '<button type="button" data-a="reserve-pct" data-v="' + v + '" class="' + (s.pct === v ? 'on' : '') + '" aria-pressed="' + (s.pct === v) + '">' + v + '%</button>').join('') + '</div></div>';
+}
+// Список покупок по магазинам
+let SHOP_LAST = SHOPS[0];
+function shopItemHtml(it) {
+  return '<div class="shopit"><button type="button" class="ck ' + (it.done ? 'on' : '') + '" data-a="shop-tog" data-id="' + esc(it.id) + '" aria-pressed="' + it.done + '" aria-label="Куплено: ' + esc(it.name) + '">' + (it.done ? '✓' : '') + '</button>' +
+    '<span class="nm ' + (it.done ? 'dn' : '') + '">' + esc(it.name) + '</span>' +
+(it.done ? '<span class="small muted" style="white-space:nowrap">' + rub(it.sum) + '</span>' : '<input type="text" inputmode="decimal" data-shopsum="' + esc(it.id) + '" value="' + (it.sum ? num(it.sum) : '') + '" placeholder="₽" aria-label="Сумма: ' + esc(it.name) + '">') +
+    '<button type="button" class="back small" style="padding:4px 0;color:var(--bad)" data-a="shop-del" data-id="' + esc(it.id) + '" aria-label="Убрать из списка: ' + esc(it.name) + '">×</button></div>';
+}
+function shopCardHtml(d) {
+  const list = d.shop || [], todo = list.filter(x => !x.done), done = list.filter(x => x.done);
+  let h = '<div class="card"><h3>Список покупок</h3>';
+  h += '<label class="f"><span>Что купить</span><input type="text" id="shopName" maxlength="120" autocomplete="off" placeholder="например, плитка в ванную"></label>' +
+    '<div class="grid2" style="margin-top:10px"><label class="f"><span>Магазин</span><input type="text" id="shopStore" list="shopStores" maxlength="40" autocomplete="off" value="' + esc(SHOP_LAST) + '"></label>' +
+    '<label class="f"><span>Сумма, если знаете</span><div class="inwrap"><input type="text" inputmode="decimal" id="shopSum" autocomplete="off" placeholder="45к"><span>₽</span></div></label></div>' +
+    '<datalist id="shopStores">' + SHOPS.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist>' +
+    '<button type="button" class="btn pri block" style="margin-top:10px" data-a="shop-add">+ В список</button>';
+  if (todo.length) {
+    const groups = [];
+    todo.forEach(it => { const k = it.store || 'Без магазина'; let g = groups.find(x => x.k === k); if (!g) { g = {k, items: []}; groups.push(g); } g.items.push(it); });
+    h += groups.map(g => '<div class="shopst">' + esc(g.k) + ' · ' + g.items.length + '</div>' + g.items.map(shopItemHtml).join('')).join('');
+    h += '<p class="small muted" style="margin:10px 0 0">Отметили купленное — позиция уйдёт в архив и запишется в расходы («Материалы»). Для этого нужна сумма.</p>';
+  } else if (!done.length) {
+    h += '<p class="small muted" style="margin:12px 0 0">Список пуст. Добавляйте покупки по магазинам, а на месте просто отмечайте купленное.</p>';
+  }
+  if (done.length) h += '<details style="margin-top:12px"><summary>Куплено: ' + done.length + ' · ' + rub(done.reduce((x, i) => x + i.sum, 0)) + '</summary>' + done.map(shopItemHtml).join('') + '</details>';
+  return h + '</div>';
+}
+function shopAdd(d) {
+  const name = ($('#shopName').value || '').trim().slice(0, 120);
+  if (!name) { toast('Впишите, что купить'); $('#shopName').focus(); return; }
+  const store = ($('#shopStore').value || '').trim().slice(0, 40), sum = parseAmount($('#shopSum').value);
+  if ((d.shop || []).length >= 200) { toast('В списке уже 200 позиций'); return; }
+  SHOP_LAST = store || SHOP_LAST;
+  d.shop = d.shop || []; d.shop.push({id: uid(), name, store, sum, done: false});
+  $('#shopName').value = ''; $('#shopSum').value = '';
+  d.updated = Date.now(); save(); renderDeal(d);
+  const n = $('#shopName'); if (n && n.focus) n.focus();
+}
+// Отметка «куплено» записывает расход, снятие — удаляет его
+function shopToggle(d, id) {
+  const it = (d.shop || []).find(x => x.id === id); if (!it) return;
+  if (!it.done) {
+    if (!(it.sum > 0)) { toast('Укажите, сколько заплатили, — тогда запишу в расходы'); const f = document.querySelector('[data-shopsum="' + id + '"]'); if (f && f.focus) f.focus(); return; }
+    it.done = true; d.expenses = d.expenses || [];
+    d.expenses.push({id: uid(), cat: 'Материалы', sum: it.sum, date: today(), note: (it.name + (it.store ? ' · ' + it.store : '')).slice(0, 200), stage: '', chk: '', room: '', sid: it.id});
+    toast('Куплено: ' + it.name + '. Расход записан');
+  } else {
+    if ((d.expenses || []).some(e => e.sid === it.id && e.chk) && !confirm('К этой покупке приложен чек — он удалится вместе с расходом. Продолжить?')) return;
+    it.done = false;
+    d.expenses = (d.expenses || []).filter(e => { if (e.sid === it.id) { expDropReceipt(e); return false; } return true; });
+    toast('Вернул в список, расход убрал');
+  }
+  d.updated = Date.now(); save(); renderDeal(d);
+}
+function shopDel(d, id) {
+  const it = (d.shop || []).find(x => x.id === id); if (!it) return;
+  if (it.done && !confirm('Убрать из списка? Расход в «Расходах» останется.')) return;
+  d.shop = d.shop.filter(x => x.id !== id);
+  (d.expenses || []).forEach(e => { if (e.sid === id) e.sid = ''; });
+  d.updated = Date.now(); save(); renderDeal(d);
+}
+function ruPositions(n) { return n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'позицию' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? 'позиции' : 'позиций'); }
+// «Горящие дела»: просроченные этапы, исчерпанный запас, покупки
+function hotItems() {
+  const out = [];
+  S.deals.filter(d => !d.demo && d.stage !== 'Закрыта').forEach(d => {
+    const nm = d.name || 'Без названия', wp = d.works ? worksPlan(d.works, today()) : null;
+    if (wp) wp.rows.filter(r => r.state === 'late').forEach(r => out.push({pri: 0, id: d.id, t: nm + ': этап «' + r.name + '» просрочен на ' + r.overdue + ' дн.'}));
+    const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {}), sc = p ? safeCash(d, p, c) : null;
+    if (sc && sc.left < 0) out.push({pri: 1, id: d.id, t: nm + ': запас на непредвиденное исчерпан на ' + rub(-sc.left)});
+    const n = (d.shop || []).filter(x => !x.done).length;
+    if (n) out.push({pri: 2, id: d.id, t: nm + ': купить ' + ruPositions(n)});
+  });
+  return out.sort((a, b) => a.pri - b.pri);
+}
+function hotHtml() {
+  const list = hotItems(); if (!list.length) return '';
+  return '<div class="card hot"><h3>Горящие дела</h3>' + list.slice(0, 5).map(x => '<button type="button" data-a="deal-open" data-id="' + esc(x.id) + '">' + (x.pri < 2 ? '<span class="neg">●</span> ' : '○ ') + esc(x.t) + '</button>').join('') +
+    (list.length > 5 ? '<p class="small muted" style="margin:6px 0 0">И ещё ' + (list.length - 5) + '</p>' : '') + '</div>';
 }
 /* ===== Отчёт инвестору ===== */
 const REP_COLORS = ['#0A63FF', '#F5A623', '#12875A', '#9AA6B8', '#8B5CF6', '#D6343B', '#14B8A6'];
@@ -1941,7 +2108,7 @@ async function repPhotos(d) {
   const shown = all.slice(0, 12);
   box.innerHTML = '<h2>Фотографии объекта</h2><div class="rep-ph">' + shown.map(p => {
     const u = URL.createObjectURL(p.blob); repUrls.push(u);
-    return '<figure><img alt="" src="' + u + '"><figcaption>' + esc(fmtDT(p.ts)) + (p.address ? ' · ' + esc(p.address) : '') + (p.note ? '<br>' + esc(String(p.note).slice(0, 160)) : '') + '</figcaption></figure>';
+    return '<figure><img alt="" src="' + u + '"><figcaption>' + esc(fmtDT(p.ts)) + (p.room ? ' · ' + esc(cleanRoom(p.room)) : '') + (p.address ? ' · ' + esc(p.address) : '') + (p.note ? '<br>' + esc(String(p.note).slice(0, 160)) : '') + '</figcaption></figure>';
   }).join('') + '</div>' + (all.length > shown.length ? '<p class="mut" style="margin:6px 0 0">Показаны ' + shown.length + ' из ' + all.length + ' фото; остальные — в разделе «Мои фото».</p>' : '');
 }
 function closeReport() { repTok++; repFreeUrls(); const el = $('#report'); document.body.classList.remove('rep-on'); if (el && el.classList.contains('on')) { el.classList.remove('on'); el.innerHTML = ''; } }
@@ -1959,6 +2126,7 @@ $('#xsheet').addEventListener('click', e => {
   else if (a === 'x-save') xSave(false);
   else if (a === 'x-more') xSave(true);
   else if (a === 'x-cat') { XS.cat = b.dataset.v; $('#xCats').innerHTML = xChipsHtml(EXP_CATS, XS.cat, 'x-cat'); }
+  else if (a === 'x-room') { XS.room = XS.room === b.dataset.v ? '' : b.dataset.v; $('#xRooms').innerHTML = xChipsHtml(ROOMS, XS.room, 'x-room'); }
   else if (a === 'x-stage') { XS.stage = XS.stage === b.dataset.v ? '' : b.dataset.v; $('#xStages').innerHTML = xChipsHtml(WORK_STAGES.map(w => w[1]), XS.stage, 'x-stage'); }
 });
 $('#xsheet').addEventListener('input', e => { if (e.target.id === 'xSum') xHint(); });
@@ -2003,7 +2171,7 @@ function dealFactHtml(d) {
       (p ? '<p class="note">План до налога был ' + rub(p.pbt) + '.</p>' : '') : '<p class="note">Впишите цену продажи, чтобы увидеть фактическую прибыль. Расходы на сделку при покупке вносите в «Расходы» со статьёй «Оформление сделки».</p>';
 }
 function newDeal(name, calc) {
-  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', rayon: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], checks: {}, risks: {}, owner: {name: '', phone: ''}, people: [], docs: {}, ready: '', place: null, notes: '', saleFact: 0, works: null, created: Date.now(), updated: Date.now()};
+  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', rayon: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], shop: [], reservePct: 10, checks: {}, risks: {}, owner: {name: '', phone: ''}, people: [], docs: {}, ready: '', place: null, notes: '', saleFact: 0, works: null, created: Date.now(), updated: Date.now()};
   S.deals.push(d); save(); return d;
 }
 
@@ -2245,7 +2413,7 @@ function homeDealHtml(d) {
   const f = p ? dealForecast(d, p, c) : null;
   const moved = f && Math.round(f.fore) !== Math.round(p.net);
   return '<button class="hdeal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
-    '<div class="small muted">' + (p ? 'План ' + rub(p.net) + (moved ? ' · прогноз <b class="' + (f.fore < p.net ? 'neg' : 'pos') + '">' + rub(f.fore) + '</b>' : '') : 'Расчёта ещё нет') + '</div>' + lateLine(d) + '</button>';
+    '<div class="small muted">' + (p ? 'План ' + rub(p.net) + (moved ? ' · прогноз <b class="' + (f.fore < p.net ? 'neg' : 'pos') + '">' + rub(f.fore) + '</b>' : '') : 'Расчёта ещё нет') + '</div>' + progLine(d) + lateLine(d) + '</button>';
 }
 // Ключевая ставка и курсы на главной (курсы берутся из сохранённого кэша, обновляются в фоне)
 function homeRatesHtml() {
@@ -2261,6 +2429,7 @@ function renderHome() {
   const c = S.calc, linked = S.calcDeal && S.deals.find(d => d.id === S.calcDeal);
   let h = '<button class="bigbtn" data-a="home-push" data-v="photo">' + ICO.cam + '<span>Сделать фото</span></button>';
   const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
+  h += hotHtml();
   h += '<div class="card"><h3>Мои проекты</h3>' +
     (deals.length ? deals.slice(0, 3).map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Проектов пока нет. Посчитайте объект и создайте проект или добавьте его сразу. Хотите увидеть, как выглядит готовый проект, — откройте пример.</p>') +
     '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="deal-new">+ Новый проект</button>' + (S.deals.some(x => x.demo) ? '' : '<button class="btn" data-a="demo-open">Пример проекта</button>') +
@@ -2560,7 +2729,7 @@ function calHomeHtml() {
    Снимок + геолокация + адрес. Адрес и дата вписываются в само изображение.
    Фото хранятся в IndexedDB (в localStorage они не помещаются), в резервную копию не входят. */
 const PH_MAX = 1600, PH_FILE_LIMIT = 30 * 1024 * 1024, PH_SHOW = 60;
-const PH = {lat: null, lon: null, acc: null, address: '', note: '', geoMsg: '', geoBusy: false, base: null, blob: null, prevUrl: '', ts: 0, busy: false, pick: false, q: '', list: [], listErr: '', loaded: false, thumbs: []};
+const PH = {lat: null, lon: null, acc: null, address: '', note: '', room: '', geoMsg: '', geoBusy: false, base: null, blob: null, prevUrl: '', ts: 0, busy: false, pick: false, q: '', list: [], listErr: '', loaded: false, thumbs: []};
 const two = n => String(n).padStart(2, '0');
 const isBlob = v => typeof Blob !== 'undefined' && v instanceof Blob;
 function fmtDT(ts) { const d = new Date(ts); return isNaN(d) ? '' : two(d.getDate()) + '.' + two(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + two(d.getHours()) + ':' + two(d.getMinutes()); }
@@ -2607,7 +2776,7 @@ function phStamp(base, lines) {
 }
 function photoMatches(p, q, dealName) {
   const w = normRu(q).trim();
-  return !w || normRu([p.address, p.note, dealName, fmtDT(p.ts)].join(' ')).includes(w);
+  return !w || normRu([p.address, p.note, p.room, dealName, fmtDT(p.ts)].join(' ')).includes(w);
 }
 function geoErrText(e) {
   if (e && e.message === 'nogeo') return 'Это устройство не даёт определить место. Впишите адрес вручную.';
@@ -2718,14 +2887,15 @@ async function phPick(file) {
   if (!/^image\//.test(file.type)) { toast('Нужен файл-картинка'); return; }
   if (file.size > PH_FILE_LIMIT) { toast('Фото слишком большое: больше 30 МБ'); return; }
   voiceStop(); PH.busy = true; PH.pick = false; phPaintPrev();
-  try { PH.base = await phDecode(file); PH.ts = Date.now(); PH.note = ''; const nt = document.getElementById('phNote'); if (nt) nt.value = ''; }
+  try { PH.base = await phDecode(file); PH.ts = Date.now(); PH.note = ''; PH.room = ''; const nt = document.getElementById('phNote'); if (nt) nt.value = ''; const pr0 = document.getElementById('phRooms'); if (pr0) pr0.innerHTML = xChipsHtml(ROOMS, '', 'ph-room'); }
   catch (e) { PH.busy = false; phPaintPrev(); toast('Не получилось открыть это фото. Попробуйте формат JPEG или PNG'); return; }
   PH.busy = false; phRestamp();
   if (!hasCoord(PH.lat, PH.lon) && !PH.geoBusy) phLocate();
 }
 function phDrop() {
-  voiceStop(); phTok++; PH.base = null; PH.blob = null; PH.pick = false; PH.note = '';
+  voiceStop(); phTok++; PH.base = null; PH.blob = null; PH.pick = false; PH.note = ''; PH.room = '';
   const nt = document.getElementById('phNote'); if (nt) nt.value = '';
+  const pr = document.getElementById('phRooms'); if (pr) pr.innerHTML = xChipsHtml(ROOMS, '', 'ph-room');
   if (PH.prevUrl) { URL.revokeObjectURL(PH.prevUrl); PH.prevUrl = ''; }
   phPaintPrev();
 }
@@ -2758,7 +2928,7 @@ async function phCommit(dealId, makeNew) {
   } finally { phSaving = false; }
 }
 async function phCommitSave(dealId, makeNew, deal, addr, blob) {
-  const rec = {id: uid(), ts: PH.ts || Date.now(), lat: hasCoord(PH.lat, PH.lon) ? PH.lat : null, lon: hasCoord(PH.lat, PH.lon) ? PH.lon : null, address: addr, note: String(PH.note || '').trim().slice(0, 2000), dealId: makeNew ? uid() : (dealId || ''), blob};
+  const rec = {id: uid(), ts: PH.ts || Date.now(), lat: hasCoord(PH.lat, PH.lon) ? PH.lat : null, lon: hasCoord(PH.lat, PH.lon) ? PH.lon : null, address: addr, note: String(PH.note || '').trim().slice(0, 2000), room: cleanRoom(PH.room), dealId: makeNew ? uid() : (dealId || ''), blob};
   try { await phTx('readwrite', s => s.put(rec)); }
   catch (e) { toast('Фото не сохранилось: хранилище браузера недоступно или заполнено'); return; }
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
@@ -2786,7 +2956,7 @@ function phPaintList() {
   if (!items.length) { el.innerHTML = '<p class="small muted" style="margin:0">По запросу ничего не найдено.</p>'; return; }
   el.innerHTML = '<div class="ph-grid">' + items.slice(0, PH_SHOW).map(p => {
     const u = URL.createObjectURL(p.blob), dn = phDealName(p.dealId); PH.thumbs.push(u);
-    return '<button class="ph-it" data-a="ph-open" data-id="' + esc(p.id) + '"><img alt="" loading="lazy" src="' + u + '"><b>' + esc(p.address || 'Без адреса') + '</b><span>' + esc(fmtDT(p.ts)) + (dn ? ' · ' + esc(dn) : '') + '</span>' + (p.note ? '<span class="ph-note">' + esc(String(p.note).slice(0, 70)) + (String(p.note).length > 70 ? '…' : '') + '</span>' : '') + '</button>';
+    return '<button class="ph-it" data-a="ph-open" data-id="' + esc(p.id) + '"><img alt="" loading="lazy" src="' + u + '"><b>' + esc(p.address || 'Без адреса') + '</b><span>' + esc(fmtDT(p.ts)) + (p.room ? ' · ' + esc(cleanRoom(p.room)) : '') + (dn ? ' · ' + esc(dn) : '') + '</span>' + (p.note ? '<span class="ph-note">' + esc(String(p.note).slice(0, 70)) + (String(p.note).length > 70 ? '…' : '') + '</span>' : '') + '</button>';
   }).join('') + '</div>' + (items.length > PH_SHOW ? '<p class="small muted" style="margin:10px 0 0">Показаны последние ' + PH_SHOW + ' из ' + items.length + '. Уточните поиск.</p>' : '');
 }
 let pvUrl = '', pvId = '';
@@ -2835,7 +3005,7 @@ function renderPhoto() {
     '<div class="card"><h3>Фото</h3><div class="row"><label class="btn pri fbtn">' + ICO.cam + 'Снять фото<input type="file" accept="image/*" capture="environment" data-ph="file" aria-label="Снять фото"></label>' +
     '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" data-ph="file" aria-label="Выбрать фото из галереи"></label></div>' +
     '<div id="phPrev"></div>' +
-    '<div id="phNoteBox" class="hide" style="margin-top:12px"><label class="f"><span>Отметки к фото</span><textarea id="phNote" data-ph="note" rows="3" maxlength="2000" placeholder="Что на фото: состояние, замечания, что сделать">' + esc(PH.note) + '</textarea></label>' +
+    '<div id="phNoteBox" class="hide" style="margin-top:12px"><div class="xl">Комната (необязательно)</div><div class="chips" id="phRooms">' + xChipsHtml(ROOMS, PH.room, 'ph-room') + '</div><label class="f" style="margin-top:10px"><span>Отметки к фото</span><textarea id="phNote" data-ph="note" rows="3" maxlength="2000" placeholder="Что на фото: состояние, замечания, что сделать">' + esc(PH.note) + '</textarea></label>' +
     '<button type="button" class="btn block" data-a="voice-note" aria-pressed="false" style="margin-top:8px">' + ICO.mic + '<span>Диктовать</span></button>' +
     '<p class="small muted" id="phNoteSt" role="status" style="margin:8px 0 0"></p>' +
     '<p class="small muted" style="margin:4px 0 0">Голос распознаёт браузер; в Chrome звук обрабатывают серверы Google.</p></div>' +
@@ -3302,6 +3472,12 @@ view.addEventListener('input', e => {
     S.smeta[t.dataset.sm] = v; save(); updateSmetaTableKeepFocus();
   } else if (t.dataset.price) {
     S.smeta.custom[t.dataset.price + '_' + S.smeta.level] = parseNum(t.value); save(); updateSmetaTableKeepFocus(t.dataset.price);
+  } else if (t.dataset.shopsum) {
+    const d = S.deals.find(x => x.id === openDeal), it = d && (d.shop || []).find(x => x.id === t.dataset.shopsum); if (!it) return;
+    it.sum = Math.min(1e10, Math.max(0, parseAmount(t.value)));
+    if (it.done) (d.expenses || []).forEach(e => { if (e.sid === it.id) e.sum = it.sum; });
+    d.updated = Date.now(); save();
+    if (it.done) { const pf = $('#pfBox'); if (pf) pf.innerHTML = planFactCardHtml(d, dealPlan(d), Object.assign({}, DEFAULT_CALC, d.calc || {})); }
   } else if (t.dataset.risk) {
     const d = S.deals.find(x => x.id === openDeal); if (!d || !hasRisk(d, t.dataset.risk)) return;
     d.risks[t.dataset.risk] = Math.min(1e10, Math.max(0, parseNum(t.value))); d.updated = Date.now(); save();
@@ -3433,6 +3609,7 @@ view.addEventListener('click', e => {
     case 'ph-save': phCommit('', false); break;
     case 'ph-drop': phDrop(); break;
     case 'ph-open': phOpen(b.dataset.id); break;
+    case 'ph-room': PH.room = PH.room === b.dataset.v ? '' : cleanRoom(b.dataset.v); { const r = document.getElementById('phRooms'); if (r) r.innerHTML = xChipsHtml(ROOMS, PH.room, 'ph-room'); } break;
     case 'voice-note': voiceToggle($('#phNote'), b, $('#phNoteSt')); break;
     case 'demo-open': { const dd = demoDeal(); if (S.tab === 'home') navTab('deals'); openDealView(dd.id); break; }
     case 'home-repair': { navTab('calc'); const rp = $('#rpBox'); if (rp) rp.scrollIntoView({block: 'start'}); break; }
@@ -3617,15 +3794,26 @@ view.addEventListener('click', e => {
     }
     case 'work-done': {
       const it = d && d.works && d.works.items.find(x => x.k === b.dataset.wk);
-      if (it) { it.done = it.done ? '' : today(); d.updated = Date.now(); save(); renderDeal(d); }
+      if (it) {
+        it.done = it.done ? '' : today(); d.updated = Date.now(); save(); renderDeal(d);
+        if (it.done) { const g = dealProgress(d); toast(cheerFor(it.k, g ? g.pct : 0), 4500); }
+      }
       break;
     }
     case 'work-del':
       if (d && confirm('Убрать график ремонта?')) { d.works = null; d.updated = Date.now(); save(); renderDeal(d); }
       break;
     case 'exp-new': if (d) openExpSheet(d); break;
+    case 'shop-add': if (d) shopAdd(d); break;
+    case 'shop-tog': if (d) shopToggle(d, b.dataset.id); break;
+    case 'shop-del': if (d) shopDel(d, b.dataset.id); break;
+    case 'reserve-pct': if (d) { d.reservePct = cleanReservePct(Number(b.dataset.v)); d.updated = Date.now(); save(); const pf = $('#pfBox'); if (pf) pf.innerHTML = planFactCardHtml(d, dealPlan(d), Object.assign({}, DEFAULT_CALC, d.calc || {})); } break;
     case 'exp-del':
-      if (d && confirm('Удалить этот расход?')) { expDropReceipt(d.expenses.find(x => x.id === b.dataset.id)); d.expenses = d.expenses.filter(x => x.id !== b.dataset.id); save(); renderDeal(d); }
+      if (d && confirm('Удалить этот расход?')) {
+        const ex = d.expenses.find(x => x.id === b.dataset.id);
+        if (ex && ex.sid) { const it = (d.shop || []).find(x => x.id === ex.sid); if (it) it.done = false; }
+        expDropReceipt(ex); d.expenses = d.expenses.filter(x => x.id !== b.dataset.id); save(); renderDeal(d);
+      }
       break;
     case 'exp-chk': expOpenReceipt(b.dataset.id); break;
     case 'exp-csv': if (d) expensesCsvSave(d); break;

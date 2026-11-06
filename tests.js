@@ -1038,6 +1038,88 @@ vm.runInContext(`
 }
 `, ctx);
 
+/* --- Пакет 1: прогресс, безопасный кэш, список покупок, комнаты, «Горящие дела» --- */
+vm.runInContext(`
+{
+  // очистка данных
+  const d0 = cleanDeal({id: 'a1', name: 'т', expenses: [{id: 'e1', cat: 'Ремонт', sum: 10, room: 'Кухня', sid: 'abc'}, {id: 'e2', cat: 'Ремонт', sum: 5, room: '<b>', sid: '<x>'}],
+    shop: [{id: 's1', name: ' Плитка ', store: 'ОБИ', sum: '4500', done: true}, {id: 's1', name: 'Клей', sum: -5}, {name: ''}, {id: 's3', name: '<img>', store: 'x'.repeat(100), sum: 'abc'}, 5, null], reservePct: 99});
+  check('комната расхода сохраняется', d0.expenses[0].room === 'Кухня' && d0.expenses[0].sid === 'abc', d0.expenses[0]);
+  check('чужая комната и sid отбрасываются', d0.expenses[1].room === '' && d0.expenses[1].sid === '', d0.expenses[1]);
+  check('cleanShop: пустые и мусор убраны, id уникальны', d0.shop.length === 3 && new Set(d0.shop.map(x => x.id)).size === 3, d0.shop);
+  check('cleanShop: сумма и магазин', d0.shop[0].sum === 4500 && d0.shop[0].done === true && d0.shop[0].name === 'Плитка' && d0.shop[1].sum === 0 && d0.shop[2].store.length === 40 && d0.shop[2].sum === 0, d0.shop);
+  check('резерв: неверное значение → 10', d0.reservePct === 10 && cleanDeal({id: 'z', reservePct: 15}).reservePct === 15);
+  check('cleanShop: не массив → пусто, лимит 200', cleanShop('x').length === 0 && cleanShop(Array.from({length: 300}, (_, i) => ({name: 'п' + i}))).length === 200);
+  check('cleanDeal: старая сделка без shop', Array.isArray(cleanDeal({id: 'old', name: 'x'}).shop) && cleanDeal({id: 'old'}).reservePct === 10);
+
+  // прогресс ремонта
+  const w = cleanWorks({start: today(), items: [{k: 'demo', days: 10, done: today()}, {k: 'rough', days: 30}, {k: 'elec', days: 0}, {k: 'finish', days: 60}, {k: 'furn', days: 0}]});
+  const dp = {works: w};
+  check('прогресс: 10 из 100 дней = 10%', dealProgress(dp).pct === 10, dealProgress(dp));
+  w.items.forEach(i => { i.done = today(); });
+  check('прогресс: всё готово = 100%', dealProgress(dp).pct === 100);
+  check('прогресс: без графика нет', dealProgress({works: null}) === null && dealProgress({works: cleanWorks({start: today(), items: [{k: 'demo', days: 0}, {k: 'rough', days: 0}, {k: 'elec', days: 0}, {k: 'finish', days: 0}, {k: 'furn', days: 0}]})}) === null);
+  const w2 = cleanWorks({start: today(), items: [{k: 'demo', days: 100, done: today()}, {k: 'rough', days: 100, done: today()}, {k: 'elec', days: 100, done: today()}, {k: 'finish', days: 1}, {k: 'furn', days: 0}]});
+  check('прогресс: 100% только когда закрыты все этапы (не округляется вверх)', dealProgress({works: w2}).pct === 99, dealProgress({works: w2}));
+  check('поддержка: «меблировка» раньше срока не говорит «всё готово»', !/Всё готово/.test(cheerFor('furn', 60)) && /Всё готово/.test(cheerFor('furn', 100)));
+  check('поддержка: тексты на каждый этап и итог', WORK_STAGES.every(x => cheerFor(x[0], 50).length > 10) && /Всё готово/.test(cheerFor('demo', 100)));
+  check('прогресс: html с aria и ширина', /aria-valuenow="100"/.test(progressHtml(dp)) && /width:100%/.test(progressHtml(dp)));
+
+  // безопасный кэш
+  const calc = Object.assign({}, DEFAULT_CALC, {price: 5000000, repair: 100000, furniture: 50000, sale: 7000000});
+  const ds = cleanDeal({id: 'sc', name: 'к', calc, expenses: [], reservePct: 10});
+  const p = dealPlan(ds), c = Object.assign({}, DEFAULT_CALC, ds.calc);
+  let sc = safeCash(ds, p, c);
+  check('безопасный кэш: 10% от 150 000 = 15 000, нетронут', sc && sc.reserve === 15000 && sc.left === 15000, sc);
+  ds.expenses = [{id: 'x', cat: 'Ремонт', sum: 110000, date: '2026-11-06', note: '', stage: '', chk: '', room: '', sid: ''}];
+  sc = safeCash(ds, p, c);
+  check('безопасный кэш: перерасход 10 000 съедает запас', sc.over === 10000 && sc.left === 5000, sc);
+  ds.risks = {debts: 20000};
+  sc = safeCash(ds, p, c);
+  check('безопасный кэш: резерв на проблемы тоже вычитается, уходит в минус', sc.risk === 20000 && sc.left === -15000, sc);
+  check('безопасный кэш: красный и без NaN в html', /pbar bad/.test(safeCashHtml(ds, p, c)) && !/NaN|undefined/.test(safeCashHtml(ds, p, c)));
+  ds.reservePct = 20; sc = safeCash(ds, p, c);
+  check('безопасный кэш: 20% = 30 000', sc.reserve === 30000, sc);
+  check('безопасный кэш: нет ремонта — нет блока', safeCash(cleanDeal({id: 'q'}), p, Object.assign({}, calc, {repair: 0, furniture: 0})) === null);
+
+  // список покупок
+  const dd = cleanDeal({id: 'shp', name: 'Магазин', calc});
+  S.deals.push(dd); openDeal = 'shp';
+  dd.shop.push({id: 'i1', name: 'Плитка', store: 'ОБИ', sum: 0, done: false}, {id: 'i2', name: 'Клей', store: 'ОБИ', sum: 1200, done: false});
+  shopToggle(dd, 'i1');
+  check('покупки: без суммы не отмечается и расход не пишется', dd.shop[0].done === false && dd.expenses.length === 0, [dd.shop[0], dd.expenses]);
+  shopToggle(dd, 'i2');
+  check('покупки: с суммой — отмечено и расход записан', dd.shop[1].done === true && dd.expenses.length === 1 && dd.expenses[0].sum === 1200 && dd.expenses[0].sid === 'i2' && dd.expenses[0].cat === 'Материалы', dd.expenses);
+  shopToggle(dd, 'i2');
+  check('покупки: снятие отметки убирает расход', dd.shop[1].done === false && dd.expenses.length === 0, dd.expenses);
+  shopToggle(dd, 'i2');
+  shopDel(dd, 'i2');
+  check('покупки: удаление купленной оставляет расход без привязки', dd.shop.length === 1 && dd.expenses.length === 1 && dd.expenses[0].sid === '', [dd.shop, dd.expenses]);
+  const h = shopCardHtml(dd);
+  check('покупки: html группирует по магазину, нет undefined', /ОБИ · 1/.test(h) && !/undefined|NaN/.test(h));
+  const hx = shopCardHtml(cleanDeal({id: 'xs', shop: [{name: '<script>x</script>', store: '"><b>', sum: 5}]}));
+  check('покупки: разметка экранируется', !/<script>x/.test(hx) && !/"><b>/.test(hx));
+  check('склонение позиций', ruPositions(1) === '1 позицию' && ruPositions(2) === '2 позиции' && ruPositions(5) === '5 позиций' && ruPositions(11) === '11 позиций' && ruPositions(21) === '21 позицию' && ruPositions(22) === '22 позиции');
+
+  // горящие дела
+  const hot0 = hotItems().filter(x => x.id === 'shp');
+  check('горящие дела: покупки видны, красных нет', hot0.length === 1 && hot0[0].pri === 2 && /купить 1 позицию/.test(hot0[0].t), hot0);
+  const lateDeal = cleanDeal({id: 'lt', name: 'Просрочка', calc, works: {start: '2026-01-01', items: []}});
+  lateDeal.expenses = [{id: 'x', cat: 'Ремонт', sum: 400000, date: '2026-11-06', note: '', stage: '', chk: '', room: '', sid: ''}];
+  S.deals.push(lateDeal);
+  const hot1 = hotItems().filter(x => x.id === 'lt');
+  check('горящие дела: просроченный этап и пустой запас, красные первыми', hot1.length >= 2 && hot1[0].pri === 0 && hot1.some(x => x.pri === 1) && /просрочен/.test(hot1[0].t), hot1);
+  check('горящие дела: html с красной точкой', /neg/.test(hotHtml()));
+  S.deals = S.deals.filter(x => x.id !== 'lt' && x.id !== 'shp'); openDeal = null;
+  check('горящие дела: учебный пример и закрытые не считаются', (() => { const dm = cleanDeal({id: 'dm', name: 'пример', demo: true, shop: [{name: 'а'}]}), cl = cleanDeal({id: 'cl', stage: 'Закрыта', shop: [{name: 'б'}]}); S.deals.push(dm, cl); const r = hotItems().filter(x => x.id === 'dm' || x.id === 'cl').length; S.deals = S.deals.filter(x => x.id !== 'dm' && x.id !== 'cl'); return r === 0; })());
+
+  // выгрузка с комнатой
+  const csv = expensesCsv({expenses: [{date: '2026-11-06', cat: 'Материалы', stage: '', room: 'Кухня', note: 'плитка', sum: 100}]});
+  check('CSV: колонка «Комната»', /"Комната"/.test(csv) && /"Кухня"/.test(csv) && /;100\\r\\n/.test(csv), csv);
+  check('фото: комната в поиске и очистке', photoMatches({address: 'а', note: '', room: 'Ванная', ts: 0}, 'ванная', '') === true && cleanRoom('Ванная') === 'Ванная' && cleanRoom('x') === '');
+}
+`, ctx);
+
 Promise.all(ctx.pendingTests || []).then(() => {
   console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
   process.exit(fail ? 1 : 0);
