@@ -376,12 +376,12 @@ html[data-style="glass"] :is(#sheet,#xsheet) .sh-box{background:rgba(22,28,50,.6
 </style>
 <script data-boot>
 // Экран запуска показываем один раз за сеанс; при автоматических проверках — только по ?splash
-// Стиль оформления: «glass» (по умолчанию) или «light» (прежний светлый); выбор хранится отдельно от данных
+// Стиль оформления: «light» (по умолчанию, светлый минимализм) или «glass» (жидкое стекло); выбор хранится отдельно от данных
 try {
-  var flStyle = localStorage.getItem('fl-style') === 'light' ? 'light' : 'glass';
+  var flStyle = localStorage.getItem('fl-style') === 'glass' ? 'glass' : 'light';
   document.documentElement.setAttribute('data-style', flStyle);
   if (flStyle === 'glass') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#05070F');
-} catch (e) { document.documentElement.setAttribute('data-style', 'glass'); }
+} catch (e) { document.documentElement.setAttribute('data-style', 'light'); }
 try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splash/.test(location.search))) document.documentElement.classList.add('nosplash'); } catch (e) {}
 </script>
 </head>
@@ -1972,9 +1972,9 @@ function dealRayonHtml(d) {
 }
 
 /* ===== Стиль оформления ===== */
-const curStyle = () => (document.documentElement.getAttribute('data-style') === 'light' ? 'light' : 'glass');
+const curStyle = () => (document.documentElement.getAttribute('data-style') === 'glass' ? 'glass' : 'light');
 function setStyle(v) {
-  v = v === 'light' ? 'light' : 'glass';
+  v = v === 'glass' ? 'glass' : 'light';
   try { localStorage.setItem('fl-style', v); } catch (e) {}
   document.documentElement.setAttribute('data-style', v);
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', v === 'glass' ? '#05070F' : '#F6F7FA');
