@@ -1120,6 +1120,49 @@ vm.runInContext(`
 }
 `, ctx);
 
+/* --- Пакет 2: осмотр, налог с продажи, ссылка-снимок --- */
+ctx.btoa = s => Buffer.from(s, 'latin1').toString('base64');
+ctx.atob = s => Buffer.from(s, 'base64').toString('latin1');
+vm.runInContext(`
+{
+  check('осмотр: ключи уникальны, есть 15+ пунктов', new Set(INSPECT_KEYS).size === INSPECT_KEYS.length && INSPECT_KEYS.length >= 15, INSPECT_KEYS.length);
+  const di = cleanDeal({id: 'in1', insp: {win: true, wall: false, evil: true, panel: 'yes'}});
+  check('осмотр: очистка оставляет только известные отметки', JSON.stringify(di.insp) === '{"win":true}', di.insp);
+  check('осмотр: старая сделка без insp', JSON.stringify(cleanDeal({id: 'o'}).insp) === '{}');
+  check('осмотр: разметка со счётчиком', /0 из \\d+/.test(inspectCardHtml(cleanDeal({id: 'o'}))) && /1 из/.test(inspectCardHtml(di)) && /checked/.test(inspectCardHtml(di)));
+
+  // налог с продажи
+  const T = o => txCalc(Object.assign({sale: 0, price: 0, buy: 0, cad: 0, repair: 0, other: 0, years: 0, early: false, repairDed: false}, o));
+  check('налог: база 1,9 млн × 13% = 247 000', near(T({sale: 8e6, price: 6e6, buy: 1e5}).rows[0].tax, 247000, 0.5), T({sale: 8e6, price: 6e6, buy: 1e5}).rows[0].tax);
+  check('налог: база 7 млн = 312 000 + 15% с остатка = 1 002 000', near(T({sale: 12e6, price: 5e6}).rows[0].tax, 1002000, 0.5), T({sale: 12e6, price: 5e6}).rows[0].tax);
+  check('налог: минимальный вычет 1 млн', near(T({sale: 2e6, price: 5e5}).rows[0].tax, 130000, 0.5));
+  check('налог: 70% кадастровой поднимает доход', near(T({sale: 8e6, price: 6e6, buy: 1e5, cad: 20e6}).rows[0].tax, (14e6 - 6.1e6) <= 2.4e6 ? 0 : 312000 + (14e6 - 6.1e6 - 2.4e6) * 0.15, 0.5), T({sale: 8e6, price: 6e6, buy: 1e5, cad: 20e6}).rows[0].tax);
+  check('налог: 5 лет владения — без налога, 4 года — с налогом', T({sale: 8e6, price: 6e6, years: 5}).rows[0].tax === 0 && T({sale: 8e6, price: 6e6, years: 4}).rows[0].tax > 0);
+  check('налог: льготный срок 3 года', T({sale: 8e6, price: 6e6, years: 3, early: true}).free === true && T({sale: 8e6, price: 6e6, years: 2.9, early: true}).free === false);
+  check('налог: ремонт в расходах уменьшает НДФЛ только по галочке', T({sale: 8e6, price: 6e6, repair: 5e5}).rows[0].tax > T({sale: 8e6, price: 6e6, repair: 5e5, repairDed: true}).rows[0].tax);
+  check('налог: УСН 6% и УСН 15% с минимумом 1%', near(T({sale: 8e6}).rows[1].tax, 480000, 0.5) && near(T({sale: 8e6, price: 8e6}).rows[2].tax, 80000, 0.5) && near(T({sale: 8e6, price: 6e6, buy: 1e5}).rows[2].tax, 285000, 0.5));
+  check('налог: нулевые входы без NaN', T({}).rows.every(r => r.tax === 0 && r.net === 0 && !isNaN(r.eff)));
+  TX = {sale: 8e6, price: 6e6, buy: 0, cad: 0, repair: 0, other: 0, years: 0, early: false, repairDed: false};
+  check('налог: страница строится, лучшая подсвечена', /txr best/.test(txHtml()) && !/NaN|undefined/.test(txHtml()));
+
+  // ссылка-снимок
+  const calc = Object.assign({}, DEFAULT_CALC, {price: 5000000, repair: 100000, furniture: 50000, sale: 7000000});
+  const dl = cleanDeal({id: 'sh1', name: 'Двушка', address: 'Москва, Перово', stage: 'Ремонт', calc, owner: {name: 'Иван Секретов', phone: '+7 999 123-45-67'},
+    people: [{id: 'p1', role: 'прораб', name: 'Пётр', phone: '+7 911 765-43-21'}], works: {start: '2026-10-01', items: []}});
+  const snap = shareSnap(dl), enc = b64uEnc(JSON.stringify(snap)), back = shareParse('#s=' + enc);
+  check('ссылка: туда-обратно сохраняет цифры и этапы', back && back.n === 'Двушка' && back.buy === 5000000 && back.net === snap.net && back.ws.length === 5 && back.st === 'Ремонт', back);
+  check('ссылка: телефонов и собственника нет', !/Секретов|999|765|Пётр|прораб/.test(JSON.stringify(snap)) && !/Секретов|999 123/.test(shareView(back)));
+  check('ссылка: кириллица и спецсимволы выдерживают кодирование', shareParse('#s=' + b64uEnc(JSON.stringify({v: 1, n: 'Дом «Ёж» & №5'}))).n === 'Дом «Ёж» & №5');
+  const evil = shareParse('#s=' + b64uEnc(JSON.stringify({v: 1, n: '<img src=x onerror=alert(1)>', a: '"><script>x</script>', st: 'Взлом', buy: 'abc', net: 1e999, ws: [['<b>', 'evil', '99.99'], 5, ['ок', 'done', '01.02']], end: '<x>', dt: 'не дата'})));
+  const ev = shareView(evil);
+  check('ссылка: подделка — разметка экранирована, мусор отброшен', evil && !/<img|<script|<b>/.test(ev) && evil.st === '' && evil.buy === null && evil.net === null && evil.ws.length === 2 && evil.ws[0][1] === 'wait' && evil.ws[0][2] === '' && evil.end === '' && evil.dt === '', [evil, ev.slice(0, 200)]);
+  check('ссылка: чужие и битые адреса не принимаются', shareParse('') === null && shareParse('#x=1') === null && shareParse('#s=!!!') === null && shareParse('#s=' + b64uEnc('{"v":2}')) === null && shareParse('#s=' + b64uEnc('не json')) === null && shareParse('#s=' + 'A'.repeat(7000)) === null);
+  check('ссылка: страница без undefined и NaN', !/undefined|NaN/.test(shareView(back)) && !/undefined|NaN/.test(shareView(shareParse('#s=' + b64uEnc('{"v":1}')))));
+  check('ссылка: обрезка по символам не ломает эмодзи', (() => { const d = cleanDeal({id: 'em', name: '😀'.repeat(79) + '😀😀', address: '🏠'.repeat(125)}); try { b64uEnc(JSON.stringify(shareSnap(d))); return true; } catch (e) { return false; } })());
+  check('ссылка: размер адреса разумный', enc.length < 2000, enc.length);
+}
+`, ctx);
+
 Promise.all(ctx.pendingTests || []).then(() => {
   console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
   process.exit(fail ? 1 : 0);

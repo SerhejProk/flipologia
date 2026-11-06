@@ -147,6 +147,18 @@ tr.total td{font-weight:700;border-bottom:0}
 .shopst{font-size:12.5px;font-weight:600;color:var(--muted);margin:14px 0 0;text-transform:uppercase;letter-spacing:.03em}
 .hot button{display:block;width:100%;text-align:left;font:inherit;color:inherit;border:0;border-top:1px solid var(--line);background:none;padding:10px 0;cursor:pointer}
 .hot button:first-of-type{border-top:0}
+.ba-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 14px}
+.ba-pair figure{margin:0;min-width:0}
+.ba-pair img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;background:var(--input)}
+.ba-pair figcaption{font-size:12px;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
+.mood{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.mood .mi{position:relative;min-width:0}
+.mood img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--input);cursor:pointer}
+.mood .mx{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font:inherit;cursor:pointer;padding:0}
+.txg{display:grid;gap:10px}
+.txr{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:14px 18px}
+.txr.best{outline:2px solid var(--good)}
+.txr h4{margin:0 0 6px;font-size:15px}
 .pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--input);color:var(--muted)}
 .pill.st{background:var(--warn-bg);color:var(--warn);border-color:transparent}
 .deal{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;border:0}
@@ -630,7 +642,7 @@ function load() {
     kursy: cleanKursy(s.kursy),
     lastBackup: Number(s.lastBackup) || 0,
     cal: cleanCal(s.cal),
-    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy'].includes(s.tab) ? s.tab : 'home'
+    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax'].includes(s.tab) ? s.tab : 'home'
   };
 }
 // Приводит сохранённые данные к ожидаемым типам: числа — к числам, варианты — к допустимым.
@@ -734,6 +746,28 @@ function cleanShop(a) {
       sum: isFinite(sum) && sum > 0 ? Math.min(1e10, sum) : 0, done: x.done === true};
   }).filter(x => x.name);
 }
+// Осмотр квартиры: что проверить глазами и руками
+const INSPECT = [
+  ['Окна и стены', [['win', 'Окна закрываются, нет сквозняка, стеклопакеты не запотевают'], ['wall', 'Стены: трещины, плесень, влажные пятна'], ['ceil', 'Потолок: следы протечек, перекос']]],
+  ['Электрика', [['panel', 'Щиток и автоматы, выделенная мощность'], ['wire', 'Проводка (медь или алюминий), розетки работают'], ['meter', 'Счётчики, пломбы и показания']]],
+  ['Вода и отопление', [['pipes', 'Стояки и трубы: ржавчина, течь, вентили'], ['press', 'Напор воды, горячая вода идёт'], ['sewer', 'Канализация: уклон, запах, засоры'], ['heat', 'Батареи тёплые и не текут']]],
+  ['Полы и двери', [['floor', 'Полы: уклон, скрип, просадки'], ['doors', 'Входная дверь и замки']]],
+  ['Дом и соседи', [['house', 'Подъезд, лифт, крыша, подвал'], ['noise', 'Шум: соседи, улица, двор'], ['flood', 'Затопления соседей снизу или сверху в прошлом'], ['smell', 'Запахи: сырость, плесень, табак, насекомые']]],
+  ['Рядом', [['park', 'Парковка и подъезд к дому'], ['infra', 'Школа, магазины, транспорт пешком']]]
+];
+const INSPECT_KEYS = INSPECT.reduce((a, g) => a.concat(g[1].map(x => x[0])), []);
+function cleanInsp(o) {
+  const out = {};
+  if (o && typeof o === 'object') INSPECT_KEYS.forEach(k => { if (o[k] === true) out[k] = true; });
+  return out;
+}
+function inspectCardHtml(d) {
+  const ins = d.insp || {}, n = INSPECT_KEYS.filter(k => ins[k]).length;
+  return '<div class="card"><h3>Осмотр квартиры · ' + n + ' из ' + INSPECT_KEYS.length + '</h3>' +
+    '<p class="small muted" style="margin:0 0 4px">Что проверить при просмотре «убитого» жилья. Нашли проблему — отметьте её в блоке «Проверка объекта» и заложите резерв.</p>' +
+    INSPECT.map(([g, items]) => '<div class="shopst">' + esc(g) + '</div>' + items.map(([k, l]) =>
+      '<div class="chkrow"><label class="chk"><input type="checkbox" data-insp="' + k + '"' + (ins[k] ? ' checked' : '') + '><span>' + esc(l) + '</span></label></div>').join('')).join('') + '</div>';
+}
 function cleanReservePct(v) { const n = Number(v); return [5, 10, 15, 20].includes(n) ? n : 10; }
 function cleanDeal(d) {
   if (!d || typeof d !== 'object') return null;
@@ -745,7 +779,7 @@ function cleanDeal(d) {
     calc: d.calc ? clean(DEFAULT_CALC, d.calc, CALC_ENUMS) : null,
     expenses: Array.isArray(d.expenses) ? d.expenses.filter(e => e && typeof e === 'object').map(e =>
       ({id: str(e.id) || uid(), cat: str(e.cat), sum: Number(e.sum) || 0, date: str(e.date), note: str(e.note), stage: WORK_STAGES.some(w => w[1] === e.stage) ? e.stage : '', chk: /^[a-z0-9]{1,40}$/i.test(str(e.chk)) ? str(e.chk) : '', room: cleanRoom(e.room), sid: /^[a-z0-9]{1,40}$/i.test(str(e.sid)) ? str(e.sid) : ''})) : [],
-    shop: cleanShop(d.shop), reservePct: cleanReservePct(d.reservePct),
+    shop: cleanShop(d.shop), reservePct: cleanReservePct(d.reservePct), insp: cleanInsp(d.insp),
     checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
     risks: cleanRisks(d.risks),
     owner: cleanOwner(d.owner), people: cleanPeople(d.people), docs: cleanDocs(d.docs), ready: d.ready === 'yes' || d.ready === 'no' ? d.ready : '', place: cleanPlace(d.place),
@@ -1788,6 +1822,8 @@ function renderDeal(d) {
     '<button class="btn block" style="margin-top:10px" data-a="deal-to-calc">' + (p ? 'Открыть в калькуляторе' : 'Посчитать сделку') + '</button></div>';
   h += dealDataHtml(d);
   h += worksCardHtml(d);
+  h += '<div class="card" id="baBox"><h3>До и после</h3><p class="small muted" style="margin:0">Загружаем…</p></div>';
+  h += '<div class="card" id="moodBox"></div>';
   h += '<div class="card"><h3>Расходы</h3>' +
     '<button class="btn pri block" data-a="exp-new">+ Добавить расход</button>';
   if (exp.length) {
@@ -1803,15 +1839,17 @@ function renderDeal(d) {
   h += '<div class="card"><h3>Факт после продажи</h3><div class="grid2"><label class="f">Продали за<div class="inwrap"><input type="text" inputmode="decimal" data-d="saleFact" value="' + (d.saleFact ? num(d.saleFact) : '') + '"><span>₽</span></div></label></div>' +
     '<div id="dealFact">' + dealFactHtml(d) + '</div></div>';
   h += checkCardHtml(d);
+  h += inspectCardHtml(d);
   h += '<div class="card"><h3>Заметки</h3><textarea data-d="notes" placeholder="Контакты продавца, прораба, договорённости">' + esc(d.notes || '') + '</textarea></div>';
   h += '<button class="btn pri block" style="margin-bottom:10px" data-a="deal-report">Отчёт инвестору</button>';
+  h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-link">Ссылка на отчёт для соинвестора</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-share">Поделиться сделкой</button>';
   h += '<button class="btn danger block" data-a="deal-del">Удалить сделку</button>';
   const dr = $('#view').dataset.deal === d.id ? ['shopName', 'shopStore', 'shopSum'].map(id => { const el = document.getElementById(id); return el ? el.value : null; }) : [];
   $('#view').innerHTML = h;
   $('#view').dataset.deal = d.id;
   ['shopName', 'shopStore', 'shopSum'].forEach((id, i) => { const el = document.getElementById(id); if (el && dr[i] != null) el.value = dr[i]; });
-  dealFilesLoad(d.id);
+  dealFilesLoad(d.id); baLoad(d); mbPaint();
 }
 const WORK_STATUS = {done: ['Готово', 'pos'], work: ['В работе', ''], wait: ['Ждёт', 'muted']};
 function workInfoHtml(r) {
@@ -2001,6 +2039,158 @@ function hotHtml() {
   return '<div class="card hot"><h3>Горящие дела</h3>' + list.slice(0, 5).map(x => '<button type="button" data-a="deal-open" data-id="' + esc(x.id) + '">' + (x.pri < 2 ? '<span class="neg">●</span> ' : '○ ') + esc(x.t) + '</button>').join('') +
     (list.length > 5 ? '<p class="small muted" style="margin:6px 0 0">И ещё ' + (list.length - 5) + '</p>' : '') + '</div>';
 }
+/* ===== «До и после» по комнатам и мудборд ===== */
+let BA_URLS = [], baTok = 0;
+async function baLoad(d) {
+  const tok = ++baTok; BA_URLS.forEach(u => URL.revokeObjectURL(u)); BA_URLS = [];
+  let list = [];
+  try { list = (await phTx('readonly', s => s.getAll())) || []; } catch (e) { list = null; }
+  const box = document.getElementById('baBox');
+  if (tok !== baTok || !box) return;
+  const hint = '<p class="small muted" style="margin:0">Снимайте комнату в начале и в конце ремонта и отмечайте её при съёмке (раздел «Сделать фото»). Здесь появится «до и после».</p>';
+  if (list === null) { box.innerHTML = '<h3>До и после</h3><p class="small muted" style="margin:0">Хранилище фото недоступно в этом браузере.</p>'; return; }
+  const by = {};
+  list.filter(x => x && x.dealId === d.id && isBlob(x.blob) && cleanRoom(x.room)).forEach(x => { (by[x.room] = by[x.room] || []).push(x); });
+  const rooms = ROOMS.filter(r => by[r] && by[r].length >= 2);
+  if (!rooms.length) { box.innerHTML = '<h3>До и после</h3>' + hint; return; }
+  box.innerHTML = '<h3>До и после</h3>' + rooms.map(r => {
+    const a = by[r].slice().sort((x, y) => (x.ts || 0) - (y.ts || 0)), first = a[0], last = a[a.length - 1];
+    const u1 = URL.createObjectURL(first.blob), u2 = URL.createObjectURL(last.blob); BA_URLS.push(u1, u2);
+    return '<div class="shopst" style="margin-top:6px">' + esc(r) + ' · снимков: ' + a.length + '</div><div class="ba-pair"><figure><img alt="До: ' + esc(r) + '" src="' + u1 + '"><figcaption>До · ' + esc(fmtDT(first.ts)) + '</figcaption></figure>' +
+      '<figure><img alt="Сейчас: ' + esc(r) + '" src="' + u2 + '"><figcaption>Сейчас · ' + esc(fmtDT(last.ts)) + '</figcaption></figure></div>';
+  }).join('');
+}
+const MB = {room: ''};
+let MB_URLS = [];
+const MOOD_MAX = 40, MOOD_LIMIT = 8 * 1024 * 1024, MOOD_EXT = {jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp'};
+function mbPaint() {
+  const el = document.getElementById('moodBox'), d = curDeal();
+  MB_URLS.forEach(u => URL.revokeObjectURL(u)); MB_URLS = [];
+  if (!el || !d || S.tab !== 'deals') return;
+  const all = DF.id === d.id && Array.isArray(DF.mood) ? DF.mood : [];
+  const shown = all.filter(f => !MB.room || f.mood === MB.room).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  el.innerHTML = '<h3>Мудборд</h3><p class="small muted" style="margin:0 0 8px">Картинки интерьера по комнатам: скриншоты мебели и отделки из магазинов и маркетплейсов. Лежат только в этом браузере.</p>' +
+    '<div class="chips"><button type="button" data-a="mb-room" data-v="" class="' + (MB.room ? '' : 'on') + '" aria-pressed="' + !MB.room + '">Все · ' + all.length + '</button>' +
+    ROOMS.map(r => '<button type="button" data-a="mb-room" data-v="' + esc(r) + '" class="' + (MB.room === r ? 'on' : '') + '" aria-pressed="' + (MB.room === r) + '">' + esc(r) + ' · ' + all.filter(f => f.mood === r).length + '</button>').join('') + '</div>' +
+    '<label class="btn block" style="cursor:pointer;margin-top:10px">Добавить картинки' + (MB.room ? ' · ' + esc(MB.room) : ' · Весь объект') + '<input type="file" id="moodFile" accept="image/png,image/jpeg,image/webp" multiple class="hide"></label>' +
+    (shown.length ? '<div class="mood">' + shown.map(f => {
+      const u = URL.createObjectURL(f.blob); MB_URLS.push(u);
+      return '<div class="mi"><img alt="' + esc(f.mood) + '" loading="lazy" src="' + u + '" data-a="mb-open" data-id="' + esc(f.id) + '"><button type="button" class="mx" data-a="mb-del" data-id="' + esc(f.id) + '" aria-label="Удалить картинку">✕</button></div>';
+    }).join('') + '</div>' : '<p class="small muted" style="margin:10px 0 0">Картинок пока нет.</p>');
+}
+async function mbAdd(d, files) {
+  const id = d.id, room = cleanRoom(MB.room) || 'Весь объект';
+  for (const f of files) {
+    const ext = docExt(f.name) || (/^image\/(jpeg|png|webp)$/.test(f.type) ? f.type.split('/')[1].replace('jpeg', 'jpg') : '');
+    if (!MOOD_EXT[ext]) { toast('Подходят JPG, PNG и WebP'); continue; }
+    if (f.size > MOOD_LIMIT) { toast('Картинка больше 8 МБ'); continue; }
+    if (!S.deals.some(x => x.id === id)) return;
+    if (DF.id === id && (DF.mood || []).length >= MOOD_MAX) { toast('В мудборде не больше ' + MOOD_MAX + ' картинок'); break; }
+    const rec = {id: uid(), dealId: id, ts: Date.now(), name: safeFileName(f.name), ext, type: MOOD_EXT[ext], size: f.size, tag: '', mood: room, blob: new Blob([f], {type: MOOD_EXT[ext]})};
+    try { await phTx('readwrite', s => s.put(rec), 'docs'); } catch (e) { toast('Картинка не сохранилась: хранилище недоступно или заполнено'); return; }
+    if (!S.deals.some(x => x.id === id)) { phTx('readwrite', s => s.delete(rec.id), 'docs').catch(() => {}); return; }
+    if (DF.id === id) { DF.mood = DF.mood || []; DF.mood.unshift(rec); }
+  }
+  mbPaint();
+}
+async function mbDel(id) {
+  const f = (DF.mood || []).find(x => x.id === id);
+  if (!f || !confirm('Убрать картинку из мудборда?')) return;
+  try { await phTx('readwrite', s => s.delete(id), 'docs'); } catch (e) { toast('Не получилось удалить'); return; }
+  DF.mood = DF.mood.filter(x => x.id !== id); mbPaint();
+}
+function mbOpen(id) {
+  const f = (DF.mood || []).find(x => x.id === id); if (!f) return;
+  const url = URL.createObjectURL(f.blob), a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 300000);
+}
+/* ===== Ссылка-снимок для соинвестора: данные в самой ссылке (после #), сервер не нужен ===== */
+const cut = (v, n) => Array.from(String(v == null ? '' : v)).slice(0, n).join('');
+function shareSnap(d) {
+  const p = dealPlan(d), c = Object.assign({}, DEFAULT_CALC, d.calc || {});
+  const f = p ? dealForecast(d, p, c) : null, g = dealProgress(d), wp = d.works ? worksPlan(d.works, today()) : null;
+  const spent = (d.expenses || []).reduce((x, e) => x + e.sum, 0);
+  const o = {v: 1, n: cut(d.name || 'Объект', 80), a: cut(d.address, 120), st: d.stage, dt: today(),
+    buy: Math.round(c.price), rep: Math.round(c.repair), sale: Math.round(c.sale), sp: Math.round(spent)};
+  if (p) { o.net = Math.round(p.net); o.ann = Math.round(p.annual * 10) / 10; o.fore = Math.round(f.fore); }
+  if (g) { o.pr = g.pct; o.end = g.end != null ? dayRu(g.end) : ''; }
+  if (wp) o.ws = wp.rows.map(r => [r.name, r.state, dayRu(r.fEnd)]);
+  return o;
+}
+function b64uEnc(str) { return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function b64uDec(t) { const b = String(t).replace(/-/g, '+').replace(/_/g, '/'); return decodeURIComponent(escape(atob(b + '==='.slice((b.length + 3) % 4)))); }
+function shareUrl(d) { return location.origin + location.pathname + '#s=' + b64uEnc(JSON.stringify(shareSnap(d))); }
+// Разбор чужой ссылки: всё приводится к чистым строкам и числам
+function shareParse(hash) {
+  const m = /^#s=([A-Za-z0-9_-]{10,6000})$/.exec(String(hash || '')); if (!m) return null;
+  let o; try { o = JSON.parse(b64uDec(m[1])); } catch (e) { return null; }
+  if (!o || typeof o !== 'object' || o.v !== 1) return null;
+  const n = v => { if (v == null || v === '' || typeof v === 'boolean') return null; const x = Number(v); return isFinite(x) ? x : null; };
+  const dm = v => typeof v === 'string' && /^(0[1-9]|[12]\d|3[01])\.(0[1-9]|1[0-2])$/.test(v) ? v : '';
+  const str = (v, k) => typeof v === 'string' ? v.slice(0, k) : '';
+  const out = {n: str(o.n, 80) || 'Объект', a: str(o.a, 120), st: STAGES.includes(o.st) ? o.st : '', dt: isoDay(o.dt) != null ? o.dt : '',
+    buy: n(o.buy), rep: n(o.rep), sale: n(o.sale), sp: n(o.sp), net: n(o.net), ann: n(o.ann), fore: n(o.fore), pr: n(o.pr), end: dm(o.end), ws: []};
+  if (Array.isArray(o.ws)) out.ws = o.ws.slice(0, 10).filter(r => Array.isArray(r)).map(r => [str(r[0], 40), ['done', 'work', 'late', 'wait'].includes(r[1]) ? r[1] : 'wait', dm(r[2])]);
+  return out;
+}
+function shareView(o) {
+  const row = (l, v, cls) => v == null ? '' : '<tr><td>' + l + '</td><td class="n' + (cls ? ' ' + cls : '') + '">' + v + '</td></tr>';
+  const WS = {done: 'готово', work: 'в работе', late: 'просрочка', wait: 'ждёт'};
+  return '<div class="rep-bar"><button class="btn pri" data-ra="sclose">Открыть Флипологию</button></div><div class="sheet"><h1>' + esc(o.n) + '</h1><div class="meta">' + (o.a ? esc(o.a) + ' · ' : '') + (o.st ? 'этап: ' + esc(o.st) + ' · ' : '') + 'на ' + esc(o.dt ? o.dt.split('-').reverse().join('.') : '—') + '</div>' +
+    '<h2>Цифры</h2><table>' + row('Покупка', o.buy != null ? rub(o.buy) : null) + row('Ремонт по плану', o.rep != null ? rub(o.rep) : null) + row('Продажа по плану', o.sale != null ? rub(o.sale) : null) + row('Уже потрачено', o.sp != null ? rub(o.sp) : null) +
+    row('Чистая прибыль по плану', o.net != null ? rub(o.net) + (o.ann != null ? ' · ' + pct(o.ann) + ' годовых' : '') : null) + row('Прогноз прибыли', o.fore != null ? rub(o.fore) : null, o.fore != null && o.fore < 0 ? 'neg' : '') + '</table>' +
+    (o.pr != null ? '<h2>Ремонт</h2><p>Готово на <b>' + Math.round(o.pr) + '%</b>' + (o.end ? ', выход на продажу по прогнозу ' + esc(o.end) : '') + '</p>' : '') +
+    (o.ws.length ? '<table>' + o.ws.map(r => '<tr><td>' + esc(r[0]) + '</td><td class="n">' + WS[r[1]] + (r[2] ? ' · до ' + esc(r[2]) : '') + '</td></tr>').join('') + '</table>' : '') +
+    '<p class="mut" style="margin-top:14px">Снимок на дату отправки: сам не обновляется. Прогноз приблизительный и не гарантирует доход.</p></div>';
+}
+function openSharedFromHash() {
+  const o = shareParse(location.hash); if (!o) return false;
+  const el = $('#report'); if (!el) return false;
+  el.innerHTML = shareView(o); el.classList.add('on'); el.scrollTop = 0; document.body.classList.add('rep-on');
+  return true;
+}
+function dealLink(d) {
+  if (location.protocol === 'file:') { toast('Ссылка работает только в приложении с сайта, не из файла'); return; }
+  if (!confirm('В ссылку попадут название, адрес, цены и прибыль по объекту (телефонов и данных собственника нет). Ссылку увидит каждый, кому вы её перешлёте. Продолжить?')) return;
+  let url; try { url = shareUrl(d); } catch (e) { toast('Не получилось собрать ссылку: проверьте название и адрес'); return; }
+  const data = {title: d.name || 'Объект', text: 'Отчёт по объекту «' + (d.name || 'Объект') + '»', url};
+  const copy = () => navigator.clipboard ? navigator.clipboard.writeText(url).then(() => toast('Ссылка скопирована — вставьте в Telegram'), () => toast('Не получилось скопировать')) : toast('Поделиться здесь не получится');
+  if (navigator.share) navigator.share(data).catch(err => { if (!err || err.name !== 'AbortError') copy(); });
+  else copy();
+}
+/* ===== Страница «Налог при продаже» ===== */
+let TX = null;
+function txInit() { const c = S.calc; TX = {sale: c.sale || 0, price: c.price || 0, buy: c.buyCosts || 0, cad: c.cadastral || 0, repair: c.repair || 0, other: 0, years: 0, early: false, repairDed: false}; }
+// НДФЛ с продажи: доход не ниже 70% кадастровой; вычет — 1 млн ₽ или расходы на покупку (ремонт — только если разрешено); 13% до 2,4 млн базы, выше 15%
+function txCalc(t) {
+  const need = t.early ? 3 : 5, free = t.years >= need;
+  const income = Math.max(t.sale, t.cad > 0 ? t.cad * 0.7 : 0), exp = t.price + t.buy + (t.repairDed ? t.repair : 0);
+  const base = Math.max(0, income - Math.max(exp, 1000000));
+  const ndfl = free ? 0 : base <= 2400000 ? base * 0.13 : 2400000 * 0.13 + (base - 2400000) * 0.15;
+  const pbt = t.sale - t.price - t.buy - t.repair - t.other;
+  const usn6 = t.sale * 0.06;
+  const usn15 = Math.max(Math.max(0, t.sale - (t.price + t.buy + t.repair + t.other)) * 0.15, t.sale * 0.01);
+  return {need, free, income, base, pbt, rows: [['Физлицо: НДФЛ', ndfl], ['ИП: УСН 6% с дохода', usn6], ['ИП: УСН 15% (доходы − расходы)', usn15]].map(([name, tax]) => ({name, tax, net: pbt - tax, eff: t.sale > 0 ? tax / t.sale * 100 : 0}))};
+}
+function txHtml() {
+  const r = txCalc(TX), best = r.rows.reduce((b, x, i) => x.tax < r.rows[b].tax ? i : b, 0);
+  return '<div class="txg">' + r.rows.map((x, i) => '<div class="txr' + (i === best && TX.sale > 0 ? ' best' : '') + '"><h4>' + esc(x.name) + (i === best && TX.sale > 0 ? ' · меньше всего налога' : '') + '</h4>' +
+    '<div class="kpi" style="padding:6px 0;border:0"><span>Налог</span><b>' + rub(x.tax) + '</b></div><div class="kpi" style="padding:6px 0;border:0"><span>Прибыль после налога</span><b class="' + (x.net < 0 ? 'neg' : 'pos') + '">' + rub(x.net) + '</b></div>' +
+    '<div class="small muted">Налог — ' + pct(x.eff) + ' от цены продажи' + (i === 0 ? (r.free ? '. Владение дольше ' + r.need + ' лет: налога нет.' : '. Налоговая база: ' + rub(r.base) + '.') : '') + '</div></div>').join('') + '</div>' +
+    '<p class="note">Прибыль до налога: ' + rub(r.pbt) + '. Расчёт ориентировочный: правила взяты из разъяснений ФНС и новостей, не из текста закона. Ставки 18–22% новой шкалы к продаже имущества не применяются: до 2,4 млн базы 13%, выше 15%. Регулярные перепродажи могут признать предпринимательской деятельностью, а ИП платит ещё взносы. Перед сделкой подтвердите режим у бухгалтера.</p>';
+}
+function renderTax() {
+  if (!TX) txInit();
+  const f = (k, l, suf) => '<label class="f"><span>' + l + '</span><div class="inwrap"><input type="text" inputmode="decimal" data-tx="' + k + '" value="' + (TX[k] ? num(TX[k]) : '') + '" placeholder="0"><span>' + suf + '</span></div></label>';
+  $('#view').innerHTML = '<div id="txRes"></div><div class="card"><h3>Что продаём</h3><div class="grid2">' + f('sale', 'Цена продажи', '₽') + f('price', 'Цена покупки', '₽') + f('buy', 'Расходы на покупку', '₽') + f('cad', 'Кадастровая стоимость', '₽') +
+    f('repair', 'Ремонт', '₽') + f('other', 'Прочие расходы', '₽') + '</div>' +
+    '<label class="f" style="margin-top:10px"><span>Сколько лет владеете</span><div class="inwrap"><input type="text" inputmode="decimal" data-tx="years" value="' + (TX.years ? String(TX.years).replace('.', ',') : '') + '" placeholder="0"><span>лет</span></div></label>' +
+    '<label class="chk" style="margin-top:10px"><input type="checkbox" data-tx="early"' + (TX.early ? ' checked' : '') + '><span>Срок 3 года, а не 5: куплена до 2016, наследство, подарок близкого, приватизация или единственное жильё</span></label>' +
+    '<label class="chk"><input type="checkbox" data-tx="repairDed"' + (TX.repairDed ? ' checked' : '') + '><span>Учесть ремонт в расходах физлица <span class="small muted">(только если купили без отделки по договору и есть чеки)</span></span></label></div>';
+  txPaint();
+}
+function txPaint() { const el = document.getElementById('txRes'); if (el) el.innerHTML = txHtml(); }
 /* ===== Отчёт инвестору ===== */
 const REP_COLORS = ['#0A63FF', '#F5A623', '#12875A', '#9AA6B8', '#8B5CF6', '#D6343B', '#14B8A6'];
 function reportHtml(d) {
@@ -2142,7 +2332,8 @@ $('#xsheet').addEventListener('change', e => {
 $('#xsheet').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'xSum') { e.preventDefault(); xSave(false); } });
 $('#report').addEventListener('click', e => {
   const b = e.target.closest('[data-ra]'); if (!b) return;
-  if (b.dataset.ra === 'close') navBack();
+  if (b.dataset.ra === 'sclose') { closeReport(); try { history.replaceState(null, '', location.pathname + location.search); } catch (err) {} }
+  else if (b.dataset.ra === 'close') navBack();
   else if (b.dataset.ra === 'print') { try { window.print(); } catch (err) { toast('Печать недоступна: откройте приложение в браузере'); } }
 });
 
@@ -2171,7 +2362,7 @@ function dealFactHtml(d) {
       (p ? '<p class="note">План до налога был ' + rub(p.pbt) + '.</p>' : '') : '<p class="note">Впишите цену продажи, чтобы увидеть фактическую прибыль. Расходы на сделку при покупке вносите в «Расходы» со статьёй «Оформление сделки».</p>';
 }
 function newDeal(name, calc) {
-  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', rayon: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], shop: [], reservePct: 10, checks: {}, risks: {}, owner: {name: '', phone: ''}, people: [], docs: {}, ready: '', place: null, notes: '', saleFact: 0, works: null, created: Date.now(), updated: Date.now()};
+  const d = {id: uid(), name: name || 'Новая сделка', address: '', link: '', rayon: '', stage: 'Поиск', calc: calc ? Object.assign({}, calc) : null, expenses: [], shop: [], reservePct: 10, insp: {}, checks: {}, risks: {}, owner: {name: '', phone: ''}, people: [], docs: {}, ready: '', place: null, notes: '', saleFact: 0, works: null, created: Date.now(), updated: Date.now()};
   S.deals.push(d); save(); return d;
 }
 
@@ -3154,12 +3345,12 @@ function dealDataHtml(d) {
     '<div id="dealFiles"></div></div>';
 }
 // Файлы проекта (хранилище docs в IndexedDB)
-const DF = {id: '', list: [], loaded: false, err: ''};
+const DF = {id: '', list: [], mood: [], loaded: false, err: ''};
 async function dealFilesLoad(id) {
-  DF.id = id; DF.list = []; DF.loaded = false; DF.err = ''; dealFilesPaint();
-  try { const r = await phTx('readonly', s => s.index('dealId').getAll(id), 'docs'); if (DF.id !== id) return; DF.list = (r || []).filter(f => f && isBlob(f.blob) && typeof f.id === 'string').sort((a, b) => (b.ts || 0) - (a.ts || 0)); }
+  DF.id = id; DF.list = []; DF.mood = []; DF.loaded = false; DF.err = ''; dealFilesPaint();
+  try { const r = await phTx('readonly', s => s.index('dealId').getAll(id), 'docs'); if (DF.id !== id) return; const all = (r || []).filter(f => f && isBlob(f.blob) && typeof f.id === 'string').sort((a, b) => (b.ts || 0) - (a.ts || 0)); DF.list = all.filter(f => !f.mood); DF.mood = all.filter(f => cleanRoom(f.mood)); }
   catch (e) { if (DF.id !== id) return; DF.list = []; DF.err = 'Хранилище файлов недоступно в этом браузере (например, в приватном режиме).'; }
-  DF.loaded = true; dealFilesPaint();
+  DF.loaded = true; dealFilesPaint(); mbPaint();
   const d = curDeal(); const el = document.getElementById('docList'); if (d && el && d.id === id) el.innerHTML = docListHtml(d);
 }
 function dealFilesPaint() {
@@ -3306,7 +3497,7 @@ function renderNewObj() {
 }
 
 /* ===== Навигация ===== */
-const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', photo: 'Фото объекта', newobj: 'Новый объект', cal: 'Календарь'};
+const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый объект', cal: 'Календарь'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
 function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
@@ -3328,10 +3519,10 @@ function go(tab, cls, y) {
   S.tab = tab; save();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
-  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, photo: renderPhoto, newobj: renderNewObj, cal: renderCal})[tab]();
+  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, tax: renderTax, photo: renderPhoto, newobj: renderNewObj, cal: renderCal})[tab]();
   // «Смета» и «Торги» открываются с главной: у них своя кнопка «назад»
   if (tab === 'smeta' || tab === 'torgi') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
-  if (tab === 'kursy') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
+  if (tab === 'kursy' || tab === 'tax') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   if (tab === 'photo' || tab === 'cal') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'newobj') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   window.scrollTo(0, y || 0); animate(cls || 'anim-up'); onScroll();
@@ -3339,7 +3530,7 @@ function go(tab, cls, y) {
 /* ===== История: системная кнопка «назад», кнопка «‹» и свайп идут одним путём =====
    Стопка: «Главная» (глубина 0) → другая вкладка (1) → экраны вглубь (2, 3…).
    Вкладки записи не копят: со вкладки «назад» ведёт на «Главную», а из неё — выход из приложения. */
-const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'photo', 'newobj', 'cal'];
+const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'photo', 'newobj', 'cal'];
 let navDepth = 0;       // глубина текущего экрана в стопке
 let navPending = null;  // вкладка, которую запишем, когда история вернётся к началу стопки
 const navRoot = tab => ({tab, deal: null, rayon: null, from: null});
@@ -3435,7 +3626,7 @@ function closeDeal() { navBack(); }
 let swipe = null;
 document.addEventListener('touchstart', e => {
   const p = e.touches[0];
-  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'tax' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
 }, {passive: true});
 document.addEventListener('touchend', e => {
   if (!swipe) return;
@@ -3472,6 +3663,12 @@ view.addEventListener('input', e => {
     S.smeta[t.dataset.sm] = v; save(); updateSmetaTableKeepFocus();
   } else if (t.dataset.price) {
     S.smeta.custom[t.dataset.price + '_' + S.smeta.level] = parseNum(t.value); save(); updateSmetaTableKeepFocus(t.dataset.price);
+  } else if (t.dataset.tx) {
+    if (!TX) txInit();
+    if (t.type === 'checkbox') TX[t.dataset.tx] = t.checked;
+    else if (t.dataset.tx === 'years') TX.years = Math.min(100, Math.max(0, parseNum(t.value)));
+    else TX[t.dataset.tx] = Math.min(1e12, Math.max(0, parseAmount(t.value)));
+    txPaint();
   } else if (t.dataset.shopsum) {
     const d = S.deals.find(x => x.id === openDeal), it = d && (d.shop || []).find(x => x.id === t.dataset.shopsum); if (!it) return;
     it.sum = Math.min(1e10, Math.max(0, parseAmount(t.value)));
@@ -3546,6 +3743,12 @@ view.addEventListener('change', e => {
   } else if (t.dataset.ad) {
     if (t.checked) adSel.add(t.dataset.ad); else adSel.delete(t.dataset.ad);
     $('#adText').value = adText(rayonById(rayonView), adSel);
+  }
+  else if (t.dataset.insp) {
+    const d = S.deals.find(x => x.id === openDeal); if (!d || !INSPECT_KEYS.includes(t.dataset.insp)) return;
+    d.insp = d.insp || {}; if (t.checked) d.insp[t.dataset.insp] = true; else delete d.insp[t.dataset.insp];
+    d.updated = Date.now(); save();
+    const h3 = t.closest('.card') && t.closest('.card').querySelector('h3'); if (h3) h3.textContent = 'Осмотр квартиры · ' + INSPECT_KEYS.filter(k => d.insp[k]).length + ' из ' + INSPECT_KEYS.length;
   }
   else if (t.dataset.check) {
     const d = S.deals.find(x => x.id === openDeal); if (!d) return;
@@ -3726,7 +3929,7 @@ view.addEventListener('click', e => {
     case 'cal-go': if (isDay(b.dataset.v)) { CAL.day = b.dataset.v; calPaint(); calAddLbl(); } break;
     case 'home-parse': { navTab('calc'); const pb = $('#parseBox'); if (pb) { pb.open = true; pb.scrollIntoView({block: 'center'}); } break; }
     case 'home-rayony': navTab('ref'); navPush({tab: 'ref', deal: null, rayon: 'list', from: null}); break;
-    case 'home-tax': { navTab('ref'); const dt = [...document.querySelectorAll('#view details')].find(x => /^Налог при продаже/.test(x.textContent.trim())); if (dt) { dt.open = true; dt.scrollIntoView({block: 'start'}); } break; }
+    case 'home-tax': txInit(); navPush(navRoot('tax'), 'anim-right'); break;
     case 'deal-new': navPush(navRoot('newobj'), 'anim-right'); break;
     case 'nb-geo': geoLocate(NB, nbPaintGeo); break;
     case 'nb-taxi': taxiGo(NB, nbTaxiPaint, m => { NB.geoMsg = m; nbPaintGeo(); }); break;
@@ -3804,6 +4007,10 @@ view.addEventListener('click', e => {
       if (d && confirm('Убрать график ремонта?')) { d.works = null; d.updated = Date.now(); save(); renderDeal(d); }
       break;
     case 'exp-new': if (d) openExpSheet(d); break;
+    case 'mb-room': MB.room = cleanRoom(b.dataset.v); mbPaint(); break;
+    case 'mb-del': mbDel(b.dataset.id); break;
+    case 'mb-open': mbOpen(b.dataset.id); break;
+    case 'deal-link': if (d) dealLink(d); break;
     case 'shop-add': if (d) shopAdd(d); break;
     case 'shop-tog': if (d) shopToggle(d, b.dataset.id); break;
     case 'shop-del': if (d) shopDel(d, b.dataset.id); break;
@@ -3898,6 +4105,7 @@ view.addEventListener('change', e => {
   else if (t.dataset.ph === 'file') { const f = t.files && t.files[0]; t.value = ''; phPick(f); }
   else if (t.dataset.dfile) { const dd = curDeal(), fs2 = t.files ? Array.from(t.files) : []; t.value = ''; if (dd) dealAttach(dd, fs2); }
   else if (t.dataset.nb === 'file') { const fs = t.files ? Array.from(t.files) : []; t.value = ''; nbPick(fs); }
+  else if (t.id === 'moodFile') { const dd = curDeal(), fs3 = t.files ? Array.from(t.files) : []; t.value = ''; if (dd) mbAdd(dd, fs3); }
 });
 $('#pview').addEventListener('click', e => {
   const b = e.target.closest('[data-a]');
@@ -3909,6 +4117,8 @@ $('#pview').addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') pvTryClose(); });
 navInit();
+openSharedFromHash();
+window.addEventListener('hashchange', openSharedFromHash);
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
