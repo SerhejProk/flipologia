@@ -147,6 +147,13 @@ tr.total td{font-weight:700;border-bottom:0}
 .shopst{font-size:12.5px;font-weight:600;color:var(--muted);margin:14px 0 0;text-transform:uppercase;letter-spacing:.03em}
 .hot button{display:block;width:100%;text-align:left;font:inherit;color:inherit;border:0;border-top:1px solid var(--line);background:none;padding:10px 0;cursor:pointer}
 .hot button:first-of-type{border-top:0}
+.fab{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:6;height:56px;padding:0 22px;border:0;border-radius:28px;background:var(--gold);color:#fff;font:inherit;font-size:16px;font-weight:600;box-shadow:0 8px 24px rgba(10,99,255,.35);cursor:pointer}
+.fab:active{transform:scale(.96)}
+html[data-style="glass"] .fab{bottom:calc(108px + env(safe-area-inset-bottom))}
+#xRooms button,#phRooms button,#xStages button,#xCats button{min-height:44px;padding:8px 16px}
+.xq{display:flex;gap:6px;margin-top:8px}
+.xq button{flex:1;min-width:0;min-height:44px;font:inherit;font-size:14px;font-weight:600;border:0;border-radius:12px;background:var(--acc-soft);color:var(--gold-ink);cursor:pointer;padding:0 4px}
+.xq button:active{transform:scale(.96)}
 .ba-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 14px}
 .ba-pair figure{margin:0;min-width:0}
 .ba-pair img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;background:var(--input)}
@@ -401,6 +408,9 @@ html[data-style="glass"] :is(#sheet,#xsheet) .sh-box{background:rgba(22,28,50,.6
   html[data-style="glass"] *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
   html[data-style="glass"]{--card:rgba(30,36,64,.96);--bar:rgba(18,22,42,.98);--top-bg:rgba(5,7,15,.96)}
 }
+html[data-contrast="high"]{--bg:#fff!important;--card:#fff!important;--ink:#000!important;--muted:#1a1a1a!important;--line:#000!important;--gold:#0040C0!important;--gold-ink:#0040C0!important;--acc-soft:#DCE6FF!important;--good:#006B3C!important;--bad:#B00020!important;--warn:#7A4500!important;--input:#E8E8E8!important;--shadow:0 0 0 1.5px #000!important;--bar:#fff!important;--bar-line:#000!important;--top-bg:#fff!important}
+html[data-contrast="high"] body{font-weight:500}
+html[data-contrast="high"] .chips button,html[data-contrast="high"] .btn{border:1.5px solid #000}
 </style>
 <script data-boot>
 // Экран запуска показываем один раз за сеанс; при автоматических проверках — только по ?splash
@@ -410,6 +420,7 @@ try {
   document.documentElement.setAttribute('data-style', flStyle);
   if (flStyle === 'glass') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#05070F');
 } catch (e) { document.documentElement.setAttribute('data-style', 'light'); }
+try { if (localStorage.getItem('fl-contrast') === '1') { document.documentElement.setAttribute('data-contrast', 'high'); document.documentElement.setAttribute('data-style', 'light'); } } catch (e) {}
 try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splash/.test(location.search))) document.documentElement.classList.add('nosplash'); } catch (e) {}
 </script>
 </head>
@@ -852,6 +863,7 @@ function openExpSheet(d) {
   $('#xbox').innerHTML = '<h3>Новый расход</h3>' +
     '<label class="f">Сумма<div class="inwrap"><input type="text" inputmode="decimal" id="xSum" placeholder="например, 45к" autocomplete="off" aria-describedby="xHint"><span>₽</span></div></label>' +
     '<div class="xh" id="xHint">Можно «45к», «45 тыс», «1,2м»</div>' +
+    '<div class="xq" role="group" aria-label="Прибавить к сумме">' + X_QUICK.map(v => '<button type="button" data-a="x-add" data-v="' + v + '">+' + num(v) + '</button>').join('') + '</div>' +
     '<div class="xl">Статья</div><div class="chips" id="xCats">' + xChipsHtml(EXP_CATS, XS.cat, 'x-cat') + '</div>' +
     '<div class="xl">Этап ремонта (необязательно)</div><div class="chips" id="xStages">' + xChipsHtml(WORK_STAGES.map(w => w[1]), '', 'x-stage') + '</div>' +
     '<div class="xl">Комната (необязательно)</div><div class="chips" id="xRooms">' + xChipsHtml(ROOMS, '', 'x-room') + '</div>' +
@@ -878,7 +890,7 @@ function xSave(more) {
   const ex = {id: uid(), cat: XS.cat, sum, date: $('#xDate').value || today(), note: $('#xNote').value.trim(), stage: XS.stage, chk: '', room: XS.room || '', sid: ''};
   d.expenses.push(ex);
   const chkFile = XS.chk; XS.chk = null;
-  d.updated = Date.now(); save(); renderDeal(d);
+  d.updated = Date.now(); save(); renderDeal(d); haptic(20);
   if (chkFile) expSaveReceipt(d.id, ex.id, chkFile);
   XS.n++;
   if (more) {
@@ -1867,6 +1879,7 @@ function renderDeal(d) {
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-link">Ссылка на отчёт для соинвестора</button>';
   h += '<button class="btn block" style="margin-bottom:10px" data-a="deal-share">Поделиться сделкой</button>';
   h += '<button class="btn danger block" data-a="deal-del">Удалить сделку</button>';
+  h += dealFabHtml(d);
   const dr = $('#view').dataset.deal === d.id ? ['shopName', 'shopStore', 'shopSum'].map(id => { const el = document.getElementById(id); return el ? el.value : null; }) : [];
   $('#view').innerHTML = h;
   $('#view').dataset.deal = d.id;
@@ -2026,7 +2039,7 @@ function shopToggle(d, id) {
     if (!(it.sum > 0)) { toast('Укажите, сколько заплатили, — тогда запишу в расходы'); const f = document.querySelector('[data-shopsum="' + id + '"]'); if (f && f.focus) f.focus(); return; }
     it.done = true; d.expenses = d.expenses || [];
     d.expenses.push({id: uid(), cat: 'Материалы', sum: it.sum, date: today(), note: (it.name + (it.store ? ' · ' + it.store : '')).slice(0, 200), stage: '', chk: '', room: '', sid: it.id});
-    toast('Куплено: ' + it.name + '. Расход записан');
+    toast('Куплено: ' + it.name + '. Расход записан'); haptic(20);
   } else {
     if ((d.expenses || []).some(e => e.sid === it.id && e.chk) && !confirm('К этой покупке приложен чек — он удалится вместе с расходом. Продолжить?')) return;
     it.done = false;
@@ -2338,6 +2351,7 @@ $('#xsheet').addEventListener('click', e => {
   else if (a === 'x-save') xSave(false);
   else if (a === 'x-more') xSave(true);
   else if (a === 'x-cat') { XS.cat = b.dataset.v; $('#xCats').innerHTML = xChipsHtml(EXP_CATS, XS.cat, 'x-cat'); }
+  else if (a === 'x-add') { const sm = $('#xSum'); if (sm) { sm.value = num(xAdd(parseAmount(sm.value), Number(b.dataset.v))); xHint(); if (sm.focus) sm.focus(); } }
   else if (a === 'x-room') { XS.room = XS.room === b.dataset.v ? '' : b.dataset.v; $('#xRooms').innerHTML = xChipsHtml(ROOMS, XS.room, 'x-room'); }
   else if (a === 'x-stage') { XS.stage = XS.stage === b.dataset.v ? '' : b.dataset.v; $('#xStages').innerHTML = xChipsHtml(WORK_STAGES.map(w => w[1]), XS.stage, 'x-stage'); }
 });
@@ -2550,6 +2564,25 @@ function dealRayonHtml(d) {
 
 /* ===== Стиль оформления ===== */
 const curStyle = () => (document.documentElement.getAttribute('data-style') === 'glass' ? 'glass' : 'light');
+// Лёгкая вибрация при действии (на iPhone в браузере её нет — тогда ничего не происходит)
+function haptic(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 15); } catch (e) {} }
+// Режим «яркий свет»: чёрное на белом, толстые рамки; принудительно светлый стиль
+function applyContrast(on) {
+  try { localStorage.setItem('fl-contrast', on ? '1' : '0'); } catch (e) {}
+  const r = document.documentElement;
+  if (on) { r.setAttribute('data-contrast', 'high'); r.setAttribute('data-style', 'light'); }
+  else { r.removeAttribute('data-contrast'); let st = 'light'; try { st = localStorage.getItem('fl-style') === 'glass' ? 'glass' : 'light'; } catch (e) {} r.setAttribute('data-style', st); }
+  document.querySelectorAll('#contrastSeg button').forEach(x => { const o = (x.dataset.v === '1') === !!on; x.classList.toggle('on', o); x.setAttribute('aria-pressed', String(o)); });
+}
+function contrastOn() { return document.documentElement.getAttribute('data-contrast') === 'high'; }
+// Быстрые кнопки суммы в шторке расхода
+const X_QUICK = [1000, 5000, 10000, 50000];
+function xAdd(cur, add) { return Math.min(1e12, Math.max(0, (Number(cur) || 0) + (Number(add) || 0))); }
+// Плавающая кнопка «+ Расход» в сделке: там, где расходы уже открыты
+function dealFabHtml(d) {
+  if (!dealOpen(d, 2, (d.expenses || []).length > 0)) return '';
+  return '<button type="button" class="fab" data-a="exp-new" aria-label="Добавить расход">+ Расход</button><div style="height:64px" aria-hidden="true"></div>';
+}
 function setStyle(v) {
   v = v === 'glass' ? 'glass' : 'light';
   try { localStorage.setItem('fl-style', v); } catch (e) {}
@@ -2568,6 +2601,10 @@ function renderRef() {
     '<button type="button" data-a="mode" data-v="simple" class="' + (S.mode === 'full' ? '' : 'on') + '" aria-pressed="' + (S.mode !== 'full') + '">Просто</button>' +
     '<button type="button" data-a="mode" data-v="full" class="' + (S.mode === 'full' ? 'on' : '') + '" aria-pressed="' + (S.mode === 'full') + '">Полный</button></div>' +
     '<p class="small muted" style="margin:10px 0 0">«Просто» — на главной оценка объекта, а смета, календарь и итоги открываются по этапу проекта. «Полный» — всё сразу.</p></div>' +
+    '<div class="card"><h3>Яркий свет</h3><div class="chips" id="contrastSeg">' +
+    '<button type="button" data-a="contrast" data-v="0" class="' + (contrastOn() ? '' : 'on') + '" aria-pressed="' + !contrastOn() + '">Обычный</button>' +
+    '<button type="button" data-a="contrast" data-v="1" class="' + (contrastOn() ? 'on' : '') + '" aria-pressed="' + contrastOn() + '">Высокий контраст</button></div>' +
+    '<p class="small muted" style="margin:10px 0 0">Чёрное на белом с жирными рамками: читается на солнце. Включает светлый стиль.</p></div>' +
     '<div class="card"><h3>Оформление</h3><div class="chips" id="styleSeg">' +
     '<button type="button" data-a="style" data-v="glass" class="' + (st === 'glass' ? 'on' : '') + '" aria-pressed="' + (st === 'glass') + '">Жидкое стекло</button>' +
     '<button type="button" data-a="style" data-v="light" class="' + (st === 'light' ? 'on' : '') + '" aria-pressed="' + (st === 'light') + '">Светлый</button></div></div>' +
@@ -3834,7 +3871,8 @@ view.addEventListener('click', e => {
   switch (a) {
     case 'term': openSheet(b.dataset.t); break;
     case 'home-gloss': openGlossary(); break;
-    case 'style': setStyle(b.dataset.v); break;
+    case 'style': if (contrastOn()) { toast('Сначала выключите «Яркий свет»'); break; } setStyle(b.dataset.v); break;
+    case 'contrast': applyContrast(b.dataset.v === '1'); toast(b.dataset.v === '1' ? 'Высокий контраст включён' : 'Обычный вид'); break;
     case 'soon': openVoiceHelper(); break;
     case 'ph-geo': phLocate(); break;
     case 'ph-pick': PH.pick = !PH.pick; phPaintPrev(); break;
@@ -4041,7 +4079,7 @@ view.addEventListener('click', e => {
       const it = d && d.works && d.works.items.find(x => x.k === b.dataset.wk);
       if (it) {
         it.done = it.done ? '' : today(); d.updated = Date.now(); save(); renderDeal(d);
-        if (it.done) { const g = dealProgress(d); toast(cheerFor(it.k, g ? g.pct : 0), 4500); }
+        if (it.done) { const g = dealProgress(d); toast(cheerFor(it.k, g ? g.pct : 0), 4500); haptic([20, 40, 20]); }
       }
       break;
     }

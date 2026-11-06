@@ -1216,6 +1216,46 @@ vm.runInContext(`
 }
 `, ctx);
 
+/* --- Эргономика «в полях»: плавающая кнопка, быстрые суммы, вибрация, контраст --- */
+vm.runInContext(`
+{
+  const keepMode = S.mode, keepNav = navigator;
+  const mk = (stage, extra) => cleanDeal(Object.assign({id: 'f' + stage, name: 'о', stage}, extra || {}));
+  S.mode = 'full';
+  check('плавающая кнопка: в полном режиме есть всегда', /class="fab"[^>]*data-a="exp-new"/.test(dealFabHtml(mk('Поиск'))) && /Добавить расход/.test(dealFabHtml(mk('Поиск'))));
+  S.mode = 'simple';
+  check('плавающая кнопка: простой режим, поиск без расходов — нет', dealFabHtml(mk('Поиск')) === '');
+  check('плавающая кнопка: простой режим, ремонт — есть', /class="fab"/.test(dealFabHtml(mk('Ремонт'))));
+  check('плавающая кнопка: простой режим, поиск, но расходы уже есть — есть', /class="fab"/.test(dealFabHtml(mk('Поиск', {expenses: [{id: 'e', cat: 'Прочее', sum: 5}]}))));
+  S.mode = keepMode;
+
+  check('быстрые суммы: набор 1к, 5к, 10к, 50к', JSON.stringify(X_QUICK) === '[1000,5000,10000,50000]');
+  check('быстрые суммы: к введённому «45к» + 5 000 = 50 000', xAdd(parseAmount('45к'), 5000) === 50000);
+  check('быстрые суммы: к пустому полю', xAdd(parseAmount(''), 10000) === 10000 && xAdd(0, 1000) === 1000);
+  check('быстрые суммы: нет NaN и не больше предела', xAdd(NaN, 1000) === 1000 && xAdd(1e12, 50000) === 1e12 && xAdd(5, undefined) === 5 && xAdd(-100, 50) === 0);
+  check('быстрые суммы: «45 000» после прибавления читается обратно', parseAmount(num(xAdd(45000, 5000))) === 50000, num(50000));
+
+  // вибрация: не падает без поддержки и с ней
+  let buzz = [];
+  navigator = {vibrate: v => { buzz.push(v); return true; }};
+  haptic(20); haptic([20, 40, 20]); haptic();
+  check('вибрация: вызывается с нужными паттернами', JSON.stringify(buzz) === '[20,[20,40,20],15]', buzz);
+  navigator = {};
+  let boom = null; try { haptic(20); } catch (e) { boom = e; }
+  check('вибрация: без поддержки (iPhone) ничего не ломает', boom === null);
+  navigator = {vibrate() { throw new Error('нет прав'); }};
+  boom = null; try { haptic(20); } catch (e) { boom = e; }
+  check('вибрация: исключение браузера гасится', boom === null);
+  navigator = keepNav;
+
+  // контраст запоминается
+  applyContrast(true);
+  check('яркий свет: включение запоминается', localStorage.getItem('fl-contrast') === '1');
+  applyContrast(false);
+  check('яркий свет: выключение запоминается', localStorage.getItem('fl-contrast') === '0');
+}
+`, ctx);
+
 Promise.all(ctx.pendingTests || []).then(() => {
   console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
   process.exit(fail ? 1 : 0);
