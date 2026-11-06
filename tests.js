@@ -348,6 +348,9 @@ vm.runInContext(`
   check('отчёт: есть ключевые цифры и прогноз', h.includes('Ключевые цифры') && h.includes('Прогноз чистой прибыли') && h.includes(rub(compute(DEFAULT_CALC).net - 100000 - 5000)), '');
   check('отчёт: перерасход и план/факт', h.includes('перерасход ' + rub(100000)) && h.includes('Структура вложений') && h.includes('График ремонта'));
   check('отчёт: есть оговорка про гарантию дохода', h.includes('не гарантия дохода'));
+  { const pp = compute(DEFAULT_CALC);
+    check('отчёт: итоговая калькуляция с чистой прибылью, налогом и комиссией', h.includes('Итоговая калькуляция') && h.includes('Чистая прибыль</td><td class="n ' + (pp.net < 0 ? 'bad' : 'good') + '">' + rub(pp.net)) && h.includes('Комиссия при продаже') && h.includes('id="repPhotos"'), '');
+    check('отчёт: без расчёта калькуляции нет', !reportHtml(mk({calc: null})).includes('Итоговая калькуляция')); }
   const h2 = reportHtml(mk({calc: null, works: null, expenses: []}));
   check('отчёт: сделка без расчёта — без падения и без прогноза', h2.includes('Расчёт по объекту ещё не заполнен') && !h2.includes('Прогноз чистой прибыли') && !h2.includes('График ремонта'));
   const h3 = reportHtml(mk({saleFact: 8000000}));
