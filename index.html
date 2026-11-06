@@ -792,7 +792,7 @@ function openExpSheet(d) {
   el.classList.add('on');
   const s = $('#xSum'); if (s && s.focus) s.focus();
 }
-function closeXSheet() { const el = $('#xsheet'); if (el) el.classList.remove('on'); XS = null; }
+function closeXSheet() { const el = $('#xsheet'); if (el) { if (el.dataset.vh) voiceStop(); el.classList.remove('on'); delete el.dataset.vh; } XS = null; }
 function xHint() {
   const h = $('#xHint'), s = $('#xSum'); if (!h || !s) return;
   const v = parseAmount(s.value);
@@ -813,6 +813,105 @@ function xSave(more) {
     toast('Добавлено: ' + XS.n + '. Вводите следующий');
   } else { const n = XS.n; closeXSheet(); toast(n > 1 ? 'Добавлено расходов: ' + n : 'Расход добавлен'); }
 }
+/* ===== Голосовой помощник =====
+   Одна фраза → черновик: с суммой — расход в проект (шторка расхода, заполненная заранее), без суммы — запись в календарь.
+   Ничего не сохраняется само: сначала предпросмотр, и вы нажимаете «Добавить». Разбор локальный, без сервера. */
+const VH_CATS = [
+  ['Оформление сделки', /нотариус|росреестр|госпошлин|риелтор|риэлтор|юрист|оформлен|регистрац|выписк/],
+  ['Налоги', /налог|ндфл/],
+  ['Ипотека', /ипотек|кредит/],
+  ['Коммуналка', /коммунал|жкх|электричеств|интернет|(^|[^а-яё])(газ|вод[аыу]|свет)([^а-яё]|$)/],
+  ['Мебель и техника', /мебел|диван|кроват|шкаф|стол[аы]?([^а-яё]|$)|холодильник|стиральн|техник|телевизор|кухн/],
+  ['Материалы', /плитк|смес|клей|краск|обо[ийя]|ламинат|линолеум|материал|цемент|гипсокартон|шпатл|грунт|саморез|кабел|розетк|выключател|двер[ьи]|окн[оа]|подоконник/],
+  ['Ремонт', /работ|бригад|мастер|электрик|сантехник|демонтаж|отделк|монтаж|укладк|стяжк|штукатур|маляр|плиточник|вывоз|мусор|ремонт/]
+];
+const VH_STAGES = [
+  ['Демонтаж', /демонтаж|вывоз|мусор/], ['Электрика', /электрик|проводк/],
+  ['Черновые работы', /стяжк|штукатур|сантехник|разводк/], ['Чистовые работы', /плитк|обо[ийя]|ламинат|покраск|краск|двер[ьи]/],
+  ['Меблировка и уборка', /мебл|уборк|кухн|диван/]
+];
+function vhDay(off) { const d = new Date(); d.setDate(d.getDate() + off); return d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()); }
+function parseVoiceCmd(raw) {
+  const t = String(raw == null ? '' : raw).replace(/[  ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const lo = t.toLowerCase();
+  let day = '', time = '';
+  const dm = lo.match(/(^|[^а-яё])(послезавтра|завтра|сегодня|вчера)(?![а-яё])/);
+  if (dm) day = vhDay({'сегодня': 0, 'завтра': 1, 'послезавтра': 2, 'вчера': -1}[dm[2]]);
+  // Время: «в 15:00», «к 9 часам», «в 15»; его позиция исключается из поиска суммы
+  const tm = /(?:^|[^а-яё0-9])(?:в|к)\s*(\d{1,2})(?:[:.](\d{2}))?(?:\s*(?:час[а-яё]*|ч))?(?![\d:а-яё])/.exec(lo);
+  let tFrom = -1, tTo = -1;
+  if (tm && +tm[1] <= 23 && (!tm[2] || +tm[2] <= 59)) {
+    time = two(+tm[1]) + ':' + (tm[2] || '00');
+    tFrom = tm.index + tm[0].search(/\d/); tTo = tm.index + tm[0].length;
+  }
+  // Сумма: сначала числа с «тыс/млн/к/руб», иначе самое большое число от 100
+  const re = /(\d+(?: \d{3})*(?:[.,]\d+)?)\s*(млн|миллион[а-яё]*|тыс[а-яё]*\.?|к|k|м)?(?![а-яёa-z\d:])(\s*(?:₽|руб[а-яё.]*|р(?![а-яё])\.?))?/gi;
+  let m, best = null;
+  while ((m = re.exec(t))) {
+    if (m.index >= tFrom && m.index < tTo && tFrom >= 0) continue;
+    const base = parseNum(m[1].replace(/ /g, '')), mult = !m[2] ? 1 : /^(к|k|тыс)/i.test(m[2]) ? 1e3 : 1e6;
+    const v = Math.round(base * mult), strong = !!(m[2] || m[3]);
+    if (!(v > 0) || v > 1e12 || (!strong && v < 100)) continue;
+    if (!best || (strong && !best.strong) || (strong === best.strong && v > best.v)) best = {v, strong, s: m[0], i: m.index};
+  }
+  const sum = best ? best.v : 0;
+  let note = t;
+  if (best) note = note.slice(0, best.i) + ' ' + note.slice(best.i + best.s.length);
+  note = note.replace(/(^|\s)(рублей|рубля|рубль|руб|₽|за|на|потратил[а-яё]*|оплатил[а-яё]*|заплатил[а-яё]*|расход|сегодня|вчера)(?=\s|$|[.,])/gi, ' ').replace(/\s+/g, ' ').replace(/^[\s.,;:—-]+|[\s.,;:—-]+$/g, '');
+  if (note) note = note[0].toUpperCase() + note.slice(1);
+  let cat = 'Прочее'; for (const [c, r] of VH_CATS) if (r.test(lo)) { cat = c; break; }
+  let stage = ''; if (cat === 'Ремонт' || cat === 'Материалы') for (const [st, r] of VH_STAGES) if (r.test(lo)) { stage = st; break; }
+  return {sum, cat, stage, note: note.slice(0, 300), day, time, text: t.slice(0, 300)};
+}
+const VH = {dealId: ''};
+function openVoiceHelper() {
+  const el = $('#xsheet'); if (!el) return;
+  const deals = S.deals.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  VH.dealId = (deals.find(x => x.id === openDeal) || deals[0] || {}).id || '';
+  XS = null;
+  $('#xbox').innerHTML = '<h3>Голосовой помощник</h3>' +
+    '<p class="small muted" style="margin:0 0 8px">Скажите, например: «45 тысяч электрика» — подготовлю расход. «Встреча с прорабом завтра в 15:00» — подготовлю запись в календарь. Перед сохранением вы всё увидите и сможете поправить.</p>' +
+    '<textarea id="vhText" rows="3" maxlength="300" placeholder="Нажмите «Диктовать» или впишите фразу"></textarea>' +
+    '<button type="button" class="btn block" data-a="vh-voice" aria-pressed="false" style="margin-top:8px">' + ICO.mic + '<span>Диктовать</span></button>' +
+    '<p class="small muted" id="vhSt" role="status" style="margin:8px 0 0"></p>' +
+    (deals.length ? '<label class="f"><span>Проект для расхода</span><select id="vhDeal">' + deals.map(d => '<option value="' + esc(d.id) + '"' + (d.id === VH.dealId ? ' selected' : '') + '>' + esc(d.name || 'Без названия') + '</option>').join('') + '</select></label>' : '') +
+    '<div class="row" style="margin-top:12px"><button type="button" class="btn pri" data-a="vh-go">Разобрать</button><button type="button" class="btn" data-a="vh-close">Отмена</button></div>';
+  el.classList.add('on'); el.dataset.vh = '1';
+  const ta = $('#vhText'); if (ta && ta.focus) ta.focus();
+}
+function closeVoiceHelper() { voiceStop(); const el = $('#xsheet'); if (el) { el.classList.remove('on'); delete el.dataset.vh; } }
+async function vhGo() {
+  await voiceFlush();
+  const ta = $('#vhText'), text = String(ta ? ta.value : '').trim();
+  if (!text) { toast('Скажите или впишите фразу'); return; }
+  const r = parseVoiceCmd(text);
+  const sel = $('#vhDeal'), did = sel ? sel.value : VH.dealId;
+  if (r.sum > 0) {
+    const d = S.deals.find(x => x.id === did);
+    if (!d) { toast('Сначала создайте проект — расход записывается в проект'); return; }
+    closeVoiceHelper();
+    if (S.tab !== 'deals' || openDeal !== d.id) { openDeal = d.id; navTab('deals'); }
+    openExpSheet(d);
+    XS.cat = r.cat; XS.stage = r.stage;
+    $('#xSum').value = num(r.sum); xHint();
+    $('#xCats').innerHTML = xChipsHtml(EXP_CATS, XS.cat, 'x-cat');
+    $('#xStages').innerHTML = xChipsHtml(WORK_STAGES.map(w => w[1]), XS.stage, 'x-stage');
+    if (r.day) $('#xDate').value = r.day;
+    $('#xNote').value = r.note;
+    toast('Проверьте данные и нажмите «Добавить»');
+  } else {
+    closeVoiceHelper();
+    CAL.day = r.day || today(); CAL.time = r.time; CAL.text = r.text; CAL.deal = '';
+    navPush(navRoot('cal'), 'anim-right');
+    toast('Суммы нет — подготовил запись в календарь. Проверьте и нажмите «Добавить»');
+  }
+}
+$('#xsheet').addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b || !$('#xsheet').dataset.vh) return;
+  if (b.dataset.a === 'vh-close' || b.dataset.a === 'x-close') closeVoiceHelper();
+  else if (b.dataset.a === 'vh-voice') voiceToggle($('#vhText'), b, $('#vhSt'));
+  else if (b.dataset.a === 'vh-go') vhGo();
+});
 function openGlossary() {
   navTab('ref');
   const g = $('#gloss'); if (g) { g.open = true; g.scrollIntoView({block: 'start'}); }
@@ -2718,7 +2817,11 @@ async function geocodeAddress(address) {
   } finally { clearTimeout(t); }
 }
 // Кнопка такси: если место для текущего адреса известно — обычная ссылка (так надёжнее открывается приложение), иначе кнопка, которая сначала ищет адрес
-const taxiBtnHtml = (h, act) => { const pl = placeFor(h); return pl ? '<a class="btn" href="' + taxiUrl(pl.lat, pl.lon) + '" rel="noopener">' + ICO.taxi + 'Вызвать такси</a>' : '<button type="button" class="btn" data-a="' + act + '">' + ICO.taxi + 'Вызвать такси</button>'; };
+// Навигаторы: маршрут к объекту (Яндекс Навигатор — схема приложения, 2ГИС — веб-ссылка, открывается в приложении, если оно стоит)
+const naviUrl = (lat, lon) => 'yandexnavi://build_route_on_map?lat_to=' + lat.toFixed(6) + '&lon_to=' + lon.toFixed(6);
+const gisUrl = (lat, lon) => 'https://2gis.ru/routeSearch/rsType/car/to/' + lon.toFixed(6) + ',' + lat.toFixed(6);
+const naviBtnsHtml = pl => '<a class="btn" href="' + naviUrl(pl.lat, pl.lon) + '" rel="noopener">Навигатор</a><a class="btn" href="' + gisUrl(pl.lat, pl.lon) + '" target="_blank" rel="noopener">2ГИС</a>';
+const taxiBtnHtml = (h, act) => { const pl = placeFor(h); return pl ? '<a class="btn" href="' + taxiUrl(pl.lat, pl.lon) + '" rel="noopener">' + ICO.taxi + 'Вызвать такси</a>' + naviBtnsHtml(pl) : '<button type="button" class="btn" data-a="' + act + '">' + ICO.taxi + 'Вызвать такси</button>'; };
 async function taxiGo(h, after, say) {
   const addr = String(h.address || '').trim();
   let pl = placeFor(h);
@@ -3257,7 +3360,7 @@ view.addEventListener('click', e => {
     case 'term': openSheet(b.dataset.t); break;
     case 'home-gloss': openGlossary(); break;
     case 'style': setStyle(b.dataset.v); break;
-    case 'soon': toast('Голосовой помощник появится в следующем обновлении'); break;
+    case 'soon': openVoiceHelper(); break;
     case 'ph-geo': phLocate(); break;
     case 'ph-pick': PH.pick = !PH.pick; phPaintPrev(); break;
     case 'ph-add': phCommit(b.dataset.id, false); break;

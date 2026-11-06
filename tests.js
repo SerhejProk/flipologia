@@ -340,6 +340,25 @@ vm.runInContext(`
   S.deals = [];
 }
 
+/* --- Голосовой помощник: разбор фразы --- */
+{
+  const P = parseVoiceCmd;
+  const a = P('45 тысяч электрика');
+  check('голос: «45 тысяч электрика» → 45 000, Ремонт, Электрика', a.sum === 45000 && a.cat === 'Ремонт' && a.stage === 'Электрика' && a.note === 'Электрика', a);
+  const b = P('Потратил 1,2 млн на плитку');
+  check('голос: «1,2 млн на плитку» → Материалы, Чистовые', b.sum === 1200000 && b.cat === 'Материалы' && b.stage === 'Чистовые работы' && b.note === 'Плитку', b);
+  const c = P('оплатил нотариуса 18 000 рублей');
+  check('голос: нотариус → Оформление сделки', c.sum === 18000 && c.cat === 'Оформление сделки', c);
+  const d = P('встреча с прорабом завтра в 15:00');
+  check('голос: встреча без суммы → день завтра, время 15:00, суммы нет', d.sum === 0 && d.time === '15:00' && d.day > today() && d.day.length === 10, d);
+  const e = P('вчера электричество 3 200');
+  check('голос: «электричество 3 200» → Коммуналка, дата вчера', e.sum === 3200 && e.cat === 'Коммуналка' && e.day < today(), e);
+  check('голос: время «в 15» не считается суммой', P('созвон в 15 с бригадой').sum === 0 && P('созвон в 15 с бригадой').time === '15:00');
+  check('голос: «3 розетки» — не сумма; «45к» — сумма', P('3 розетки').sum === 0 && P('розетки 45к').sum === 45000 && P('розетки 45к').cat === 'Материалы');
+  check('голос: пустая и мусорная фраза без падения', P('').sum === 0 && P(null).sum === 0 && P('<b>x</b> 5 тыс').sum === 5000);
+  check('голос: огромное число отбрасывается', P('999999999999999999 руб').sum === 0);
+  check('голос: кнопка помощника ведёт в openVoiceHelper', /case 'soon': openVoiceHelper\(\)/.test(SRC));
+}
 /* --- Отчёт инвестору --- */
 {
   const mk = o => Object.assign({id: 'r1', name: 'Однушка <img src=x>', address: 'ул. "Тест" & <b>', stage: 'Ремонт', calc: Object.assign({}, DEFAULT_CALC), expenses: [{id: 'a', cat: 'Ремонт', sum: 900000, date: '2026-11-01', note: ''}, {id: 'b', cat: 'Чужая', sum: 5000, date: '2026-11-01', note: ''}], works: cleanWorks({start: today(), items: []}), saleFact: 0}, o || {});
@@ -895,6 +914,7 @@ vm.runInContext(`
   const pl = {lat: 55.75, lon: 37.6, address: 'Москва, Арбат, 5'};
   check('такси: место годится, только пока адрес тот же', placeFor({address: ' Москва, Арбат, 5 ', place: pl}) === pl && placeFor({address: 'Москва, Арбат, 6', place: pl}) === null && placeFor({address: 'x', place: null}) === null && placeFor(null) === null);
   check('такси: координаты вне диапазона не годятся', placeFor({address: 'a', place: {lat: 99, lon: 0, address: 'a'}}) === null);
+  check('навигаторы: ссылки Яндекс Навигатор и 2ГИС с координатами (2ГИС: долгота,широта), только при известном месте', naviUrl(55.7522, 37.6156) === 'yandexnavi://build_route_on_map?lat_to=55.752200&lon_to=37.615600' && gisUrl(55.7522, 37.6156) === 'https://2gis.ru/routeSearch/rsType/car/to/37.615600,55.752200' && taxiBtnHtml({address: 'a', place: {lat: 55.7522, lon: 37.6156, address: 'a'}}, 'x').includes('2gis.ru/routeSearch') && !taxiBtnHtml({address: 'a', place: null}, 'x').includes('2gis'), '');
   check('такси: без места — кнопка, с местом — ссылка', taxiBtnHtml({address: 'a', place: null}, 'deal-taxi').includes('<button') && taxiBtnHtml({address: 'a', place: null}, 'deal-taxi').includes('data-a="deal-taxi"') && taxiBtnHtml({address: 'a', place: {lat: 1, lon: 2, address: 'a'}}, 'deal-taxi').includes('<a class="btn" href="https://3.redirect'));
   const d = cleanDeal({id: 'z', name: 'n', owner: {name: '  ' + 'И'.repeat(200), phone: '+7 900 ' + '1'.repeat(60)}, docs: {egrn: 'have', bank: 'miss', spouse: 'na', passport: 'hack', zzz: 'have', proxy: 5}, ready: 'maybe', place: {lat: 'x', lon: 1, address: 'a'}});
   check('проект: собственник обрезан по длине', d.owner.name.length === 80 && d.owner.phone.length === 30, [d.owner.name.length, d.owner.phone.length]);
