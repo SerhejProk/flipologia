@@ -648,6 +648,21 @@ function cleanBook(a) {
   });
 }
 
+/* Калькулятор материалов: размеры комнаты и параметры (нужны до load) */
+const MAT_DEF = {len: 4, wid: 3, h: 2.7, doors: 1, wins: 1, reserve: 10, tw: 30, th: 30, pack: 2.4};
+const MAT_RANGE = {len: [0.5, 50], wid: [0.5, 50], h: [2, 5], doors: [0, 10], wins: [0, 20], reserve: [0, 30], tw: [5, 200], th: [5, 200], pack: [0.5, 10]};
+const MAT_INT = {doors: 1, wins: 1, reserve: 1};
+function cleanMat(src) {
+  const o = Object.assign({}, MAT_DEF);
+  if (!src || typeof src !== 'object') return o;
+  Object.keys(MAT_DEF).forEach(k => {
+    const v = src[k], n = typeof v === 'string' ? Number(v.replace(',', '.')) : Number(v), r = MAT_RANGE[k];
+    if (v == null || v === '' || typeof v === 'boolean' || !isFinite(n) || n < r[0] || n > r[1]) return;
+    o[k] = MAT_INT[k] ? Math.round(n) : n;
+  });
+  return o;
+}
+
 /* ===== Хранилище ===== */
 function load() {
   let s = null;
@@ -671,9 +686,10 @@ function load() {
     lastBackup: Number(s.lastBackup) || 0,
     cal: cleanCal(s.cal),
     book: cleanBook(s.book),
+    mat: cleanMat(s.mat),
     // Режим «Просто / Полный»: новая установка — просто; у тех, у кого уже есть проекты, — полный
     mode: s.mode === 'full' || s.mode === 'simple' ? s.mode : (Array.isArray(s.deals) && s.deals.some(d => d && !d.demo) ? 'full' : 'simple'),
-    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'notes'].includes(s.tab) ? s.tab : 'home'
+    tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'notes', 'mat'].includes(s.tab) ? s.tab : 'home'
   };
 }
 // Приводит сохранённые данные к ожидаемым типам: числа — к числам, варианты — к допустимым.
@@ -2719,6 +2735,7 @@ function homeHtml() {
   if (sh(2)) h += portfolioHtml(S.deals);
   if (sh(1)) h += '<h3 class="hh">Справочники</h3><div class="card hlist">' +
     '<button data-a="home-push" data-v="notes"><span>Записная книжка' + (S.book.length ? ' · ' + S.book.length : '') + '</span><i>›</i></button>' +
+    (full ? '' : '<button data-a="home-push" data-v="mat"><span>Материалы: сколько купить на комнату</span><i>›</i></button>') +
     '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
     '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
     '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button>' + (full ? '' : '<button data-a="home-push" data-v="kursy"><span>Курсы и ставки</span><i>›</i></button>') + '</div>';
@@ -2733,6 +2750,7 @@ function homeHtml() {
     '<button class="tile" data-a="go-tab" data-v="calc">' + ICO.calc + '<b>Расчёт сделки</b><span>Прибыль и предел цены</span></button>' +
     '<button class="tile" data-a="home-push" data-v="smeta">' + ICO.smeta + '<b>Смета ремонта</b><span>По площади и уровню</span></button>' +
     '<button class="tile" data-a="home-push" data-v="torgi">' + ICO.torgi + '<b>Торги</b><span>Предел ставки на лоте</span></button>' +
+    '<button class="tile" data-a="home-push" data-v="mat">' + ICO.smeta + '<b>Материалы</b><span>Сколько купить на комнату</span></button>' +
     '<button class="tile" data-a="home-parse">' + ICO.parse + '<b>Из объявления</b><span>Вставить текст Авито, ЦИАН</span></button></div>';
   if (sh(1)) h += '<h3 class="hh">Новости</h3><div class="card hlist"><a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
   const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
@@ -3004,6 +3022,87 @@ function calHomeHtml() {
     '<button class="btn pri block" style="margin-top:12px" data-a="home-push" data-v="cal">Открыть календарь</button></div>';
 }
 
+
+/* ===== Калькулятор материалов =====
+   Комната → сколько краски, обоев, плитки, ламината и сопутки купить. Нормы ориентировочные: точный расход смотрите на упаковке. */
+const MAT = {sel: new Set(), room: 'Комната', deal: ''};
+const upC = x => Math.ceil(x - 1e-9);
+const r1 = x => Math.round(x * 10) / 10;
+const plu = (n, a, b, c) => { const m = n % 100, d = n % 10; return n + ' ' + (m > 10 && m < 15 ? c : d === 1 ? a : d >= 2 && d <= 4 ? b : c); };
+const fl1 = x => String(r1(x)).replace('.', ',');
+function matCalc(m) {
+  const c = cleanMat(m);
+  if (!m) return null;
+  for (const k of Object.keys(MAT_RANGE)) { const n = Number(m[k]); if (!(n >= MAT_RANGE[k][0] && n <= MAT_RANGE[k][1])) return null; }
+  const k = 1 + c.reserve / 100, floor = c.len * c.wid, perim = 2 * (c.len + c.wid);
+  const open = c.doors * 1.9 + c.wins * 1.8, walls = Math.max(0, perim * c.h - open);
+  const tileArea = c.tw * c.th / 10000, sacks = kg => upC(kg / 25);
+  const perRoll = Math.max(1, Math.floor(10.05 / (c.h + 0.1)));
+  const strips = upC(Math.max(0, perim - c.doors * 0.9) / 1.06);
+  const prime = (walls + floor) * 0.2 * k, putty = (walls + floor) * 1.2 * k;
+  const paintW = walls * 2 / 10 * k, paintC = floor * 2 / 10 * k;
+  const glue = floor * 4.5 * k, grout = floor * 0.4 * k;
+  const rows = [
+    {k: 'prime', g: 'Подготовка стен и потолка', name: 'Грунтовка', txt: '≈ ' + fl1(prime) + ' л, канистр по 10 л: ' + upC(prime / 10), qty: r1(prime), unit: 'л'},
+    {k: 'putty', g: 'Подготовка стен и потолка', name: 'Шпаклёвка', txt: '≈ ' + Math.round(putty) + ' кг, мешков по 25 кг: ' + sacks(putty), qty: Math.round(putty), unit: 'кг'},
+    {k: 'paintW', g: 'Стены', name: 'Краска для стен (2 слоя)', txt: '≈ ' + fl1(paintW) + ' л, банок по 9 л: ' + upC(paintW / 9), qty: r1(paintW), unit: 'л'},
+    {k: 'paper', g: 'Стены', name: 'Обои (рулон 10 × 1,06 м)', txt: plu(upC(strips / perRoll), 'рулон', 'рулона', 'рулонов') + ' (' + strips + ' полос по ' + fl1(c.h + 0.1) + ' м)', qty: upC(strips / perRoll), unit: 'рулонов'},
+    {k: 'paintC', g: 'Потолок', name: 'Краска для потолка (2 слоя)', txt: '≈ ' + fl1(paintC) + ' л', qty: r1(paintC), unit: 'л'},
+    {k: 'tile', g: 'Пол', name: 'Плитка ' + c.tw + '×' + c.th + ' см', txt: fmtN.format(upC(floor * k / tileArea)) + ' шт. (' + fl1(floor * k) + ' м² с запасом)', qty: upC(floor * k / tileArea), unit: 'шт.'},
+    {k: 'glue', g: 'Пол', name: 'Плиточный клей', txt: '≈ ' + Math.round(glue) + ' кг, мешков по 25 кг: ' + sacks(glue), qty: Math.round(glue), unit: 'кг'},
+    {k: 'grout', g: 'Пол', name: 'Затирка', txt: '≈ ' + fl1(grout) + ' кг', qty: r1(grout), unit: 'кг'},
+    {k: 'lam', g: 'Пол', name: 'Ламинат (пачка ' + fl1(c.pack) + ' м²)', txt: plu(upC(floor * k / c.pack), 'пачка', 'пачки', 'пачек') + ' (' + fl1(floor * k) + ' м² с запасом)', qty: upC(floor * k / c.pack), unit: 'пачек'},
+    {k: 'under', g: 'Пол', name: 'Подложка (рулон 10 м²)', txt: plu(upC(floor * k / 10), 'рулон', 'рулона', 'рулонов'), qty: upC(floor * k / 10), unit: 'рулонов'},
+    {k: 'plinth', g: 'Пол', name: 'Плинтус (штанга 2,5 м)', txt: upC(Math.max(0, perim - c.doors * 0.9) * k / 2.5) + ' шт.', qty: upC(Math.max(0, perim - c.doors * 0.9) * k / 2.5), unit: 'шт.'}
+  ];
+  return {floor: r1(floor), walls: r1(walls), perim: r1(perim), open: r1(open), rows};
+}
+const MAT_FIELDS = [['len', 'Длина', 'м'], ['wid', 'Ширина', 'м'], ['h', 'Высота потолка', 'м'], ['doors', 'Дверей', 'шт.'], ['wins', 'Окон', 'шт.'], ['reserve', 'Запас', '%']];
+function matResHtml() {
+  const r = matCalc(S.mat);
+  if (!r) return '<p class="small muted" style="margin:0">Проверьте числа: длина и ширина от 0,5 до 50 м, высота от 2 до 5 м, дверей до 10, окон до 20, запас от 0 до 30%, плитка от 5 до 200 см, пачка ламината от 0,5 до 10 м².</p>';
+  let h = '<div class="kz-sum"><span>Пол и потолок</span><b>' + fl1(r.floor) + ' м²</b></div>' +
+    '<div class="kz-sum"><span>Стены без проёмов</span><b>' + fl1(r.walls) + ' м²</b></div>' +
+    '<div class="kz-sum"><span>Периметр</span><b>' + fl1(r.perim) + ' м</b></div>' +
+    (r.walls === 0 ? '<p class="small" style="color:var(--bad);margin:8px 0 0">Проёмы занимают все стены: проверьте число дверей и окон.</p>' : '');
+  let g = '';
+  r.rows.forEach(x => {
+    if (x.g !== g) { g = x.g; h += '<div class="shopst">' + esc(g) + '</div>'; }
+    h += '<div class="chkrow"><label class="chk"><input type="checkbox" data-mtk="' + x.k + '"' + (MAT.sel.has(x.k) ? ' checked' : '') + '><span><b>' + esc(x.name) + '</b><br><span class="small muted">' + esc(x.txt) + '</span></span></label></div>';
+  });
+  return h;
+}
+function renderMat() {
+  const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
+  if (MAT.deal && !deals.some(d => d.id === MAT.deal)) MAT.deal = '';
+  const c = S.mat;
+  $('#view').innerHTML =
+    '<div class="card"><h3>Комната</h3><div class="grid2">' +
+    MAT_FIELDS.map(([k, l, suf]) => '<label class="f"><span>' + l + '</span><div class="inwrap"><input type="text" inputmode="decimal" data-mt="' + k + '" value="' + esc(String(c[k]).replace('.', ',')) + '"><span>' + suf + '</span></div></label>').join('') +
+    '</div><details style="margin-top:10px"><summary class="small">Плитка и ламинат</summary><div class="grid2" style="margin-top:8px">' +
+    '<label class="f"><span>Плитка: ширина</span><div class="inwrap"><input type="text" inputmode="decimal" data-mt="tw" value="' + esc(String(c.tw).replace('.', ',')) + '"><span>см</span></div></label>' +
+    '<label class="f"><span>Плитка: длина</span><div class="inwrap"><input type="text" inputmode="decimal" data-mt="th" value="' + esc(String(c.th).replace('.', ',')) + '"><span>см</span></div></label>' +
+    '<label class="f"><span>В пачке ламината</span><div class="inwrap"><input type="text" inputmode="decimal" data-mt="pack" value="' + esc(String(c.pack).replace('.', ',')) + '"><span>м²</span></div></label></div></details></div>' +
+    '<div class="card"><h3>Сколько купить</h3><div id="matRes" role="status" aria-live="polite">' + matResHtml() + '</div>' +
+    '<p class="small muted" style="margin:10px 0 0">Нормы ориентировочные: краска 10 м² с литра за слой, шпаклёвка 1,2 кг/м², клей 4,5 кг/м². Точный расход смотрите на упаковке. Дверь считается 1,9 м², окно 1,8 м². Обои без подгонки рисунка и без запаса: полосы уже округлены вверх. Выбирайте одно из пары: обои или краска стен, плитка или ламинат.</p></div>' +
+    '<div class="card"><h3>В список покупок</h3><p class="small muted" style="margin:0 0 8px">Отметьте нужное выше и выберите проект: позиции попадут в его список покупок.</p>' +
+    '<label class="f"><span>Комната</span><select data-mt="room">' + ROOMS.filter(r => r !== 'Весь объект').map(r => '<option' + (MAT.room === r ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></label>' +
+    (deals.length ? '<label class="f"><span>Проект</span><select data-mt="deal">' + deals.map(d => '<option value="' + esc(d.id) + '"' + (MAT.deal === d.id ? ' selected' : '') + '>' + esc(d.name || 'Проект') + '</option>').join('') + '</select></label>' +
+      '<button type="button" class="btn pri block" style="margin-top:10px" data-a="mat-add">Добавить отмеченное</button>' : '<p class="small muted" style="margin:0">Сначала создайте проект в «Мои сделки».</p>') + '</div>';
+  if (!MAT.deal && deals.length) { MAT.deal = deals[0].id; const sel = $('select[data-mt="deal"]'); if (sel) sel.value = MAT.deal; }
+}
+function matAdd() {
+  const d = S.deals.find(x => x.id === MAT.deal), r = matCalc(S.mat);
+  if (!d || !r) { toast('Выберите проект и впишите размеры комнаты'); return; }
+  const pick = r.rows.filter(x => MAT.sel.has(x.k));
+  if (!pick.length) { toast('Отметьте материалы, которые нужно купить'); return; }
+  d.shop = d.shop || [];
+  if (d.shop.length + pick.length > 200) { toast('В списке покупок не хватит места: максимум 200 позиций'); return; }
+  pick.forEach(x => d.shop.push({id: uid(), name: (x.name + ': ' + x.txt.replace(/ \(.*$/, '').split(', ')[0].replace(/^≈ /, '') + ' · ' + MAT.room).slice(0, 120), store: '', sum: 0, done: false}));
+  d.updated = Date.now(); save(); MAT.sel.clear();
+  const res = $('#matRes'); if (res) res.innerHTML = matResHtml();
+  toast('В список покупок добавлено: ' + pick.length);
+}
 
 /* ===== Записная книжка =====
    Короткие записи с датой: общие и привязанные к проекту. Диктовка, поиск, закрепление, правка.
@@ -3692,7 +3791,7 @@ function renderNewObj() {
 }
 
 /* ===== Навигация ===== */
-const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый объект', cal: 'Календарь', notes: 'Записная книжка'};
+const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый объект', cal: 'Календарь', notes: 'Записная книжка', mat: 'Материалы'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
 function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
@@ -3714,9 +3813,9 @@ function go(tab, cls, y) {
   S.tab = tab; save();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
-  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, tax: renderTax, photo: renderPhoto, newobj: renderNewObj, cal: renderCal, notes: renderNotes})[tab]();
+  ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, tax: renderTax, photo: renderPhoto, newobj: renderNewObj, cal: renderCal, notes: renderNotes, mat: renderMat})[tab]();
   // «Смета» и «Торги» открываются с главной: у них своя кнопка «назад»
-  if (tab === 'smeta' || tab === 'torgi') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
+  if (tab === 'smeta' || tab === 'torgi' || tab === 'mat') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'kursy' || tab === 'tax') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   if (tab === 'photo' || tab === 'cal' || tab === 'notes') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'newobj') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
@@ -3725,7 +3824,7 @@ function go(tab, cls, y) {
 /* ===== История: системная кнопка «назад», кнопка «‹» и свайп идут одним путём =====
    Стопка: «Главная» (глубина 0) → другая вкладка (1) → экраны вглубь (2, 3…).
    Вкладки записи не копят: со вкладки «назад» ведёт на «Главную», а из неё — выход из приложения. */
-const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'photo', 'newobj', 'cal', 'notes'];
+const NAV_TABS = ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax', 'photo', 'newobj', 'cal', 'notes', 'mat'];
 let navDepth = 0;       // глубина текущего экрана в стопке
 let navPending = null;  // вкладка, которую запишем, когда история вернётся к началу стопки
 const navRoot = tab => ({tab, deal: null, rayon: null, from: null});
@@ -3821,7 +3920,7 @@ function closeDeal() { navBack(); }
 let swipe = null;
 document.addEventListener('touchstart', e => {
   const p = e.touches[0];
-  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'tax' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal' || S.tab === 'notes') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'tax' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal' || S.tab === 'notes' || S.tab === 'mat') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
 }, {passive: true});
 document.addEventListener('touchend', e => {
   if (!swipe) return;
@@ -4117,8 +4216,9 @@ view.addEventListener('click', e => {
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
       break;
     case 'go-tab': if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
-    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo' || b.dataset.v === 'cal' || b.dataset.v === 'notes') navPush(navRoot(b.dataset.v), 'anim-right'); break;
+    case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo' || b.dataset.v === 'cal' || b.dataset.v === 'notes' || b.dataset.v === 'mat') navPush(navRoot(b.dataset.v), 'anim-right'); break;
     case 'bk-voice': case 'bk-dvoice': case 'bk-add': case 'bk-dadd': case 'bk-pin': case 'bk-edit': case 'bk-cancel': case 'bk-save': case 'bk-del': bkAction(a, b); break;
+    case 'mat-add': matAdd(); break;
     case 'cal-voice': voiceToggle($('#calText'), b, $('#calSt')); break;
     case 'cal-add': calAdd(); break;
     case 'cal-del': { const id = b.dataset.id; if (S.cal.some(e => e.id === id) && confirm('Удалить запись?')) { S.cal = S.cal.filter(e => e.id !== id); save(); calPaint(); } break; }
@@ -4303,6 +4403,11 @@ view.addEventListener('input', e => {
   else if (t.dataset.d === 'address') dealTaxiPaint(curDeal());
   else if (t.dataset.ph === 'q') { PH.q = t.value.slice(0, 100); phPaintList(); }
   else if (t.dataset.cal === 'text') CAL.text = t.value.slice(0, 300);
+  else if (t.dataset.mt && MAT_DEF[t.dataset.mt] !== undefined) {
+    const k = t.dataset.mt, n = parseNum(t.value), rg = MAT_RANGE[k];
+    S.mat[k] = isFinite(n) ? n : -1;
+    save(); const res = $('#matRes'); if (res) res.innerHTML = matResHtml();
+  }
   else if (t.dataset.bk === 'edit') BK.etext = t.value.slice(0, BOOK_LEN);
   else if (t.dataset.bk === 'text') BK.text = t.value.slice(0, BOOK_LEN);
   else if (t.dataset.bk === 'dtext') BK.dtext = t.value.slice(0, BOOK_LEN);
@@ -4314,6 +4419,9 @@ view.addEventListener('change', e => {
   if (t.dataset.cal === 'date') { if (isDay(t.value)) { CAL.day = t.value; calPaint(); calAddLbl(); } return; }
   if (t.dataset.cal === 'deal') { CAL.deal = t.value; return; }
   if (t.dataset.bk === 'deal') { BK.deal = t.value; return; }
+  if (t.dataset.mtk) { if (t.checked) MAT.sel.add(t.dataset.mtk); else MAT.sel.delete(t.dataset.mtk); return; }
+  if (t.dataset.mt === 'room') { MAT.room = ROOMS.includes(t.value) ? t.value : 'Комната'; return; }
+  if (t.dataset.mt === 'deal') { MAT.deal = t.value; return; }
   if (t.dataset.bk === 'f') { BK.f = t.value; bkPaint(); return; }
   if (t.dataset.ph === 'addr') phRestamp();
   else if (t.dataset.ph === 'file') { const f = t.files && t.files[0]; t.value = ''; phPick(f); }

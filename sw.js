@@ -1,5 +1,5 @@
 // Офлайн-кэш приложения. При обновлении файлов поменяйте номер версии.
-const CACHE = 'flipologia-v37';
+const CACHE = 'flipologia-v38';
 const FILES = ['./', 'index.html', 'rayony-data.js', 'fonts/golos-400.ttf', 'fonts/golos-600.ttf', 'fonts/golos-800.ttf', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

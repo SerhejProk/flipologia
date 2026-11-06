@@ -1310,6 +1310,62 @@ vm.runInContext(`
 }
 `, ctx);
 
+/* --- Калькулятор материалов --- */
+vm.runInContext(`
+{
+  const m0 = {len: 4, wid: 3, h: 2.7, doors: 1, wins: 1, reserve: 10, tw: 30, th: 30, pack: 2.4};
+  const r = matCalc(m0), g = k => r.rows.find(x => x.k === k);
+  check('материалы: площадь пола 4×3 = 12', r.floor === 12);
+  check('материалы: периметр 14', r.perim === 14);
+  check('материалы: стены 14×2,7 − дверь 1,9 − окно 1,8 = 34,1', r.walls === 34.1, r.walls);
+  check('материалы: краска стен 34,1×2/10×1,1 = 7,5 л, одна банка 9 л', g('paintW').qty === 7.5 && /банок по 9 л: 1/.test(g('paintW').txt), g('paintW').txt);
+  check('материалы: краска потолка 12×0,2×1,1 = 2,6 л', g('paintC').qty === 2.6, g('paintC').txt);
+  check('материалы: обои (14 − 0,9 дверь)/1,06 = 13 полос по 2,8 м, по 3 на рулон = 5 рулонов', g('paper').qty === 5 && /13 полос/.test(g('paper').txt), g('paper').txt);
+  check('материалы: плитка 30×30 с запасом 10% = 147 шт.', g('tile').qty === 147, g('tile').txt);
+  check('материалы: ламинат 13,2 м² / 2,4 = 6 пачек', g('lam').qty === 6, g('lam').txt);
+  check('материалы: подложка 12,6 м² = 2 рулона (склонение)', g('under').qty === 2 && g('under').txt === '2 рулона', g('under').txt);
+  check('материалы: склонения 1, 2, 5, 11, 22', plu(1, 'пачка', 'пачки', 'пачек') === '1 пачка' && plu(2, 'пачка', 'пачки', 'пачек') === '2 пачки' && plu(5, 'пачка', 'пачки', 'пачек') === '5 пачек' && plu(11, 'пачка', 'пачки', 'пачек') === '11 пачек' && plu(22, 'пачка', 'пачки', 'пачек') === '22 пачки');
+  check('материалы: плинтус (14 − 0,9)×1,05/2,5 = 6 штанг', g('plinth').qty === 6, g('plinth').txt);
+  check('материалы: клей 59 кг = 3 мешка', /59 кг, мешков по 25 кг: 3/.test(g('glue').txt), g('glue').txt);
+  check('материалы: грунтовка и шпаклёвка считаются по стенам и потолку', g('prime').qty === 10.1 && g('putty').qty === 61, [g('prime').txt, g('putty').txt]);
+  const r0 = matCalc(Object.assign({}, m0, {reserve: 0}));
+  check('материалы: без запаса плитка 134 шт., краска меньше', r0.rows.find(x => x.k === 'tile').qty === 134 && r0.rows.find(x => x.k === 'paintW').qty === 6.8);
+  const big = matCalc(Object.assign({}, m0, {doors: 10, wins: 20}));
+  check('материалы: проёмы больше стен — стены не уходят в минус', big.walls === 0 && !big.rows.some(x => /NaN|-/.test(x.txt.replace(/\d+-\d+/g, ''))), big.walls);
+  check('материалы: ноль или мусор в размерах — нет расчёта', matCalc({...m0, len: 0}) === null && matCalc({...m0, h: 0}) === null && matCalc({...m0, wid: NaN}) === null && matCalc(null) === null && matCalc({...m0, tw: 0}) === null);
+  check('материалы: нет NaN и Infinity ни в одной строке', r.rows.every(x => !/NaN|Infinity|undefined/.test(x.txt + x.name)) && r.rows.every(x => isFinite(x.qty) && x.qty >= 0));
+  // чистка сохранённого
+  const c1 = cleanMat({len: '5,5', wid: -3, h: 99, doors: 2.6, wins: 'x', reserve: null, tw: true, th: 60, pack: 0});
+  check('материалы: чистка берёт корректное и сбрасывает мусор', c1.len === 5.5 && c1.wid === 3 && c1.h === 2.7 && c1.doors === 3 && c1.wins === 1 && c1.reserve === 10 && c1.tw === 30 && c1.th === 60 && c1.pack === 2.4, JSON.stringify(c1));
+  check('материалы: чистка — не объект даёт значения по умолчанию', JSON.stringify(cleanMat(null)) === JSON.stringify(MAT_DEF) && JSON.stringify(cleanMat('x')) === JSON.stringify(MAT_DEF));
+  check('материалы: результат содержит отметки по всем материалам', (matResHtml().match(/data-mtk=/g) || []).length === 11);
+  // добавление в список покупок
+  const keepDeals = S.deals, keepMat = S.mat;
+  S.deals = [cleanDeal({id: 'md1', name: 'Мат'})]; S.mat = Object.assign({}, MAT_DEF);
+  MAT.deal = 'md1'; MAT.room = 'Кухня'; MAT.sel = new Set(['paintW', 'tile']);
+  matAdd();
+  check('материалы: отмеченное попало в список покупок с комнатой', S.deals[0].shop.length === 2 && S.deals[0].shop.some(x => /Краска для стен/.test(x.name) && /Кухня/.test(x.name)) && S.deals[0].shop.every(x => x.sum === 0 && !x.done && x.name.length <= 120), JSON.stringify(S.deals[0].shop));
+  check('материалы: после добавления отметки сняты', MAT.sel.size === 0);
+  matAdd();
+  check('материалы: без отметок ничего не добавляется', S.deals[0].shop.length === 2);
+  S.deals[0].shop = Array.from({length: 199}, (_, i) => ({id: 'z' + i, name: 'п' + i, store: '', sum: 0, done: false}));
+  MAT.sel = new Set(['paintW', 'tile']); matAdd();
+  check('материалы: предел 200 позиций не пробивается', S.deals[0].shop.length === 199);
+  // правки по ревью
+  const mk = (o) => matCalc(Object.assign({}, m0, o)), gk = (rr, k) => rr.rows.find(x => x.k === k);
+  check('материалы: запас вне диапазона (35%) — нет расчёта, а не молчаливый ноль', mk({reserve: 35}) === null && mk({doors: 11}) === null && mk({wins: 21}) === null && mk({reserve: -1}) === null);
+  check('материалы: запас 30% действует на подложку и плинтус', gk(mk({reserve: 30}), 'plinth').qty > gk(mk({reserve: 0}), 'plinth').qty || gk(mk({reserve: 30}), 'under').qty > gk(mk({reserve: 0}), 'under').qty);
+  S.deals = [cleanDeal({id: 'md2', name: 'М2'})]; S.mat = Object.assign({}, MAT_DEF, {reserve: 10}); MAT.deal = 'md2'; MAT.room = 'Ванная';
+  S.mat.len = 4.1; S.mat.wid = 3.3; MAT.sel = new Set(['prime', 'paintC', 'grout', 'tile', 'lam', 'paper']); matAdd();
+  const nm = S.deals[0].shop.map(x => x.name).join(' | ');
+  check('материалы: в список покупок идёт количество целиком, дробь не режется', /Грунтовка: \\d+(,\\d)? л · Ванная/.test(nm) && /Краска для потолка[^|]*: \\d+(,\\d)? л · Ванная/.test(nm) && /Затирка: \\d+(,\\d)? кг/.test(nm) && /шт\\. · Ванная/.test(nm) && /пач[а-я]* · Ванная/.test(nm) && /рулон[а-ов]* · Ванная/.test(nm), nm);
+  check('материалы: 1 100 000 плиток показываются с пробелами', /1[\\s\\u00a0]\\d{3}[\\s\\u00a0]\\d{3} шт\\./.test(gk(mk({len: 50, wid: 50, tw: 5, th: 5}), 'tile').txt), gk(mk({len: 50, wid: 50, tw: 5, th: 5}), 'tile').txt);
+  S.mat = Object.assign({}, MAT_DEF, {len: 1, wid: 1, doors: 10, wins: 20});
+  check('материалы: проёмы на все стены — предупреждение', matResHtml().indexOf('Проёмы занимают все стены') >= 0);
+  S.deals = keepDeals; S.mat = keepMat; MAT.sel = new Set();
+}
+`, ctx);
+
 Promise.all(ctx.pendingTests || []).then(() => {
   console.log('Тесты: ' + pass + ' из ' + (pass + fail) + ' пройдено');
   process.exit(fail ? 1 : 0);
