@@ -642,6 +642,8 @@ function load() {
     kursy: cleanKursy(s.kursy),
     lastBackup: Number(s.lastBackup) || 0,
     cal: cleanCal(s.cal),
+    // Режим «Просто / Полный»: новая установка — просто; у тех, у кого уже есть проекты, — полный
+    mode: s.mode === 'full' || s.mode === 'simple' ? s.mode : (Array.isArray(s.deals) && s.deals.some(d => d && !d.demo) ? 'full' : 'simple'),
     tab: ['home', 'calc', 'smeta', 'torgi', 'deals', 'ref', 'kursy', 'tax'].includes(s.tab) ? s.tab : 'home'
   };
 }
@@ -1741,6 +1743,15 @@ function updateTorgiResults() {
 
 /* ===== Раздел «Сделки» ===== */
 function dealPlan(d) { return d.calc ? compute(Object.assign({}, DEFAULT_CALC, d.calc)) : null; }
+// Фаза жизненного цикла: 1 — присматриваем и покупаем, 2 — ремонт, 3 — продажа. Простой режим открывает блоки по фазе
+const STAGE_PHASE = {'Поиск': 1, 'Проверка': 1, 'Покупка': 1, 'Ремонт': 2, 'Продажа': 3, 'Закрыта': 3};
+function homePhase() {
+  let ph = 0;
+  S.deals.forEach(d => { if (!d.demo) ph = Math.max(ph, STAGE_PHASE[d.stage] || 1); });
+  return ph;
+}
+// Показывать ли блок в сделке: в полном режиме всегда; в простом — если этап дошёл или в блоке уже есть данные
+function dealOpen(d, need, hasData) { return S.mode === 'full' || d.demo === true || !!hasData || (STAGE_PHASE[d.stage] || 1) >= need; }
 function progLine(d) {
   const g = dealProgress(d); if (!g) return '';
   return '<div class="pbar' + (g.pct >= 100 ? ' good' : '') + '" style="height:6px;margin:8px 0 2px"><i style="width:' + g.pct + '%"></i></div><div class="small muted">Ремонт ' + g.pct + '%' + (g.pct < 100 && g.left > 0 ? ' · ещё ~' + g.left + ' дн.' : '') + '</div>';
@@ -1806,6 +1817,7 @@ function renderDeal(d) {
   setTitle(d.name || 'Сделка', '', true);
   let h = '';
   if (d.demo) h += '<div class="card demo-note"><p><b>Это учебный пример.</b> Здесь всё заполнено: расчёт, график ремонта, расходы, проверка объекта. Меняйте цифры и нажимайте кнопки — ничего не сломается. Отчёт инвестору — внизу страницы.</p><button class="btn danger" data-a="deal-del">Удалить пример</button></div>';
+  if (S.mode !== 'full' && !d.demo && (STAGE_PHASE[d.stage] || 1) < 2) h += '<div class="card"><p class="small" style="margin:0 0 10px">Простой режим: смета, график ремонта, расходы и покупки откроются, когда вы переведёте проект на этап «Ремонт».</p><button class="btn block" data-a="mode" data-v="full">Показать всё сейчас</button></div>';
   h += '<div class="card"><label class="f">Название<input type="text" data-d="name" value="' + esc(d.name) + '"></label>' +
     '<div style="height:10px"></div><label class="f">Адрес<input type="text" data-d="address" value="' + esc(d.address || '') + '"></label>' +
     // Без файла данных список не показываем: иначе выбор «Не выбран» стёр бы сохранённый район
@@ -1821,9 +1833,12 @@ function renderDeal(d) {
     : '<p class="muted">Расчёта ещё нет.</p>') +
     '<button class="btn block" style="margin-top:10px" data-a="deal-to-calc">' + (p ? 'Открыть в калькуляторе' : 'Посчитать сделку') + '</button></div>';
   h += dealDataHtml(d);
+  const hs1 = h.length;
   h += worksCardHtml(d);
   h += '<div class="card" id="baBox"><h3>До и после</h3><p class="small muted" style="margin:0">Загружаем…</p></div>';
   h += '<div class="card" id="moodBox"></div>';
+  if (!dealOpen(d, 2, !!d.works)) h = h.slice(0, hs1);
+  const hs2 = h.length;
   h += '<div class="card"><h3>Расходы</h3>' +
     '<button class="btn pri block" data-a="exp-new">+ Добавить расход</button>';
   if (exp.length) {
@@ -1834,10 +1849,17 @@ function renderDeal(d) {
       '<button class="btn block" style="margin-top:10px" data-a="exp-csv">Выгрузить расходы в CSV (Excel)</button>';
   }
   h += '</div>';
+  if (!dealOpen(d, 2, exp.length > 0)) h = h.slice(0, hs2);
+  const hs3 = h.length;
   h += shopCardHtml(d);
+  if (!dealOpen(d, 2, (d.shop || []).length > 0)) h = h.slice(0, hs3);
+  const hs4 = h.length;
   h += '<div id="pfBox">' + planFactCardHtml(d, p, c) + '</div>';
+  if (!dealOpen(d, 2, exp.length > 0 || !!d.works || riskTotal(d) > 0)) h = h.slice(0, hs4);
+  const hs5 = h.length;
   h += '<div class="card"><h3>Факт после продажи</h3><div class="grid2"><label class="f">Продали за<div class="inwrap"><input type="text" inputmode="decimal" data-d="saleFact" value="' + (d.saleFact ? num(d.saleFact) : '') + '"><span>₽</span></div></label></div>' +
     '<div id="dealFact">' + dealFactHtml(d) + '</div></div>';
+  if (!dealOpen(d, 3, d.saleFact > 0)) h = h.slice(0, hs5);
   h += checkCardHtml(d);
   h += inspectCardHtml(d);
   h += '<div class="card"><h3>Заметки</h3><textarea data-d="notes" placeholder="Контакты продавца, прораба, договорённости">' + esc(d.notes || '') + '</textarea></div>';
@@ -2542,6 +2564,10 @@ function renderRef() {
   setTitle(TITLES.ref);
   const st = curStyle();
   $('#view').innerHTML = '' +
+    '<div class="card"><h3>Режим приложения</h3><div class="chips" id="modeSeg">' +
+    '<button type="button" data-a="mode" data-v="simple" class="' + (S.mode === 'full' ? '' : 'on') + '" aria-pressed="' + (S.mode !== 'full') + '">Просто</button>' +
+    '<button type="button" data-a="mode" data-v="full" class="' + (S.mode === 'full' ? 'on' : '') + '" aria-pressed="' + (S.mode === 'full') + '">Полный</button></div>' +
+    '<p class="small muted" style="margin:10px 0 0">«Просто» — на главной оценка объекта, а смета, календарь и итоги открываются по этапу проекта. «Полный» — всё сразу.</p></div>' +
     '<div class="card"><h3>Оформление</h3><div class="chips" id="styleSeg">' +
     '<button type="button" data-a="style" data-v="glass" class="' + (st === 'glass' ? 'on' : '') + '" aria-pressed="' + (st === 'glass') + '">Жидкое стекло</button>' +
     '<button type="button" data-a="style" data-v="light" class="' + (st === 'light' ? 'on' : '') + '" aria-pressed="' + (st === 'light') + '">Светлый</button></div></div>' +
@@ -2616,9 +2642,12 @@ function homeRatesHtml() {
   }).join('');
   return '<p class="small muted" style="margin:0 0 6px">Курс ЦБ РФ на ' + esc(isoRu(c.date)) + (kzStatus === 'err' ? ' · нет связи, показан сохранённый' : '') + '</p>' + rows;
 }
-function renderHome() {
+function homeHtml() {
   const c = S.calc, linked = S.calcDeal && S.deals.find(d => d.id === S.calcDeal);
-  let h = '<button class="bigbtn" data-a="home-push" data-v="photo">' + ICO.cam + '<span>Сделать фото</span></button>';
+  const full = S.mode === 'full', ph = homePhase(), sh = n => full || ph >= n;
+  let h = '';
+  if (!full) h += '<button class="bigbtn" data-a="home-eval">' + ICO.calc + '<span>Оценить новый объект</span></button>';
+  if (sh(1)) h += '<button class="bigbtn" data-a="home-push" data-v="photo">' + ICO.cam + '<span>Сделать фото</span></button>';
   const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
   h += hotHtml();
   h += '<div class="card"><h3>Мои проекты</h3>' +
@@ -2631,33 +2660,35 @@ function renderHome() {
     '<div id="homeHero" style="margin-top:12px">' + quickHeroHtml(c) + '</div>' +
     '<p class="small muted" style="margin:10px 2px">Те же цифры, что в «Расчёте»: налог, ипотека и остальное — там.</p>' +
     '<button class="btn pri block" data-a="go-tab" data-v="calc">Открыть полный расчёт</button></div>';
-  h += portfolioHtml(S.deals);
-  h += '<h3 class="hh">Справочники</h3><div class="card hlist">' +
+  if (sh(2)) h += portfolioHtml(S.deals);
+  if (sh(1)) h += '<h3 class="hh">Справочники</h3><div class="card hlist">' +
     '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
     '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
-    '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button></div>';
-  h += '<h3 class="hh">Календарь</h3>' + calHomeHtml();
+    '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button>' + (full ? '' : '<button data-a="home-push" data-v="kursy"><span>Курсы и ставки</span><i>›</i></button>') + '</div>';
+  if (sh(2)) h += '<h3 class="hh">Календарь</h3>' + calHomeHtml();
   const kr = keyRateNow(S.kursy), stale = kzDaysOld(kr.date) > KEY_STALE_DAYS;
-  h += '<h3 class="hh">Ставки и курсы</h3><div class="card"><div class="kz-sum"><span>Ключевая ставка ЦБ</span><b>' + fmtPct(kr.v) + '</b></div>' +
+  if (full) h += '<h3 class="hh">Ставки и курсы</h3><div class="card"><div class="kz-sum"><span>Ключевая ставка ЦБ</span><b>' + fmtPct(kr.v) + '</b></div>' +
     '<div class="kz-sum"><span>Ставка рефинансирования</span><b>' + fmtPct(kr.v) + '</b></div>' +
     '<p class="small muted" style="margin:6px 0 12px">' + (stale ? 'Ставка на ' + esc(isoRu(kr.date)) + ' могла измениться — проверьте на cbr.ru. ' : 'На ' + esc(isoRu(kr.date)) + '. ') + 'Ставка рефинансирования с 2016 года равна ключевой.</p>' +
     '<div id="homeRates">' + homeRatesHtml() + '</div>' +
     '<button class="btn block" data-a="home-push" data-v="kursy" style="margin-top:12px">Все курсы и конвертер</button></div>';
-  h += '<h3 class="hh">Калькуляторы</h3><div class="tiles">' +
+  if (sh(1)) h += '<h3 class="hh">Калькуляторы</h3><div class="tiles">' +
     '<button class="tile" data-a="go-tab" data-v="calc">' + ICO.calc + '<b>Расчёт сделки</b><span>Прибыль и предел цены</span></button>' +
     '<button class="tile" data-a="home-push" data-v="smeta">' + ICO.smeta + '<b>Смета ремонта</b><span>По площади и уровню</span></button>' +
     '<button class="tile" data-a="home-push" data-v="torgi">' + ICO.torgi + '<b>Торги</b><span>Предел ставки на лоте</span></button>' +
     '<button class="tile" data-a="home-parse">' + ICO.parse + '<b>Из объявления</b><span>Вставить текст Авито, ЦИАН</span></button></div>';
-  h += '<h3 class="hh">Новости</h3><div class="card hlist"><a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
+  if (sh(1)) h += '<h3 class="hh">Новости</h3><div class="card hlist"><a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
   const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
   if (S.deals.length && (days < 0 || days > 14)) {
     h += '<div class="card"><h3>Резервная копия</h3><p class="small" style="margin-top:0">Данные хранятся только в этом телефоне. ' + (days < 0 ? 'Копию ещё не делали.' : 'Последней копии ' + days + ' дн.') + '</p>' +
       '<button class="btn block" data-a="backup-save">Скачать копию</button></div>';
   }
-  h += '<button class="bigbtn voice" data-a="soon" data-v="voice">' + ICO.mic + '<span>Голосовой помощник</span></button>';
-  $('#view').innerHTML = h;
-  kzLoad(false);
+  if (sh(2)) h += '<button class="bigbtn voice" data-a="soon" data-v="voice">' + ICO.mic + '<span>Голосовой помощник</span></button>';
+  h += full ? '<button class="btn block" data-a="mode" data-v="simple" style="margin-top:6px">Упростить главную</button>'
+    : '<p class="small muted" style="margin:14px 2px 8px">Простой режим: остальное откроется по мере ремонта.</p><button class="btn block" data-a="mode" data-v="full">Показать все возможности</button>';
+  return h;
 }
+function renderHome() { $('#view').innerHTML = homeHtml(); kzLoad(false); }
 
 /* ===== Раздел «Курсы и ставки» ===== */
 const fmtD = (v, d) => isFinite(v) ? new Intl.NumberFormat('ru-RU', {minimumFractionDigits: d, maximumFractionDigits: d}).format(v) : '—';
@@ -3985,7 +4016,18 @@ view.addEventListener('click', e => {
       if (hasRisk(d, k)) delete d.risks[k]; else { d.risks[k] = 0; d.checks = d.checks || {}; d.checks[k] = false; }
       d.updated = Date.now(); save(); renderDeal(d);
     } break;
-    case 'deal-stage': if (d) { d.stage = b.dataset.v; d.updated = Date.now(); save(); renderDeal(d); } break;
+    case 'deal-stage': if (d) {
+      const was = STAGE_PHASE[d.stage] || 1; d.stage = b.dataset.v; d.updated = Date.now(); save(); renderDeal(d);
+      const now = STAGE_PHASE[d.stage] || 1;
+      if (S.mode !== 'full' && now > was) toast(now === 2 ? 'Открыл смету, график ремонта, расходы и покупки' : 'Открыл итоги продажи');
+    } break;
+    case 'home-eval': { const el = document.querySelector('[data-q="price"]'); if (el) { el.scrollIntoView({block: 'center', behavior: 'smooth'}); if (el.focus) el.focus({preventScroll: true}); } break; }
+    case 'mode': {
+      S.mode = b.dataset.v === 'full' ? 'full' : 'simple'; save();
+      const f = ({home: renderHome, deals: renderDeals, ref: renderRef})[S.tab]; if (f) { const y = window.scrollY; f(); window.scrollTo(0, y); }
+      toast(S.mode === 'full' ? 'Полный режим: все возможности на месте' : 'Простой режим: лишнее убрано до нужного этапа');
+      break;
+    }
     case 'deal-to-calc':
       if (d) { S.calc = Object.assign({}, DEFAULT_CALC, d.calc || {}); S.calcDeal = d.id; save(); navPush(navRoot('calc'), 'anim-up'); }
       break;

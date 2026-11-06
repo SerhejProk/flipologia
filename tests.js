@@ -758,7 +758,7 @@ vm.runInContext(`
     return {c, view, toastEl};
   };
   const { c, view } = mk({deals: [{id: 'a1', name: 'Однушка', stage: 'Ремонт', expenses: [], works: null}]});
-  vm.runInContext("S.tab = 'home'; renderHome();", c);
+  vm.runInContext("S.mode = 'full'; S.tab = 'home'; renderHome();", c);
   const h = view.innerHTML;
   const order = ['Сделать фото', 'Мои проекты', 'Экспресс-расчёт', 'Справочники', 'Календарь', 'Ключевая ставка ЦБ', 'Ставка рефинансирования', 'Ставки и курсы', 'Калькуляторы', 'Новости', 'Голосовой помощник'];
   const idx = order.map(t => h.indexOf(t));
@@ -766,7 +766,7 @@ vm.runInContext(`
   const want = ['Сделать фото', 'Мои проекты', 'Экспресс-расчёт', 'Справочники', 'Календарь', 'Ставки и курсы', 'Калькуляторы', 'Новости', 'Голосовой помощник'].map(t => h.indexOf(t));
   ctx.check('дашборд: порядок блоков как в задаче', want.every((v, i) => i === 0 || v > want[i - 1]), want);
   ctx.check('дашборд: «Новый проект» рядом с «Мои проекты»', /Мои проекты[\s\S]*\+ Новый проект[\s\S]*Экспресс-расчёт/.test(h));
-  ctx.check('дашборд: фото первой кнопкой, голос последней', h.indexOf('data-v="photo"') < h.indexOf('Мои проекты') && h.lastIndexOf('<button') === h.lastIndexOf('data-a="soon" data-v="voice"') - '<button class="bigbtn voice" '.length);
+  ctx.check('дашборд: фото первой кнопкой, голос последней', h.indexOf('data-v="photo"') < h.indexOf('Мои проекты') && h.indexOf('data-a="soon" data-v="voice"') > h.indexOf('Новости') && h.indexOf('Упростить главную') > h.indexOf('data-v="voice"'));
   ctx.check('дашборд: ключевая ставка равна ставке рефинансирования', (() => { const m = h.match(/Ключевая ставка ЦБ<\/span><b>([^<]+)<\/b>[\s\S]*?Ставка рефинансирования<\/span><b>([^<]+)<\/b>/); return !!m && m[1] === m[2] && /%/.test(m[1]); })(), h.match(/Ключевая ставка ЦБ<\/span><b>[^<]*/));
   ctx.check('дашборд: без курсов — подсказка, а не пустота', /homeRates">[^]*?(Загружаем|загрузятся|не загрузились)/.test(h));
   vm.runInContext("S.kursy.cache = {date: '2026-11-05', ts: Date.now(), r: {USD: {v: 90.5, p: 90}, EUR: {v: 100, p: 99}, CNY: {v: 12.5, p: 12.4}}}; renderHome();", c);
@@ -1160,6 +1160,59 @@ vm.runInContext(`
   check('ссылка: страница без undefined и NaN', !/undefined|NaN/.test(shareView(back)) && !/undefined|NaN/.test(shareView(shareParse('#s=' + b64uEnc('{"v":1}')))));
   check('ссылка: обрезка по символам не ломает эмодзи', (() => { const d = cleanDeal({id: 'em', name: '😀'.repeat(79) + '😀😀', address: '🏠'.repeat(125)}); try { b64uEnc(JSON.stringify(shareSnap(d))); return true; } catch (e) { return false; } })());
   check('ссылка: размер адреса разумный', enc.length < 2000, enc.length);
+}
+`, ctx);
+
+/* --- Режим «Просто / Полный»: раскрытие по этапу проекта --- */
+vm.runInContext(`
+{
+  const keepDeals = S.deals, keepMode = S.mode, keepStore = localStorage.getItem(LS_KEY);
+  const mk = (stage, extra) => cleanDeal(Object.assign({id: 'm' + stage, name: 'о', stage}, extra || {}));
+  // состояние при загрузке
+  const L = o => { localStorage.setItem(LS_KEY, JSON.stringify(o)); return load().mode; };
+  check('режим: новая установка — простой', L({}) === 'simple');
+  check('режим: есть проекты — полный', L({deals: [{id: 'a', name: 'x'}]}) === 'full');
+  check('режим: только учебный пример — простой', L({deals: [{id: 'a', name: 'x', demo: true}]}) === 'simple');
+  check('режим: сохранённый выбор не трогаем', L({mode: 'simple', deals: [{id: 'a', name: 'x'}]}) === 'simple' && L({mode: 'full'}) === 'full');
+  check('режим: мусор в поле — как по умолчанию', L({mode: '<b>', deals: [{id: 'a'}]}) === 'full' && L({mode: 5}) === 'simple');
+  localStorage.setItem(LS_KEY, keepStore == null ? '' : keepStore);
+
+  check('фазы: все этапы известны', STAGES.every(s => [1, 2, 3].includes(STAGE_PHASE[s])), STAGES.map(s => STAGE_PHASE[s]));
+  S.deals = []; check('фаза: без проектов 0', homePhase() === 0);
+  S.deals = [mk('Поиск')]; check('фаза: поиск = 1', homePhase() === 1);
+  S.deals = [mk('Поиск'), mk('Ремонт')]; check('фаза: берётся самая далёкая = 2', homePhase() === 2);
+  S.deals = [mk('Закрыта')]; check('фаза: закрытая = 3', homePhase() === 3);
+  S.deals = [mk('Продажа', {demo: true})]; check('фаза: учебный пример не открывает блоки', homePhase() === 0);
+
+  // главная по режимам
+  S.mode = 'simple';
+  S.deals = [];
+  let h0 = homeHtml();
+  check('простая главная без проектов: большая кнопка и расчёт', /Оценить новый объект/.test(h0) && /Экспресс-расчёт/.test(h0) && /Мои проекты/.test(h0) && /Показать все возможности/.test(h0));
+  check('простая главная без проектов: лишнего нет', !/Календарь|Ставки и курсы|Калькуляторы|data-v="photo"|Голосовой помощник|Итоги по сделкам|Справочники|Новости/.test(h0), h0.match(/Календарь|Ставки и курсы|Калькуляторы|data-v="photo"|Голосовой помощник|Итоги по сделкам|Справочники|Новости/));
+  S.deals = [mk('Поиск')];
+  let h1 = homeHtml();
+  check('простая главная, поиск: открылись справочники, калькуляторы, фото, курсы строкой', /Справочники/.test(h1) && /Калькуляторы/.test(h1) && /data-v="photo"/.test(h1) && /<span>Курсы и ставки<\\/span>/.test(h1));
+  check('простая главная, поиск: календаря и голоса ещё нет', !/Календарь|Голосовой помощник/.test(h1));
+  S.deals = [mk('Ремонт', {calc: Object.assign({}, DEFAULT_CALC, {price: 5e6, sale: 7e6, repair: 1e5})})];
+  let h2 = homeHtml();
+  check('простая главная, ремонт: календарь, голос, итоги', /Календарь/.test(h2) && /Голосовой помощник/.test(h2) && /Итоги по сделкам/.test(h2) && !/Ставки и курсы<\\/h3>/.test(h2));
+  S.mode = 'full'; S.deals = [];
+  let hf = homeHtml();
+  check('полный режим: всё на месте даже без проектов', /Календарь/.test(hf) && /Ставки и курсы/.test(hf) && /Калькуляторы/.test(hf) && /Голосовой помощник/.test(hf) && /data-v="photo"/.test(hf) && /Упростить главную/.test(hf) && !/Оценить новый объект/.test(hf));
+  check('главная: без undefined и NaN', !/undefined|NaN/.test(h0 + h1 + h2 + hf));
+
+  // блоки в сделке
+  S.mode = 'simple';
+  check('сделка: поиск — смета и расходы закрыты', dealOpen(mk('Поиск'), 2, false) === false && dealOpen(mk('Проверка'), 2, false) === false && dealOpen(mk('Покупка'), 2, false) === false);
+  check('сделка: есть данные — блок виден даже раньше этапа', dealOpen(mk('Поиск'), 2, true) === true);
+  check('сделка: ремонт — открыто, итоги продажи ещё нет', dealOpen(mk('Ремонт'), 2, false) === true && dealOpen(mk('Ремонт'), 3, false) === false);
+  check('сделка: продажа — итоги открыты', dealOpen(mk('Продажа'), 3, false) === true);
+  check('сделка: учебный пример всегда открыт', dealOpen(mk('Поиск', {demo: true}), 3, false) === true);
+  S.mode = 'full';
+  check('сделка: полный режим открывает всё', dealOpen(mk('Поиск'), 3, false) === true);
+
+  S.deals = keepDeals; S.mode = keepMode;
 }
 `, ctx);
 
