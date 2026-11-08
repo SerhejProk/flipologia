@@ -3630,7 +3630,7 @@ function homeHtml() {
   if (sh(1)) h += '<button class="bigbtn" data-a="home-push" data-v="photo">' + ICO.cam + '<span>Сделать фото</span></button>';
   h += hotHtml();
   // 3. Новый проект: «Мои проекты» раскрываются из кнопки
-  h += homeLinkBtn('deal-new', '', 'Новый проект +', '');
+  h += '<button type="button" class="bigbtn" data-a="deal-new">Новый проект +</button>';
   h += homeAccBtn('proj', '', 'Мои проекты', deals.length ? 'Проектов: ' + deals.length : 'Пример проекта') + (HOME_OPEN.proj ? '<div class="accp">' + projHtml + '</div>' : '');
   if (sh(2)) h += portfolioHtml(S.deals);
   // 4. Калькуляторы
