@@ -54,7 +54,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;overscroll-behavior:none}
-body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--font);-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--font);-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
 .top{position:sticky;top:0;z-index:5;background:var(--top-bg);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--ink);height:calc(50px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 16px 0;display:flex;align-items:center;gap:10px}
 .top img{width:30px;height:30px;border-radius:8px}
 .brand{font-weight:800;letter-spacing:2px;font-size:14px;color:var(--ink);transition:opacity .2s}
@@ -68,6 +68,9 @@ body.has-install{padding-bottom:calc(190px + env(safe-area-inset-bottom))}
 .lt h1{font-size:32px;line-height:1.12;font-weight:600;letter-spacing:-.8px;margin:0;overflow-wrap:anywhere}
 .lt .btn{flex:none}
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--bar-line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
+/* одинаковая форма меню во всех стилях: плавающая закруглённая панель, круглые кнопки, активная — «таблеткой» */
+.tabs{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;border:1px solid var(--bar-line);border-radius:30px;padding:4px;gap:2px;padding-bottom:4px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.tabs button{border-radius:24px}.tabs button.on{background:rgba(127,127,127,.16)}
 .tabs button{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
 .tabs button svg{width:24px;height:24px;transition:transform .12s}
 .tabs button:active svg{transform:scale(.88)}
@@ -267,7 +270,7 @@ html[data-style="glass"] .fab{bottom:calc(108px + env(safe-area-inset-bottom))}
 .hdeal:first-of-type{border-top:0;padding-top:0}
 .bigbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:64px;border:0;border-radius:20px;background:var(--gold);color:#fff;font:inherit;font-size:17px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);margin:0 0 12px}
 .bigbtn svg{width:28px;height:28px;flex:none}
-.bigbtn.acc{justify-content:flex-start;padding:0 20px;text-align:left}.bigbtn.acc .t{flex:1}
+.bigbtn.acc{justify-content:center;padding:0 34px 0 16px;gap:10px;text-align:center;position:relative}.bigbtn.acc .t{flex:none}.bigbtn.acc .chev{position:absolute;right:12px;top:calc(50% - 12px)}
 .accbtn{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 18px;border:0;border-radius:20px;background:var(--card);color:var(--ink);font:inherit;font-size:16px;font-weight:600;text-align:left;box-shadow:var(--shadow);cursor:pointer;margin:0 0 12px}
 .accbtn .t{flex:1;min-width:0}.accbtn small{display:block;font-weight:400;font-size:13px;color:var(--muted);margin-top:2px}
 .chev{font-style:normal;font-size:24px;line-height:1;flex:none;transition:transform .2s}[aria-expanded="true"]>.chev{transform:rotate(90deg)}
@@ -508,6 +511,7 @@ try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splas
 <nav class="tabs" id="tabs">
   <button data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>Главная</button>
   <button data-tab="calc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg>Расчёт</button>
+  <button type="button" data-a="soon" data-v="voice" aria-label="Голосовой помощник"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Голос</button>
   <button data-tab="deals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Сделки</button>
   <button data-tab="ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h6M8 12h6"/></svg>Справка</button>
 </nav>
@@ -3609,7 +3613,7 @@ function homeHtml() {
     (deals.length > 3 ? '<button class="btn" data-a="go-tab" data-v="deals">Все (' + deals.length + ')</button>' : '') + '</div></div>';
   const expressHtml = '<div class="card"><h3>Экспресс-расчёт нового объекта</h3><div class="grid2">' +
     QUICK.map(([k, l, suf, term]) => '<label class="f"><span>' + l + hintBtn(term) + '</span><div class="inwrap"><input type="text" inputmode="decimal" data-q="' + k + '" value="' + (k === 'months' ? String(c[k]).replace('.', ',') : num(c[k])) + '"><span>' + suf + '</span></div></label>').join('') +
-    '</div><button class="btn" style="margin-top:10px" data-a="home-repair">Не знаете, сколько стоит ремонт? Подсказать</button>' + (linked ? '<div class="row" style="justify-content:space-between;margin-top:12px"><span class="small">Сейчас здесь расчёт сделки <b>' + esc(linked.name) + '</b></span><button class="btn" data-a="calc-detach">Новый расчёт</button></div>' : '') +
+    '</div>' + (linked ? '<div class="row" style="justify-content:space-between;margin-top:12px"><span class="small">Сейчас здесь расчёт сделки <b>' + esc(linked.name) + '</b></span><button class="btn" data-a="calc-detach">Новый расчёт</button></div>' : '') +
     '<div id="homeHero" style="margin-top:12px">' + quickHeroHtml(c) + '</div>' +
     '<p class="small muted" style="margin:10px 2px">Те же цифры, что в «Расчёте»: налог, ипотека и остальное — там.</p>' +
     '<button class="btn pri block" data-a="go-tab" data-v="calc">Открыть полный расчёт</button></div>';
@@ -3633,7 +3637,8 @@ function homeHtml() {
   // 5. Календарь
   h += homeAccBtn('cal', '', 'Календарь', S.cal.filter(e => e.date === today()).length ? 'Сегодня записей: ' + S.cal.filter(e => e.date === today()).length : 'Записи на сегодня и другие дни') + (HOME_OPEN.cal ? '<div class="accp">' + calHomeHtml() + '</div>' : '');
   // 6. Записная книжка
-  h += homeLinkBtn('home-push', 'notes', 'Записная книжка и контакты', (S.book.length || S.contacts.length) ? 'Заметок: ' + S.book.length + ' · контактов: ' + S.contacts.length : 'Заметки, адреса, телефоны, подрядчики');
+  h += homeLinkBtn('home-notes', '', 'Записная книжка', S.book.length ? 'Заметок: ' + S.book.length : 'Заметки и записи по объектам');
+  h += homeLinkBtn('home-contacts', '', 'Контакты', S.contacts.length ? 'Контактов: ' + S.contacts.length : 'Адреса, телефоны, подрядчики');
   // 7. Курсы валют слева, ставки справа
   const kr = keyRateNow(S.kursy), stale = kzDaysOld(kr.date) > KEY_STALE_DAYS;
   h += '<h3 class="hh">Курсы и ставки</h3><div class="rates"><div class="card rl"><h3>Курсы валют</h3><div id="homeRates">' + homeRatesHtml() + '</div></div>' +
@@ -3649,10 +3654,6 @@ function homeHtml() {
     '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button></div>';
   // 9. Новости
   if (sh(1)) h += '<h3 class="hh">Новости</h3><div class="card hlist"><a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
-  // 10. Голосовой помощник — в самом низу
-  h += '<button class="bigbtn voice" data-a="soon" data-v="voice">' + ICO.mic + '<span>Голосовой помощник</span></button>';
-  h += full ? '<button class="btn block" data-a="mode" data-v="simple" style="margin-top:6px">Упростить главную</button>'
-    : '<p class="small muted" style="margin:14px 2px 8px">Простой режим: фото, итоги, справочники и новости откроются по мере ремонта.</p><button class="btn block" data-a="mode" data-v="full">Показать все возможности</button>';
   return h;
 }
 function renderHome() { $('#view').innerHTML = homeHtml(); kzLoad(false); setTimeout(thumbsFill, 50); }
@@ -4390,9 +4391,11 @@ function nomAddress(j) {
   return dn ? dn.split(',').slice(0, 3).map(x => x.trim()).join(', ').slice(0, 200) : parts.join(', ');
 }
 // Что вписать в снимок: адрес (или координаты, если адреса нет) и дата со временем
-function stampLines(address, lat, lon, ts) {
-  const addr = String(address || '').trim(), cc = coordText(lat, lon);
-  return [addr || cc || 'Адрес не указан', fmtDT(ts) + (addr && cc ? ' · ' + cc : '')];
+function stampLines(address, lat, lon, ts, room) {
+  const addr = String(address || '').trim(), cc = coordText(lat, lon), rm = ROOMS.includes(room) ? room : '';
+  const out = [addr || cc || 'Адрес не указан', fmtDT(ts) + (addr && cc ? ' · ' + cc : '')];
+  if (rm) out.push(rm === 'Весь объект' ? 'Весь объект' : 'Помещение: ' + rm);
+  return out;
 }
 function phWrap(ctx, text, maxW) {
   const out = []; let cur = '';
@@ -4514,7 +4517,7 @@ async function phDecode(file) {
 }
 let phTok = 0;
 // Снимок с подписью по текущему адресу и дате
-const phMakeBlob = () => new Promise(res => phStamp(PH.base, stampLines(PH.address, PH.lat, PH.lon, PH.ts)).toBlob(b => res(b), 'image/jpeg', 0.85));
+const phMakeBlob = () => new Promise(res => phStamp(PH.base, stampLines(PH.address, PH.lat, PH.lon, PH.ts, PH.room)).toBlob(b => res(b), 'image/jpeg', 0.85));
 function phRestamp() {
   if (!PH.base) return;
   const tok = ++phTok;
@@ -4590,6 +4593,9 @@ function phPaintList() {
   const el = document.getElementById('phList');
   if (S.tab !== 'photo' || !el) return;
   PH.thumbs.forEach(u => URL.revokeObjectURL(u)); PH.thumbs = [];
+  const ab = document.getElementById('phArchBtn'), cnt = PH.loaded && !PH.listErr ? PH.list.filter(p => p && isBlob(p.blob)).length : 0;
+  if (ab) ab.textContent = 'Мои фото' + (cnt ? ' · ' + cnt : '');
+  if (!PH.arch) { el.innerHTML = ''; return; }
   if (PH.listErr) { el.innerHTML = '<p class="small muted" style="margin:0">' + esc(PH.listErr) + '</p>'; return; }
   if (!PH.loaded) { el.innerHTML = '<p class="small muted" style="margin:0">Загружаем…</p>'; return; }
   const all = PH.list.filter(p => p && isBlob(p.blob) && typeof p.id === 'string').sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -4639,20 +4645,21 @@ async function phDelete(id) {
   closePView(); toast('Фото удалено'); phReload();
 }
 function renderPhoto() {
+  PH.arch = false;
   $('#view').innerHTML =
-    '<div class="card"><h3>Где вы</h3><button class="btn pri block" data-a="ph-geo">' + ICO.pin + 'Геолокация</button>' +
-    '<p class="small muted" id="phGeo" role="status" style="margin:10px 0 0"></p>' +
-    '<label class="f" style="margin-top:10px"><span>Адрес</span><input type="text" id="phAddr" data-ph="addr" maxlength="200" autocomplete="off" placeholder="Город, улица, дом" value="' + esc(PH.address) + '"></label>' +
-    '<p class="small muted" style="margin:8px 0 0">Адрес вписывается в фото и помогает потом его искать. Чтобы найти адрес, координаты отправляются в сервис OpenStreetMap.</p></div>' +
     '<div class="card"><h3>Фото</h3><div class="row"><label class="btn pri fbtn">' + ICO.cam + 'Снять фото<input type="file" accept="image/*" capture="environment" data-ph="file" aria-label="Снять фото"></label>' +
-    '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" data-ph="file" aria-label="Выбрать фото из галереи"></label><button type="button" class="btn" data-a="rl-open">Линейка</button><button type="button" class="btn" data-a="lv-open">Уровень</button></div>' +
+    '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" data-ph="file" aria-label="Выбрать фото из галереи"></label><button type="button" class="btn" data-a="rl-open">Линейка</button></div>' +
     '<div id="phPrev"></div>' +
     '<div id="phNoteBox" class="hide" style="margin-top:12px"><div class="xl">Комната (необязательно)</div><div class="chips" id="phRooms">' + xChipsHtml(ROOMS, PH.room, 'ph-room') + '</div><label class="f" style="margin-top:10px"><span>Отметки к фото</span><textarea id="phNote" data-ph="note" rows="3" maxlength="2000" placeholder="Что на фото: состояние, замечания, что сделать">' + esc(PH.note) + '</textarea></label>' +
     '<button type="button" class="btn block" data-a="voice-note" aria-pressed="false" style="margin-top:8px">' + ICO.mic + '<span>Диктовать</span></button>' +
     '<p class="small muted" id="phNoteSt" role="status" style="margin:8px 0 0"></p>' +
     '<p class="small muted" style="margin:4px 0 0">Голос распознаёт браузер; в Chrome звук обрабатывают серверы Google.</p></div>' +
     '<div id="phAct"></div></div>' +
-    '<h3 class="hh">Мои фото</h3><div class="card"><label class="f"><span>Поиск по адресу, отметкам, дате или проекту</span><input type="text" enterkeyhint="search" data-ph="q" autocomplete="off" value="' + esc(PH.q) + '" placeholder="Например: Арбат"></label><div id="phList" style="margin-top:12px"></div></div>';
+    '<div class="card"><h3>Где вы</h3><button class="btn pri block" data-a="ph-geo">' + ICO.pin + 'Геолокация</button>' +
+    '<p class="small muted" id="phGeo" role="status" style="margin:10px 0 0"></p>' +
+    '<label class="f" style="margin-top:10px"><span>Адрес</span><input type="text" id="phAddr" data-ph="addr" maxlength="200" autocomplete="off" placeholder="Город, улица, дом" value="' + esc(PH.address) + '"></label>' +
+    '<p class="small muted" style="margin:8px 0 0">Адрес вписывается в фото и помогает потом его искать. Чтобы найти адрес, координаты отправляются в сервис OpenStreetMap.</p></div>' +
+    '<div class="card"><button type="button" class="btn block" id="phArchBtn" data-a="ph-arch" aria-expanded="false">Мои фото</button><div id="phArchBox" class="hide" style="margin-top:12px"><label class="f"><span>Поиск по адресу, отметкам, дате или проекту</span><input type="text" enterkeyhint="search" data-ph="q" autocomplete="off" value="' + esc(PH.q) + '" placeholder="Например: Арбат"></label><div id="phList" style="margin-top:12px"></div></div></div>';
   phPaintGeo(); phPaintPrev(); phPaintList(); phReload();
 }
 
@@ -5276,7 +5283,8 @@ view.addEventListener('click', e => {
     case 'ph-save': phCommit('', false); break;
     case 'ph-drop': phDrop(); break;
     case 'ph-open': phOpen(b.dataset.id); break;
-    case 'ph-room': PH.room = PH.room === b.dataset.v ? '' : cleanRoom(b.dataset.v); { const r = document.getElementById('phRooms'); if (r) r.innerHTML = xChipsHtml(ROOMS, PH.room, 'ph-room'); } break;
+    case 'ph-room': PH.room = PH.room === b.dataset.v ? '' : cleanRoom(b.dataset.v); { const r = document.getElementById('phRooms'); if (r) r.innerHTML = xChipsHtml(ROOMS, PH.room, 'ph-room'); } phRestamp(); break;
+    case 'ph-arch': PH.arch = !PH.arch; { const bx = document.getElementById('phArchBox'); if (bx) bx.classList.toggle('hide', !PH.arch); b.setAttribute('aria-expanded', String(PH.arch)); } phPaintList(); break;
     case 'voice-note': voiceToggle($('#phNote'), b, $('#phNoteSt')); break;
     case 'demo-open': { const dd = demoDeal(); if (S.tab === 'home') navTab('deals'); openDealView(dd.id); break; }
     case 'home-repair': { navTab('calc'); const rp = $('#rpBox'); if (rp) rp.scrollIntoView({block: 'start'}); break; }
@@ -5385,6 +5393,8 @@ view.addEventListener('click', e => {
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
       break;
     case 'go-tab': if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
+    case 'home-notes': BK.mode = 'notes'; navPush(navRoot('notes'), 'anim-right'); break;
+    case 'home-contacts': BK.mode = 'people'; navPush(navRoot('notes'), 'anim-right'); break;
     case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo' || b.dataset.v === 'cal' || b.dataset.v === 'notes' || b.dataset.v === 'mat' || b.dataset.v === 'docs') navPush(navRoot(b.dataset.v), 'anim-right'); break;
     case 'doc-open': case 'doc-back': case 'doc-group': case 'doc-copy': case 'doc-dl': lgAction(a, b); break;
     case 'bk-mode': BK.mode = b.dataset.v === 'people' ? 'people' : 'notes'; voiceStop(); renderNotes(); break;
@@ -5465,7 +5475,6 @@ view.addEventListener('click', e => {
       HOME_OPEN[k] = !HOME_OPEN[k];
       const y = window.scrollY; renderHome(); window.scrollTo(0, y);
       const nb = document.querySelector('[data-a="home-acc"][data-v="' + k + '"]'); if (nb && nb.focus) nb.focus({preventScroll: true});
-      if (HOME_OPEN[k] && k === 'eval') { const el = document.querySelector('[data-q="price"]'); if (el && el.focus) el.focus({preventScroll: true}); }
       break;
     }
     case 'mode': {

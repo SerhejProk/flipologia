@@ -767,14 +767,14 @@ vm.runInContext(`
   vm.runInContext("HOME_OPEN.eval = true; HOME_OPEN.proj = true; HOME_OPEN.calc = true; HOME_OPEN.cal = true; renderHome();", c);
   const h = view.innerHTML;
   ctx.check('главная: раскрытые панели показывают содержимое', /<h3>Мои проекты<\/h3>/.test(h) && /data-q="price"/.test(h) && /class="tiles"/.test(h) && (h.match(/aria-expanded="true"/g) || []).length === 4);
-  const order = ['Экспресс-расчёт нового объекта', 'Сделать фото', 'Новый проект', 'Калькуляторы', 'Календарь', 'Записная книжка', 'Курсы и ставки', 'Справочники', 'Новости', 'Голосовой помощник'];
+  const order = ['Экспресс-расчёт нового объекта', 'Сделать фото', 'Новый проект', 'Калькуляторы', 'Календарь', 'Записная книжка', 'Контакты', 'Курсы и ставки', 'Справочники', 'Новости'];
   const idx = order.map(t => h.indexOf(t));
   ctx.check('главная: все блоки на месте', idx.every(i => i >= 0), order.filter((t, i) => idx[i] < 0));
   ctx.check('главная: порядок блоков как в заметке «Правки»', idx.every((v, i) => i === 0 || v > idx[i - 1]), idx);
   ctx.check('главная: экспресс-расчёт раскрывается под синей кнопкой', /bigbtn acc" data-a="home-acc" data-v="eval"[^>]*aria-expanded="true"[\s\S]*?data-q="price"[\s\S]*?Сделать фото/.test(h));
   ctx.check('главная: «Мои проекты» внутри раскрытия «Новый проект», с «+ Новый проект» и «Пример проекта»', /data-v="proj"[\s\S]*?<h3>Мои проекты<\/h3>[\s\S]*?\+ Новый проект[\s\S]*?Пример проекта[\s\S]*?data-v="calc"/.test(h));
-  ctx.check('главная: фото до проектов, голос последней, потом переключатель режима', h.indexOf('data-v="photo"') < h.indexOf('data-v="proj"') && h.indexOf('data-a="soon" data-v="voice"') > h.indexOf('Новости') && h.indexOf('Упростить главную') > h.indexOf('data-v="voice"'));
-  ctx.check('главная: записная книжка — кнопка перехода', /data-a="home-push" data-v="notes"/.test(h));
+  ctx.check('главная: фото до проектов, голоса и «Упростить главную» на главной нет', h.indexOf('data-v="photo"') < h.indexOf('data-v="proj"') && !/data-v="voice"/.test(h) && !/Упростить главную|Показать все возможности/.test(h));
+  ctx.check('главная: записная книжка — кнопка перехода', /data-a="home-notes"/.test(h) && /data-a="home-contacts"/.test(h) && !/Не знаете, сколько стоит ремонт/.test(h));
   ctx.check('главная: резервной копии на главной нет', !/Резервная копия|backup-save/.test(h));
   ctx.check('главная: курсы слева, ставки крупно справа; ключевая равна рефинансирования', (() => { const m = h.match(/Ключевая ставка ЦБ<\/div><div class="rbig">([^<]+)<\/div>[\s\S]*?Ставка рефинансирования<\/div><div class="rbig">([^<]+)<\/div>/); return !!m && m[1] === m[2] && /%/.test(m[1]) && h.indexOf('class="card rl"') < h.indexOf('class="card rr"'); })());
   ctx.check('главная: без курсов — подсказка, а не пустота', /homeRates">[^]*?(Загружаем|загрузятся|не загрузились)/.test(h));
@@ -782,12 +782,12 @@ vm.runInContext(`
   const h2 = view.innerHTML;
   ctx.check('главная: курсы USD/EUR/CNY показаны с датой', /Курс ЦБ РФ на 05\.11\.2026/.test(h2) && /90,50 ₽/.test(h2) && /100,00 ₽/.test(h2) && /12,50 ₽/.test(h2), h2.match(/homeRates">[^]*?<\/div><\/div>/));
   vm.runInContext("S.kursy.cache = {date: '2026-11-05', ts: Date.now(), r: {USD: null, EUR: {v: NaN, p: 1}}}; renderHome();", c);
-  ctx.check('главная: битый кэш курсов не роняет главную', view.innerHTML.includes('Голосовой помощник'));
+  ctx.check('главная: битый кэш курсов не роняет главную', view.innerHTML.includes('Курсы и ставки'));
   vm.runInContext("S.deals = []; renderHome();", c);
   ctx.check('главная: без проектов — подсказка и «Пример проекта»', /Проектов пока нет/.test(view.innerHTML) && /Пример проекта/.test(view.innerHTML));
   vm.runInContext("S.deals = [{id: 'x', name: '<img src=x onerror=1>', stage: 'Поиск', expenses: [], works: null}]; renderHome();", c);
   ctx.check('главная: название проекта экранировано', !view.innerHTML.includes('<img src=x') && view.innerHTML.includes('&lt;img'));
-  ctx.check('главная: заглушка осталась только у голоса, календарь оживлён', (view.innerHTML.match(/data-a="soon"/g) || []).length === 1 && /Календарь[\s\S]*Открыть календарь/.test(view.innerHTML));
+  ctx.check('главная: заглушка осталась только у голоса, календарь оживлён', (view.innerHTML.match(/data-a="soon"/g) || []).length === 0 && /Календарь[\s\S]*Открыть календарь/.test(view.innerHTML));
   ctx.check('главная: «Сделать фото» ведёт в раздел фото', /data-a="home-push" data-v="photo"/.test(view.innerHTML));
   vm.runInContext("HOME_OPEN.eval = false; HOME_OPEN.proj = false; HOME_OPEN.calc = false; HOME_OPEN.cal = false;", c);
 }
@@ -810,6 +810,7 @@ vm.runInContext(`
   const l2 = stampLines('', 55.75, 37.6, ts);
   check('фото: без адреса в подписи координаты', l2[0] === '55.75000, 37.60000' && l2[1] === '05.11.2026 09:07', l2);
   const l3 = stampLines('  ', null, null, ts);
+  check('штамп фото: помещение вписывается строкой', stampLines('А', null, null, ts, 'Кухня').slice(-1)[0] === 'Помещение: Кухня' && stampLines('А', null, null, ts, 'Весь объект').slice(-1)[0] === 'Весь объект' && stampLines('А', null, null, ts, 'x').length === 2);
   check('фото: без адреса и координат — «Адрес не указан»', l3[0] === 'Адрес не указан', l3);
   const ctx2 = {measureText: t => ({width: t.length * 10})};
   check('фото: перенос длинной строки по словам', JSON.stringify(phWrap(ctx2, 'aaaa bbbb cccc', 90)) === JSON.stringify(['aaaa bbbb', 'cccc']));
@@ -1198,18 +1199,18 @@ vm.runInContext(`
   S.mode = 'simple';
   S.deals = [];
   let h0 = homeHtml();
-  check('простая главная без проектов: синяя кнопка экспресс-расчёта, новый проект, режим', /Экспресс-расчёт нового объекта/.test(h0) && />Новый проект</.test(h0) && /Показать все возможности/.test(h0) && !/Оценить новый объект/.test(h0));
-  check('простая главная без проектов: лишнего нет, а ядро есть', !/data-v="photo"|Итоги по сделкам|Справочники|Новости/.test(h0) && /Калькуляторы/.test(h0) && /Календарь/.test(h0) && /Записная книжка/.test(h0) && /Курсы и ставки/.test(h0) && /Голосовой помощник/.test(h0), h0.match(/data-v="photo"|Итоги по сделкам|Справочники|Новости/));
+  check('простая главная без проектов: синяя кнопка экспресс-расчёта, новый проект, режим', /Экспресс-расчёт нового объекта/.test(h0) && />Новый проект</.test(h0) && !/Показать все возможности/.test(h0) && !/Оценить новый объект/.test(h0));
+  check('простая главная без проектов: лишнего нет, а ядро есть', !/data-v="photo"|Итоги по сделкам|Справочники|Новости/.test(h0) && /Калькуляторы/.test(h0) && /Календарь/.test(h0) && /Записная книжка/.test(h0) && /Курсы и ставки/.test(h0), h0.match(/data-v="photo"|Итоги по сделкам|Справочники|Новости/));
   S.deals = [mk('Поиск')];
   let h1 = homeHtml();
   check('простая главная, поиск: открылись справочники, фото, новости', /Справочники/.test(h1) && /data-v="photo"/.test(h1) && /Новости/.test(h1));
   check('простая главная, поиск: итогов по сделкам ещё нет', !/Итоги по сделкам/.test(h1));
   S.deals = [mk('Ремонт', {calc: Object.assign({}, DEFAULT_CALC, {price: 5e6, sale: 7e6, repair: 1e5})})];
   let h2 = homeHtml();
-  check('простая главная, ремонт: календарь, голос, итоги', /Календарь/.test(h2) && /Голосовой помощник/.test(h2) && /Итоги по сделкам/.test(h2));
+  check('простая главная, ремонт: календарь, голос, итоги', /Календарь/.test(h2) && /Итоги по сделкам/.test(h2));
   S.mode = 'full'; S.deals = [];
   let hf = homeHtml();
-  check('полный режим: всё на месте даже без проектов', /Календарь/.test(hf) && /Курсы и ставки/.test(hf) && /Калькуляторы/.test(hf) && /Голосовой помощник/.test(hf) && /data-v="photo"/.test(hf) && /Упростить главную/.test(hf) && !/Оценить новый объект/.test(hf));
+  check('полный режим: всё на месте даже без проектов', /Календарь/.test(hf) && /Курсы и ставки/.test(hf) && /Калькуляторы/.test(hf) && /data-v="photo"/.test(hf) && !/Упростить главную/.test(hf) && !/Оценить новый объект/.test(hf));
   check('главная: без undefined и NaN', !/undefined|NaN/.test(h0 + h1 + h2 + hf));
 
   // блоки в сделке
