@@ -168,6 +168,7 @@ html[data-style="glass"] .fab{bottom:calc(108px + env(safe-area-inset-bottom))}
 .xq button{flex:1;min-width:0;min-height:44px;font:inherit;font-size:14px;font-weight:600;border:0;border-radius:12px;background:var(--acc-soft);color:var(--gold-ink);cursor:pointer;padding:0 4px}
 .xq button:active{transform:scale(.96)}
 .rmrow{margin:10px 0}.rml{display:flex;justify-content:space-between;gap:10px}.rmbar{height:8px;border-radius:99px;background:var(--input);margin:5px 0 3px;overflow:hidden}.rmbar i{display:block;height:100%;border-radius:99px;background:var(--gold)}
+.stg.stress{table-layout:fixed;width:100%}.stg.stress th,.stg.stress td{font-size:13px;padding:8px 2px;overflow-wrap:anywhere;white-space:normal;font-variant-numeric:tabular-nums}.stg.stress td.n{white-space:nowrap;font-size:12.5px}.stg.stress td:first-child,.stg.stress th:first-child{width:22%;text-align:left}
 .stg.scen{table-layout:fixed;width:100%}.stg.scen td,.stg.scen th{font-size:12px;padding:6px 2px;overflow-wrap:anywhere;white-space:normal}.stg.scen td:first-child,.stg.scen th:first-child{width:27%;text-align:left}
 .gantt{position:relative}.gr{margin:9px 0}.gl{display:flex;justify-content:space-between;gap:8px;font-size:13px}.gt{position:relative;height:20px;margin-top:3px;background:var(--input);border-radius:6px;overflow:hidden}
 .gt i{position:absolute;top:0;height:100%;border-radius:6px;box-sizing:border-box}.gt .gp{top:0;height:7px;background:#B8C0CC}.gt .gf{top:8px;height:12px}
@@ -270,7 +271,7 @@ html[data-style="glass"] .fab{bottom:calc(108px + env(safe-area-inset-bottom))}
 .hdeal:first-of-type{border-top:0;padding-top:0}
 .bigbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:64px;border:0;border-radius:20px;background:var(--gold);color:#fff;font:inherit;font-size:17px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);margin:0 0 12px}
 .bigbtn svg{width:28px;height:28px;flex:none}
-.bigbtn.acc{justify-content:center;padding:0 34px 0 16px;gap:10px;text-align:center;position:relative}.bigbtn.acc .t{flex:none}.bigbtn.acc .chev{position:absolute;right:12px;top:calc(50% - 12px)}
+.bigbtn.acc{justify-content:center;padding:12px 46px;gap:10px;text-align:center;position:relative}.bigbtn.acc .t{flex:0 1 auto;min-width:0;line-height:1.25;overflow-wrap:anywhere}.bigbtn.acc .chev{position:absolute;right:16px;top:calc(50% - 12px)}.bigbtn.acc svg{margin:0}
 .accbtn{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 18px;border:0;border-radius:20px;background:var(--card);color:var(--ink);font:inherit;font-size:16px;font-weight:600;text-align:left;box-shadow:var(--shadow);cursor:pointer;margin:0 0 12px}
 .accbtn .t{flex:1;min-width:0}.accbtn small{display:block;font-weight:400;font-size:13px;color:var(--muted);margin-top:2px}
 .chev{font-style:normal;font-size:24px;line-height:1;flex:none;transition:transform .2s}[aria-expanded="true"]>.chev{transform:rotate(90deg)}
@@ -343,6 +344,7 @@ details li{margin:4px 0}
 .plain{margin-top:12px;font-size:17px;font-weight:600;letter-spacing:-.2px}
 .next{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:16px 18px;margin:10px 0 12px}
 .card .next{background:var(--input);box-shadow:none;border-radius:14px;padding:12px 14px;margin:12px 0 0}
+.card .kpis{background:none;box-shadow:none;border-radius:0;overflow:visible}
 .next{padding:0;overflow:hidden}.next .nx-btn{box-shadow:none;background:none;border-radius:0;min-height:56px;padding:10px 18px}.next .nx-body{display:none;padding:0 18px 16px}.next.open .nx-body{display:block}
 .next ol{margin:0;padding-left:20px;color:var(--muted);font-size:14px;line-height:1.45}
 .next li{margin:4px 0}
@@ -440,6 +442,7 @@ html[data-style="glass"] body::before{content:"";position:fixed;inset:0;z-index:
   radial-gradient(340px 340px at -12% 58%,rgba(122,60,255,.42),transparent 70%)}
 html[data-style="glass"] :is(.card,.accbtn,.tile,.kpis,.next,.bigbtn,.star,.verdict .v){border:1px solid var(--edge);-webkit-backdrop-filter:blur(22px) saturate(1.6);backdrop-filter:blur(22px) saturate(1.6)}
 html[data-style="glass"] .card .next{border:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+html[data-style="glass"] .card .kpis{border:0;border-radius:0;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;background:none}
 html[data-style="glass"] :is(.card,.accbtn,.tile,.kpis){border-radius:22px}
 html[data-style="glass"] .tabs{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;border:1px solid var(--bar-line);border-radius:30px;padding-bottom:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 30px rgba(0,0,0,.4)}
 html[data-style="glass"] .tabs button.on{text-shadow:0 0 12px rgba(77,163,255,.9)}
@@ -512,7 +515,7 @@ try { if (sessionStorage.getItem('fl-splash') || (navigator.webdriver && !/splas
   <button data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>Главная</button>
   <button data-tab="calc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg>Расчёт</button>
   <button type="button" data-a="soon" data-v="voice" aria-label="Голосовой помощник"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Голос</button>
-  <button data-tab="deals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Сделки</button>
+  <button data-tab="deals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Проекты</button>
   <button data-tab="ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h6M8 12h6"/></svg>Справка</button>
 </nav>
 <div class="toast" id="toast"></div>
@@ -1667,7 +1670,7 @@ function stressGridHtml(c) {
   if (!(c.price > 0 && c.sale > 0)) return '';
   const g = stressGrid(c);
   let h = '<div class="card"><h3>Срок и цена продажи</h3><p class="small muted" style="margin-top:0">Чистая прибыль, если квартира продастся за другой срок или дешевле плана.</p>' +
-    '<table class="stg"><tr><th>Срок</th>' + STRESS_CUTS.map(x => '<th class="n">' + (x ? 'Цена −' + x + '%' : 'По плану') + '</th>').join('') + '</tr>' +
+    '<table class="stg stress"><tr><th>Срок</th>' + STRESS_CUTS.map(x => '<th class="n">' + (x ? 'Цена −' + x + '%' : 'По плану') + '</th>').join('') + '</tr>' +
     g.rows.map(r => '<tr' + (r.plan ? ' class="planrow"' : '') + '><td>' + r.m + ' мес.' + (r.plan ? '<br><span class="small muted">ваш срок</span>' : '') + '</td>' +
       r.cells.map(x => '<td class="n ' + (x.net < 0 ? 'neg' : '') + '">' + rub(x.net) + '</td>').join('') + '</tr>').join('') + '</table>';
   h += '<div class="kpis" style="margin:12px 0 0">' +
@@ -1770,7 +1773,7 @@ function portfolioHtml(deals) {
   if (!t.n) return '';
   const row = (l, v, cls) => '<div class="kpi"><span>' + l + '</span><b' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</b></div>';
   const both = t.best && t.worst && t.best.name !== t.worst.name;
-  return '<div class="card"><h3>Итоги по сделкам</h3><div class="kpis" style="margin:0">' +
+  return '<details class="card"><summary class="portf-sum">Итоги по проектам</summary><div class="kpis" style="margin:12px 0 0">' +
     row('Сделок в работе', t.active) +
     (t.watch ? row('Присматриваем (не куплены)', t.watch) : '') +
     row('Вложено в работающие', rub(t.invested)) +
@@ -1778,20 +1781,20 @@ function portfolioHtml(deals) {
     (t.sold ? row('Получено с проданных (' + t.sold + ')', rub(t.factProfit), t.factProfit < 0 ? 'neg' : '') : '') +
     (t.annualAvg != null ? row('Доходность работающих по плану', pct(t.annualAvg) + ' годовых') : '') +
     (both ? row('Лучшая', esc(t.best.name || 'Без названия') + ' · ' + rub(t.best.res)) + row('Слабая', esc(t.worst.name || 'Без названия') + ' · ' + rub(t.worst.res), t.worst.res < 0 ? 'neg' : '') : '') +
-    '</div><p class="note">Работающие — прогноз после налога по расчёту; проданные — факт до налога, с комиссией.</p></div>';
+    '</div><p class="note">Работающие — прогноз после налога по расчёту; проданные — факт до налога, с комиссией.</p></details>';
 }
 
 /* ===== Раздел «Расчёт» ===== */
 const CALC_GROUPS = [
   ['Покупка', [
-    ['price', 'Цена покупки', '₽'], ['buyCosts', 'Расходы на сделку', '₽', 'Нотариус, госпошлина, риелтор, проверка', 'buycosts'],
+    ['buyCosts', 'Расходы на сделку', '₽', 'Нотариус, госпошлина, риелтор, проверка', 'buycosts'],
     ['cadastral', 'Кадастровая стоимость', '₽', 'Для правила 70%. Если не знаете — 0', 'cadastral']]],
   ['Ремонт и подготовка', [
     ['repair', 'Ремонт', '₽', '', 'repair'], ['furniture', 'Мебель, техника, стейджинг', '₽', '', 'staging']]],
   ['Срок и содержание', [
     ['months', 'Срок проекта, месяцев', 'мес', '', 'months'], ['utilities', 'Коммуналка в месяц', '₽', '', 'utilities']]],
   ['Продажа', [
-    ['sale', 'Цена продажи', '₽'], ['commission', 'Комиссия риелтору', '%', '', 'commission']]]
+    ['commission', 'Комиссия риелтору', '%', '', 'commission']]]
 ];
 function field(k, label, suf, hint, val, term) {
   return '<label class="f"><span>' + esc(label) + hintBtn(term) + '</span>' +
@@ -1811,6 +1814,8 @@ function renderCalc() {
     '<textarea id="parseText" placeholder="2-к. квартира, 54,3 м², 5/9 эт.&#10;12 500 000 ₽&#10;Москва, Кузьминская ул., 11">' + esc(parseDraft) + '</textarea>' +
     '<div class="grid2" style="margin-top:10px"><label class="f">Продажа после ремонта, за м²<div class="inwrap"><input type="text" inputmode="decimal" id="sellM2" value="' + (S.sellM2 ? num(S.sellM2) : '') + '"><span>₽</span></div><span class="small">Необязательно: цена м² отремонтированных квартир рядом</span></label></div>' +
     '<button class="btn pri block" style="margin-top:10px" data-a="parse">Разобрать</button><div id="parseRes"></div></details></div>';
+  // Покупка и продажа — сразу под окном объявления, как в экспресс-расчёте
+  h += '<div class="card"><h3>Покупка и продажа</h3><div class="grid2">' + field('price', 'Цена покупки', '₽', '', c.price) + field('sale', 'Цена продажи', '₽', '', c.sale) + '</div></div>';
   h += '<div id="calcHero"></div>';
   h += '<div id="priceBox">' + priceSlideHtml(c.price) + '</div>';
   h += '<div id="calcRes"></div>';
@@ -1833,7 +1838,7 @@ function renderCalc() {
     '</select>' +
     '<label class="chk' + (c.tax === 'ndfl' ? '' : ' hide') + '" id="repDedBox"><input type="checkbox" data-k="repairDed"' + (c.repairDed ? ' checked' : '') + '><span>Учесть ремонт в расходах <span class="small muted">(только если купили без отделки по договору и есть чеки)</span></span></label>' +
     '</div>';
-  h += '<div class="card"><h3>Цель</h3><div class="grid2">' + field('target', 'Желаемая доходность, годовых', '%', 'На свои вложенные деньги', c.target, 'target') + field('minProfit', 'Желаемая чистая прибыль', '₽', 'Необязательно. 0 — не учитывать', c.minProfit, 'minprofit') + '</div></div>';
+  h += '<div class="card"><details id="goalBox"><summary>Желаемая доходность</summary><div class="grid2" style="margin-top:12px">' + field('target', 'Желаемая доходность, годовых', '%', 'На свои вложенные деньги', c.target, 'target') + field('minProfit', 'Желаемая чистая прибыль', '₽', 'Необязательно. 0 — не учитывать', c.minProfit, 'minprofit') + '</div></details></div>';
   h += '<div class="card"><h3>Сохранить</h3>' + (deal
     ? '<button class="btn pri block" data-a="calc-save-deal">Сохранить в сделку «' + esc(deal.name) + '»</button>'
     : '<div class="row"><input type="text" id="newDealName" placeholder="Название, например «Однушка на Ленина 5»" style="flex:1;min-width:200px"><button class="btn pri" data-a="calc-new-deal">Создать сделку</button></div>') +
@@ -1904,15 +1909,15 @@ function nextHtml(c, a) {
   return '<div class="next' + (NEXT_OPEN ? ' open' : '') + '"><button type="button" class="accbtn nx-btn" data-a="next-toggle" aria-expanded="' + NEXT_OPEN + '"><span class="t">Что дальше?</span><i class="chev" aria-hidden="true">›</i></button><div class="nx-body"><ol>' + items.map(x => '<li>' + esc(x) + '</li>').join('') + '</ol>' +
     (btns.length ? '<div class="row">' + btns.map((x, i) => '<button type="button" class="btn' + (i ? '' : ' pri') + '" data-a="' + x[1] + '">' + esc(x[0]) + '</button>').join('') + '</div>' : '') + '</div></div>';
 }
-function heroHtml(c, a, b) {
+function heroHtml(c, a, b, noNext) {
   const hn = heroNumbers(c, b), filled = hn.net !== '—';
   return '<div class="verdict ' + a.cls + '"><div class="v">' + esc(a.verdict) + '</div>' + hintBtn('verdict') + '<div class="plain">' + esc(PLAIN[a.kind] || '') + '</div>' +
     '<div class="lbl">Чистая прибыль</div><div class="big' + (filled && b.net < 0 ? ' neg' : '') + '">' + hn.net + '</div>' +
-    '<div class="sub2"><b class="' + (filled && b.annual < 0 ? 'neg' : '') + '">' + hn.annual + '</b> годовых на свои деньги' + hintBtn('annual') + '</div><p>' + esc(a.why) + '</p></div>' + nextHtml(c, a);
+    '<div class="sub2"><b class="' + (filled && b.annual < 0 ? 'neg' : '') + '">' + hn.annual + '</b> годовых на свои деньги' + hintBtn('annual') + '</div><p>' + esc(a.why) + '</p></div>' + (noNext ? '' : nextHtml(c, a));
 }
 function updateCalcResults() {
   const c = S.calc, a = analyse(c), b = a.base, hn = heroNumbers(c, b), filled = hn.net !== '—';
-  const hero = heroHtml(c, a, b);
+  const hero = heroHtml(c, a, b, true);
   const heroEl = $('#calcHero'); if (heroEl) heroEl.innerHTML = hero;
   const lim = a.maxBuy != null && c.price > 0 && c.sale > 0 ? round10k(a.maxBuy) : null;
   const over = lim != null && a.maxBuy < c.price;
@@ -2296,20 +2301,31 @@ function lateLine(d) {
   const wp = d.works ? worksPlan(d.works, today()) : null;
   return wp && wp.shift > 0 ? '<div class="small neg" style="margin-top:4px">Ремонт: срок сдвинут на ' + wp.shift + ' дн.</div>' : '';
 }
+// Дата создания проекта: дд.мм.гггг (ищется и по ней тоже)
+const dealDateRu = ts => { const d = new Date(Number(ts) || Date.now()); return ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear(); };
+let DQ = {q: ''};
+function dealsListHtml() {
+  const q = DQ.q.trim().toLowerCase();
+  const list = S.deals.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0))
+    .filter(d => !q || [d.name, d.address, dealDateRu(d.created)].some(x => String(x || '').toLowerCase().includes(q)));
+  if (!list.length) return '<p class="small muted" style="margin:4px 2px">Ничего не найдено. Ищите по названию, адресу или дате создания (например, 09.11.2026).</p>';
+  return list.map(d => {
+    const p = dealPlan(d), spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
+    return '<button class="card deal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + thumbHtml(d) + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
+      (d.address ? '<div class="small muted">' + esc(d.address) + '</div>' : '') +
+      '<div class="small muted">Создан ' + dealDateRu(d.created) + '</div>' +
+      '<div class="small" style="margin-top:6px">План: ' + (p ? '<b>' + rub(p.net) + '</b> · ' + pct(p.annual) + ' годовых' : 'нет расчёта') + ' · Потрачено: ' + rub(spent) + '</div>' + progLine(d) + lateLine(d) + '</button>';
+  }).join('');
+}
 function renderDeals() {
   if (openDeal && S.deals.some(d => d.id === openDeal)) return renderDeal(S.deals.find(d => d.id === openDeal));
   openDeal = null;
-  setTitle('Мои сделки', '<button class="btn pri" data-a="deal-new">+ Сделка</button>');
+  setTitle('Мои проекты', '');
   let h = '';
   if (!S.deals.length) {
-    h += '<div class="card empty"><p><b>Сделок пока нет</b></p><p class="muted">Посчитайте объект в разделе «Расчёт» и нажмите «Создать сделку», или добавьте сделку кнопкой выше.</p><button class="btn" data-a="demo-open">Посмотреть пример сделки</button></div>';
+    h += '<div class="card empty"><p><b>Проектов пока нет</b></p><p class="muted">Посчитайте объект в разделе «Расчёт» и нажмите «Создать сделку».</p><button class="btn" data-a="demo-open">Посмотреть пример сделки</button></div>';
   } else {
-    S.deals.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).forEach(d => {
-      const p = dealPlan(d), spent = (d.expenses || []).reduce((s, e) => s + e.sum, 0);
-      h += '<button class="card deal" data-a="deal-open" data-id="' + esc(d.id) + '"><div class="row" style="justify-content:space-between"><span class="t">' + thumbHtml(d) + esc(d.name) + '</span><span class="pill st">' + (d.demo ? 'Пример · ' : '') + esc(d.stage) + '</span></div>' +
-        (d.address ? '<div class="small muted">' + esc(d.address) + '</div>' : '') +
-        '<div class="small" style="margin-top:6px">План: ' + (p ? '<b>' + rub(p.net) + '</b> · ' + pct(p.annual) + ' годовых' : 'нет расчёта') + ' · Потрачено: ' + rub(spent) + '</div>' + progLine(d) + lateLine(d) + '</button>';
-    });
+    h += '<div class="card"><label class="f"><span>Поиск</span><input type="text" enterkeyhint="search" data-dq="q" maxlength="100" placeholder="Название, адрес или дата создания" value="' + esc(DQ.q) + '"></label></div><div id="dqList">' + dealsListHtml() + '</div>';
   }
   h = portfolioHtml(S.deals) + h;
   const days = S.lastBackup ? Math.floor((Date.now() - S.lastBackup) / 864e5) : -1;
@@ -3617,7 +3633,7 @@ function homeRatesHtml() {
   }).join('');
   return '<p class="small muted" style="margin:0 0 6px">Курс ЦБ РФ на ' + esc(isoRu(c.date)) + (kzStatus === 'err' ? ' · нет связи, показан сохранённый' : '') + '</p>' + rows;
 }
-const HOME_OPEN = {eval: false, proj: false, calc: false, cal: false};
+const HOME_OPEN = {eval: false, proj: false, calc: false, cal: false, ref: false};
 const homeAccBtn = (key, ico, title, sub, big) => '<button type="button" class="' + (big ? 'bigbtn acc' : 'accbtn') + '" data-a="home-acc" data-v="' + key + '" aria-expanded="' + (HOME_OPEN[key] ? 'true' : 'false') + '">' +
   (ico || '') + '<span class="t">' + title + (sub ? '<small>' + sub + '</small>' : '') + '</span><i class="chev" aria-hidden="true">›</i></button>';
 const homeLinkBtn = (act, v, title, sub) => '<button type="button" class="accbtn" data-a="' + act + '"' + (v ? ' data-v="' + v + '"' : '') + '><span class="t">' + title + (sub ? '<small>' + sub + '</small>' : '') + '</span><i class="chev" aria-hidden="true">›</i></button>';
@@ -3626,7 +3642,8 @@ function homeHtml() {
   const full = S.mode === 'full', ph = homePhase(), sh = n => full || ph >= n;
   const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
   const projHtml = '<div class="card"><h3>Мои проекты</h3>' +
-    (deals.length ? deals.map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Проектов пока нет. Посчитайте объект и создайте проект или добавьте его сразу. Хотите увидеть, как выглядит готовый проект, — откройте пример.</p>') +
+    (deals.length ? deals.slice(0, 3).map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Проектов пока нет. Посчитайте объект и создайте проект или добавьте его сразу. Хотите увидеть, как выглядит готовый проект, — откройте пример.</p>') +
+    (deals.length > 3 ? '<button class="btn block" style="margin-top:12px" data-a="go-tab" data-v="deals">Перейти в проекты</button>' : '') +
     '<div class="row" style="margin-top:12px">' + (S.deals.some(x => x.demo) ? '' : '<button class="btn" data-a="demo-open">Пример проекта</button>') +
     '' + '</div></div>';
   const expressHtml = '<div class="card"><h3>Экспресс-расчёт нового объекта</h3><div class="grid2">' +
@@ -3649,15 +3666,14 @@ function homeHtml() {
   h += hotHtml();
   // 3. Новый проект: «Мои проекты» раскрываются из кнопки
   h += '<button type="button" class="bigbtn" data-a="deal-new">Новый проект +</button>';
-  h += homeAccBtn('proj', '', 'Мои проекты', deals.length ? 'Проектов: ' + deals.length : 'Пример проекта') + (HOME_OPEN.proj ? '<div class="accp">' + projHtml + '</div>' : '');
-  if (sh(2)) h += portfolioHtml(S.deals);
+  h += '<button type="button" class="bigbtn" data-a="go-tab" data-v="deals">Все объекты</button>';
+  h += homeAccBtn('proj', '', 'Мои проекты', '') + (HOME_OPEN.proj ? '<div class="accp">' + projHtml + '</div>' : '');
   // 4. Калькуляторы
   h += homeAccBtn('calc', '', 'Калькуляторы', 'Расчёт, смета, торги, материалы, из объявления') + (HOME_OPEN.calc ? '<div class="accp">' + tilesHtml + '</div>' : '');
   // 5. Календарь
   h += homeAccBtn('cal', '', 'Календарь', S.cal.filter(e => e.date === today()).length ? 'Сегодня записей: ' + S.cal.filter(e => e.date === today()).length : 'Записи на сегодня и другие дни') + (HOME_OPEN.cal ? '<div class="accp">' + calHomeHtml() + '</div>' : '');
   // 6. Записная книжка
   h += homeLinkBtn('home-notes', '', 'Записная книжка', S.book.length ? 'Заметок: ' + S.book.length : 'Заметки и записи по объектам');
-  h += homeLinkBtn('home-contacts', '', 'Контакты', S.contacts.length ? 'Контактов: ' + S.contacts.length : 'Адреса, телефоны, подрядчики');
   // 7. Курсы валют слева, ставки справа
   const kr = keyRateNow(S.kursy), stale = kzDaysOld(kr.date) > KEY_STALE_DAYS;
   h += '<h3 class="hh">Курсы и ставки</h3><div class="rates"><div class="card rl"><h3>Курсы валют</h3><div id="homeRates">' + homeRatesHtml() + '</div></div>' +
@@ -3666,11 +3682,11 @@ function homeHtml() {
     '<p class="small muted" style="margin:-4px 4px 10px">' + (stale ? 'Ставка на ' + esc(isoRu(kr.date)) + ' могла измениться — проверьте на cbr.ru. ' : 'Ставки на ' + esc(isoRu(kr.date)) + '. ') + 'Ставка рефинансирования с 2016 года равна ключевой.</p>' +
     '<button class="btn block" data-a="home-push" data-v="kursy" style="margin-bottom:12px">Все курсы и конвертер</button>';
   // 8. Справочники (остаются, как были)
-  if (sh(1)) h += '<h3 class="hh">Справочники</h3><div class="card hlist">' +
+  if (sh(1)) h += homeAccBtn('ref', '', 'Справочники', '') + (HOME_OPEN.ref ? '<div class="accp"><div class="card hlist">' +
     '<button data-a="home-rayony"><span>Районы Москвы</span><i>›</i></button>' +
     '<button data-a="home-push" data-v="docs"><span>Юридический справочник: шаблоны документов</span><i>›</i></button>' +
     '<button data-a="home-tax"><span>Налог при продаже квартиры</span><i>›</i></button>' +
-    '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button></div>';
+    '<button data-a="home-gloss"><span>Словарь: что значат слова</span><i>›</i></button></div></div>' : '');
   // 9. Новости
   if (sh(1)) h += '<h3 class="hh">Новости</h3><div class="card hlist"><a href="https://t.me/flipologia" target="_blank" rel="noopener"><span>Новости и лоты недели · Telegram</span><i>↗</i></a></div>';
   return h;
@@ -4989,7 +5005,7 @@ function renderNewObj() {
 }
 
 /* ===== Навигация ===== */
-const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый проект', cal: 'Календарь', notes: 'Записная книжка', mat: 'Материалы', docs: 'Юридический справочник'};
+const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои проекты', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый проект', cal: 'Календарь', notes: 'Записная книжка', mat: 'Материалы', docs: 'Юридический справочник'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
 function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
@@ -5025,6 +5041,7 @@ function go(tab, cls, y) {
   if (tab === 'kursy' || tab === 'tax' || tab === 'docs') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   if (tab === 'photo' || tab === 'cal' || tab === 'notes') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'newobj') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
+  if (tab === 'calc' && navDepth > 0) setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   window.scrollTo(0, y || 0); animate(cls || 'anim-up'); onScroll();
 }
 /* ===== История: системная кнопка «назад», кнопка «‹» и свайп идут одним путём =====
@@ -5128,7 +5145,7 @@ function closeDeal() { navBack(); }
 let swipe = null;
 document.addEventListener('touchstart', e => {
   const p = e.touches[0];
-  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'tax' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal' || S.tab === 'notes' || S.tab === 'mat' || S.tab === 'docs') && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
+  swipe = standalone && ((S.tab === 'deals' && openDeal) || (S.tab === 'ref' && rayonView) || S.tab === 'smeta' || S.tab === 'torgi' || S.tab === 'kursy' || S.tab === 'tax' || S.tab === 'photo' || S.tab === 'newobj' || S.tab === 'cal' || S.tab === 'notes' || S.tab === 'mat' || S.tab === 'docs' || (S.tab === 'calc' && navDepth > 0)) && p.clientX < 30 ? {x: p.clientX, y: p.clientY} : null;
 }, {passive: true});
 document.addEventListener('touchend', e => {
   if (!swipe) return;
@@ -5136,7 +5153,8 @@ document.addEventListener('touchend', e => {
   swipe = null;
   if (dx > 70 && dy < 60) navBack();
 }, {passive: true});
-$('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) navTab(b.dataset.tab); });
+// Нижнее меню стоит вне <main>, поэтому его кнопки с data-a обрабатываем здесь (иначе «Голос» не откликался)
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) navTab(b.dataset.tab); else if (e.target.closest('button[data-a="soon"]')) openVoiceHelper(); });
 
 /* ===== Ввод данных ===== */
 const view = $('main');  // события ловим на всём main: и в разделе, и у кнопки рядом с крупным заголовком
@@ -5430,7 +5448,8 @@ view.addEventListener('click', e => {
     case 'smeta-reset':
       if (confirm('Вернуть ориентировочные цены вместо ваших?')) { SM().custom = {}; save(); updateSmetaTable(); }
       break;
-    case 'go-tab': if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
+    // Расчёт с главной открывается поверх главной: у него есть «‹ Назад» обратно на главную
+    case 'go-tab': if (b.dataset.v === 'calc' && S.tab === 'home') navPush(navRoot('calc'), 'anim-right'); else if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
     case 'home-notes': BK.mode = 'notes'; navPush(navRoot('notes'), 'anim-right'); break;
     case 'home-contacts': BK.mode = 'people'; navPush(navRoot('notes'), 'anim-right'); break;
     case 'home-push': if (b.dataset.v === 'smeta' || b.dataset.v === 'torgi' || b.dataset.v === 'kursy' || b.dataset.v === 'photo' || b.dataset.v === 'cal' || b.dataset.v === 'notes' || b.dataset.v === 'mat' || b.dataset.v === 'docs') navPush(navRoot(b.dataset.v), 'anim-right'); break;
@@ -5648,6 +5667,7 @@ view.addEventListener('input', e => {
     if (k === 'q') { CT.q = t.value.slice(0, 100); const l = document.getElementById('ctList'); if (l) l.innerHTML = ctListHtml(); }
     else if (CT.form && ['name', 'phone', 'phone2', 'company', 'address', 'note', 'dict'].includes(k)) CT.form[k] = t.value;
   }
+  else if (t.dataset.dq === 'q') { DQ.q = t.value.slice(0, 100); const l = document.getElementById('dqList'); if (l) l.innerHTML = dealsListHtml(); }
   else if (t.dataset.ds === 'q') { DS.q = t.value.slice(0, 100); const l = document.getElementById('dsList'); if (l) l.innerHTML = lgListHtml(); }
   else if (t.dataset.ds === 'v' && DS.open) {
     (DS.vals[DS.open] = DS.vals[DS.open] || {})[t.dataset.tk] = t.value;
