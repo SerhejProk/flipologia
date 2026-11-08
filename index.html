@@ -3608,9 +3608,9 @@ function homeHtml() {
   const full = S.mode === 'full', ph = homePhase(), sh = n => full || ph >= n;
   const deals = S.deals.slice().sort((x, y) => (y.updated || 0) - (x.updated || 0));
   const projHtml = '<div class="card"><h3>Мои проекты</h3>' +
-    (deals.length ? deals.slice(0, 3).map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Проектов пока нет. Посчитайте объект и создайте проект или добавьте его сразу. Хотите увидеть, как выглядит готовый проект, — откройте пример.</p>') +
-    '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="deal-new">+ Новый проект</button>' + (S.deals.some(x => x.demo) ? '' : '<button class="btn" data-a="demo-open">Пример проекта</button>') +
-    (deals.length > 3 ? '<button class="btn" data-a="go-tab" data-v="deals">Все (' + deals.length + ')</button>' : '') + '</div></div>';
+    (deals.length ? deals.map(homeDealHtml).join('') : '<p class="small muted" style="margin-top:0">Проектов пока нет. Посчитайте объект и создайте проект или добавьте его сразу. Хотите увидеть, как выглядит готовый проект, — откройте пример.</p>') +
+    '<div class="row" style="margin-top:12px">' + (S.deals.some(x => x.demo) ? '' : '<button class="btn" data-a="demo-open">Пример проекта</button>') +
+    '' + '</div></div>';
   const expressHtml = '<div class="card"><h3>Экспресс-расчёт нового объекта</h3><div class="grid2">' +
     QUICK.map(([k, l, suf, term]) => '<label class="f"><span>' + l + hintBtn(term) + '</span><div class="inwrap"><input type="text" inputmode="decimal" data-q="' + k + '" value="' + (k === 'months' ? String(c[k]).replace('.', ',') : num(c[k])) + '"><span>' + suf + '</span></div></label>').join('') +
     '</div>' + (linked ? '<div class="row" style="justify-content:space-between;margin-top:12px"><span class="small">Сейчас здесь расчёт сделки <b>' + esc(linked.name) + '</b></span><button class="btn" data-a="calc-detach">Новый расчёт</button></div>' : '') +
@@ -3630,7 +3630,8 @@ function homeHtml() {
   if (sh(1)) h += '<button class="bigbtn" data-a="home-push" data-v="photo">' + ICO.cam + '<span>Сделать фото</span></button>';
   h += hotHtml();
   // 3. Новый проект: «Мои проекты» раскрываются из кнопки
-  h += homeAccBtn('proj', '', 'Новый проект', deals.length ? 'Мои проекты: ' + deals.length : 'Мои проекты, пример проекта') + (HOME_OPEN.proj ? '<div class="accp">' + projHtml + '</div>' : '');
+  h += homeLinkBtn('deal-new', '', 'Новый проект +', '');
+  h += homeAccBtn('proj', '', 'Мои проекты', deals.length ? 'Проектов: ' + deals.length : 'Пример проекта') + (HOME_OPEN.proj ? '<div class="accp">' + projHtml + '</div>' : '');
   if (sh(2)) h += portfolioHtml(S.deals);
   // 4. Калькуляторы
   h += homeAccBtn('calc', '', 'Калькуляторы', 'Расчёт, смета, торги, материалы, из объявления') + (HOME_OPEN.calc ? '<div class="accp">' + tilesHtml + '</div>' : '');

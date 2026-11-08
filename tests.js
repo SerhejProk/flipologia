@@ -763,7 +763,7 @@ vm.runInContext(`
   vm.runInContext("S.mode = 'full'; S.tab = 'home'; renderHome();", c);
   const hc = view.innerHTML;
   ctx.check('главная: панели по умолчанию свёрнуты', !/<h3>Мои проекты<\/h3>/.test(hc) && !/data-q="price"/.test(hc) && !/class="tiles"/.test(hc) && (hc.match(/aria-expanded="false"/g) || []).length === 4, (hc.match(/aria-expanded="\w+"/g) || []));
-  ctx.check('главная: кнопки раскрытия подписаны', /Экспресс-расчёт нового объекта/.test(hc) && />Новый проект</.test(hc) && />Калькуляторы</.test(hc) && />Календарь</.test(hc));
+  ctx.check('главная: кнопки раскрытия подписаны', /Экспресс-расчёт нового объекта/.test(hc) && /Новый проект \+/.test(hc) && />Мои проекты</.test(hc) && />Калькуляторы</.test(hc) && />Календарь</.test(hc));
   vm.runInContext("HOME_OPEN.eval = true; HOME_OPEN.proj = true; HOME_OPEN.calc = true; HOME_OPEN.cal = true; renderHome();", c);
   const h = view.innerHTML;
   ctx.check('главная: раскрытые панели показывают содержимое', /<h3>Мои проекты<\/h3>/.test(h) && /data-q="price"/.test(h) && /class="tiles"/.test(h) && (h.match(/aria-expanded="true"/g) || []).length === 4);
@@ -772,7 +772,7 @@ vm.runInContext(`
   ctx.check('главная: все блоки на месте', idx.every(i => i >= 0), order.filter((t, i) => idx[i] < 0));
   ctx.check('главная: порядок блоков как в заметке «Правки»', idx.every((v, i) => i === 0 || v > idx[i - 1]), idx);
   ctx.check('главная: экспресс-расчёт раскрывается под синей кнопкой', /bigbtn acc" data-a="home-acc" data-v="eval"[^>]*aria-expanded="true"[\s\S]*?data-q="price"[\s\S]*?Сделать фото/.test(h));
-  ctx.check('главная: «Мои проекты» внутри раскрытия «Новый проект», с «+ Новый проект» и «Пример проекта»', /data-v="proj"[\s\S]*?<h3>Мои проекты<\/h3>[\s\S]*?\+ Новый проект[\s\S]*?Пример проекта[\s\S]*?data-v="calc"/.test(h));
+  ctx.check('главная: «Мои проекты» внутри раскрытия «Мои проекты», отдельная кнопка «Новый проект +», есть «Пример проекта»', /data-a="deal-new"[\s\S]*?data-v="proj"[\s\S]*?<h3>Мои проекты<\/h3>[\s\S]*?Пример проекта[\s\S]*?data-v="calc"/.test(h));
   ctx.check('главная: фото до проектов, голоса и «Упростить главную» на главной нет', h.indexOf('data-v="photo"') < h.indexOf('data-v="proj"') && !/data-v="voice"/.test(h) && !/Упростить главную|Показать все возможности/.test(h));
   ctx.check('главная: записная книжка — кнопка перехода', /data-a="home-notes"/.test(h) && /data-a="home-contacts"/.test(h) && !/Не знаете, сколько стоит ремонт/.test(h));
   ctx.check('главная: резервной копии на главной нет', !/Резервная копия|backup-save/.test(h));
@@ -1199,7 +1199,7 @@ vm.runInContext(`
   S.mode = 'simple';
   S.deals = [];
   let h0 = homeHtml();
-  check('простая главная без проектов: синяя кнопка экспресс-расчёта, новый проект, режим', /Экспресс-расчёт нового объекта/.test(h0) && />Новый проект</.test(h0) && !/Показать все возможности/.test(h0) && !/Оценить новый объект/.test(h0));
+  check('простая главная без проектов: синяя кнопка экспресс-расчёта, новый проект, режим', /Экспресс-расчёт нового объекта/.test(h0) && /Новый проект \+/.test(h0) && />Мои проекты</.test(h0) && !/Показать все возможности/.test(h0) && !/Оценить новый объект/.test(h0));
   check('простая главная без проектов: лишнего нет, а ядро есть', !/data-v="photo"|Итоги по сделкам|Справочники|Новости/.test(h0) && /Калькуляторы/.test(h0) && /Календарь/.test(h0) && /Записная книжка/.test(h0) && /Курсы и ставки/.test(h0), h0.match(/data-v="photo"|Итоги по сделкам|Справочники|Новости/));
   S.deals = [mk('Поиск')];
   let h1 = homeHtml();
