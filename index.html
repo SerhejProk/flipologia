@@ -343,7 +343,7 @@ details li{margin:4px 0}
 .plain{margin-top:12px;font-size:17px;font-weight:600;letter-spacing:-.2px}
 .next{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:16px 18px;margin:10px 0 12px}
 .card .next{background:var(--input);box-shadow:none;border-radius:14px;padding:12px 14px;margin:12px 0 0}
-.next h4{margin:0 0 6px;font-size:15px;font-weight:600}
+.next{padding:0;overflow:hidden}.next .nx-btn{box-shadow:none;background:none;border-radius:0;min-height:56px;padding:10px 18px}.next .nx-body{display:none;padding:0 18px 16px}.next.open .nx-body{display:block}
 .next ol{margin:0;padding-left:20px;color:var(--muted);font-size:14px;line-height:1.45}
 .next li{margin:4px 0}
 .next .row{margin-top:10px}
@@ -1078,7 +1078,7 @@ function cleanDeal(d) {
     checks: d.checks && typeof d.checks === 'object' ? d.checks : {},
     risks: cleanRisks(d.risks),
     owner: cleanOwner(d.owner), people: cleanPeople(d.people), docs: cleanDocs(d.docs), ready: d.ready === 'yes' || d.ready === 'no' ? d.ready : '', place: cleanPlace(d.place),
-    ad: d.ad && typeof d.ad === 'object' && !Array.isArray(d.ad) ? adClean(d.ad) : null, notes: str(d.notes), saleFact: Number(d.saleFact) || 0, works: cleanWorks(d.works), demo: d.demo === true,
+    ad: d.ad && typeof d.ad === 'object' && !Array.isArray(d.ad) ? adClean(d.ad) : null, notes: str(d.notes), saleFact: Number(d.saleFact) || 0, works: cleanWorks(d.works), smeta: cleanSmetaObj(d.smeta), demo: d.demo === true,
     created: Number(d.created) || Date.now(), updated: Number(d.updated) || Date.now()
   };
 }
@@ -1872,6 +1872,7 @@ function updateSmetaHint() {
 }
 const PLAIN = {empty: 'Введите цены покупки и продажи', take: 'Сделка выглядит выгодной', bargain: 'Дороговато — просите скидку', risky: 'В плюсе, но без запаса прочности', skip: 'Сделка не окупается'};
 // «Что дальше?»: простой следующий шаг под каждый вердикт
+let NEXT_OPEN = false;
 function nextHtml(c, a) {
   const linked = S.calcDeal && S.deals.find(d => d.id === S.calcDeal);
   const lim = a.kind !== 'empty' && a.maxBuy != null && a.maxBuy > 0 && (a.kind !== 'skip' || a.maxBuy < c.price) ? rub(round10k(a.maxBuy)) : null;
@@ -1900,8 +1901,8 @@ function nextHtml(c, a) {
       'Не покупайте «в надежде на удачу» — лучше искать другой объект.'];
     btns = S.tab === 'calc' ? [] : [calc];
   }
-  return '<div class="next"><h4>Что дальше?</h4><ol>' + items.map(x => '<li>' + esc(x) + '</li>').join('') + '</ol>' +
-    (btns.length ? '<div class="row">' + btns.map((x, i) => '<button type="button" class="btn' + (i ? '' : ' pri') + '" data-a="' + x[1] + '">' + esc(x[0]) + '</button>').join('') + '</div>' : '') + '</div>';
+  return '<div class="next' + (NEXT_OPEN ? ' open' : '') + '"><button type="button" class="accbtn nx-btn" data-a="next-toggle" aria-expanded="' + NEXT_OPEN + '"><span class="t">Что дальше?</span><i class="chev" aria-hidden="true">›</i></button><div class="nx-body"><ol>' + items.map(x => '<li>' + esc(x) + '</li>').join('') + '</ol>' +
+    (btns.length ? '<div class="row">' + btns.map((x, i) => '<button type="button" class="btn' + (i ? '' : ' pri') + '" data-a="' + x[1] + '">' + esc(x[0]) + '</button>').join('') + '</div>' : '') + '</div></div>';
 }
 function heroHtml(c, a, b) {
   const hn = heroNumbers(c, b), filled = hn.net !== '—';
@@ -2054,15 +2055,29 @@ function smetaPrice(item, sm) {
   const key = item.k + '_' + sm.level;
   return sm.custom[key] != null ? sm.custom[key] : item.p[sm.level];
 }
-function smetaTotal() {
-  const sm = S.smeta;
+// Смета бывает общая (S.smeta) и проектная: у нового проекта (NB.smeta) или у сделки (deal.smeta)
+let SM_CTX = '';
+const smetaClone = () => JSON.parse(JSON.stringify(S.smeta));
+function cleanSmetaObj(x) {
+  if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
+  const sm = clean(DEFAULT_SMETA, x, {level: [0, 1, 2]}); sm.custom = {};
+  if (x.custom && typeof x.custom === 'object') Object.keys(x.custom).forEach(k => { const v = Number(x.custom[k]); if (/^[a-z]+_[0-2]$/.test(k) && isFinite(v)) sm.custom[k] = v; });
+  return sm;
+}
+function SM() {
+  if (SM_CTX === 'nb' && NB.smeta) return NB.smeta;
+  const d = SM_CTX && SM_CTX !== 'nb' ? S.deals.find(x => x.id === SM_CTX) : null;
+  return d && d.smeta ? d.smeta : S.smeta;
+}
+function smetaTotal(sm) {
+  sm = sm || S.smeta;
   const lines = SMETA_ITEMS.map(it => { const q = smetaQty(it, sm), p = smetaPrice(it, sm); return {it, q, p, sum: q * p}; });
   const sub = lines.reduce((s, l) => s + l.sum, 0);
   const extra = sub * sm.contingency / 100;
   return {lines, sub, extra, total: sub + extra};
 }
 function renderSmeta() {
-  const sm = S.smeta;
+  const sm = SM();
   let h = '<div class="card"><h3>Квартира</h3><div class="grid2">' +
     smField('area', 'Площадь', 'м²', sm.area) + smField('rooms', 'Комнат', 'шт', sm.rooms) +
     smField('baths', 'Санузлов', 'шт', sm.baths) + smField('contingency', 'Непредвиденные', '%', sm.contingency) +
@@ -2076,7 +2091,7 @@ function smField(k, label, suf, val) {
   return '<label class="f">' + label + '<div class="inwrap"><input type="text" inputmode="decimal" data-sm="' + k + '" value="' + esc(String(val).replace('.', ',')) + '"><span>' + suf + '</span></div></label>';
 }
 function updateSmetaTable() {
-  const t = smetaTotal(), sm = S.smeta;
+  const sm = SM(), t = smetaTotal(sm);
   let h = '<h3>Смета: ' + LEVELS[sm.level].toLowerCase() + '</h3><table><tr><th>Работа</th><th class="n">Цена за ед.</th><th class="n">Сумма</th></tr>';
   t.lines.forEach(l => {
     h += '<tr><td>' + esc(l.it.name) + '<br><span class="small muted">' + num(l.q) + ' ' + l.it.unit + '</span></td>' +
@@ -2087,7 +2102,7 @@ function updateSmetaTable() {
     '<tr class="total"><td>Итого</td><td></td><td class="n">' + rub(t.total) + '</td></tr></table>' +
     '<p class="note">Цены ориентировочные: работа плюс материалы. Поправьте их под свой регион и бригаду, приложение запомнит.</p>' +
     '<p class="note">За м²: ' + rub(sm.area > 0 ? t.total / sm.area : 0) + '</p>' +
-    '<div class="row" style="margin-top:12px"><button class="btn pri" data-a="smeta-to-calc">Перенести в расчёт</button><button class="btn" data-a="smeta-reset">Сбросить цены</button></div>';
+    '<div class="row" style="margin-top:12px">' + (SM_CTX === 'nb' ? '<button class="btn pri" data-a="deal-close">Готово</button>' : '<button class="btn pri" data-a="smeta-to-calc">' + (SM_CTX ? 'Перенести в расчёт сделки' : 'Перенести в расчёт') + '</button>') + '<button class="btn" data-a="smeta-reset">Сбросить цены</button></div>';
   $('#smetaTable').innerHTML = h;
 }
 
@@ -2385,6 +2400,9 @@ function renderDeal(d) {
   if (!dealOpen(d, 3, d.saleFact > 0)) h = h.slice(0, hs5);
   h += checkCardHtml(d);
   h += inspectCardHtml(d);
+  h += '<div class="card"><h3>Смета проекта</h3>' + (d.smeta ? '<p class="small muted" style="margin:0 0 10px">Итого по смете: <b>' + rub(smetaTotal(d.smeta).total) + '</b> · ' + num(d.smeta.area) + ' м²</p><button type="button" class="btn block" data-a="deal-smeta">Открыть смету проекта</button>' : '<p class="small muted" style="margin:0 0 10px">Смета ремонта пока не добавлена.</p><button type="button" class="btn pri block" data-a="deal-smeta">Добавить смету</button>') +
+    '<label class="btn block fbtn" style="margin-top:8px">Добавить смету (документ)<input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.heic,image/*" data-dfile="smeta" aria-label="Добавить смету документом"></label>' +
+    '<div id="smFiles"></div><p class="small muted" style="margin:8px 0 0">Чужая смета (PDF, Excel, Word, фото) лежит в проекте вместе с вашей. Файлы хранятся только в этом браузере и в резервную копию не входят.</p></div>';
   h += '<div class="card"><h3>Заметки</h3><textarea data-d="notes" placeholder="Контакты продавца, прораба, договорённости">' + esc(d.notes || '') + '</textarea></div>';
   h += bookDealHtml(d);
   h += contactsDealHtml(d);
@@ -4673,7 +4691,7 @@ const DOC_LIMIT = 15 * 1024 * 1024, DOC_MAX = 30;
 const docExt = name => { const m = /\.([A-Za-z0-9]{1,5})$/.exec(String(name || '')); return m ? m[1].toLowerCase() : ''; };
 const safeFileName = n => String(n || 'документ').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 120) || 'документ';
 const fmtSize = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' МБ' : Math.max(1, Math.round(n / 1024)) + ' КБ';
-const docName = k => { const x = DOC_LIST.find(y => y[0] === k); return x ? x[1] : 'Другое'; };
+const docName = k => { if (k === 'smeta') return 'Смета (файл)'; const x = DOC_LIST.find(y => y[0] === k); return x ? x[1] : 'Другое'; };
 // Телефон для ссылки «Позвонить»: российский формат приводим к +7, короткие номера оставляем как есть
 function telHref(phone) {
   const raw = String(phone || '').trim(); let d = raw.replace(/\D/g, '');
@@ -4706,7 +4724,7 @@ async function geocodeAddress(address) {
 const naviUrl = (lat, lon) => 'yandexnavi://build_route_on_map?lat_to=' + lat.toFixed(6) + '&lon_to=' + lon.toFixed(6);
 const gisUrl = (lat, lon) => 'https://2gis.ru/routeSearch/rsType/car/to/' + lon.toFixed(6) + ',' + lat.toFixed(6);
 const naviBtnsHtml = pl => '<a class="btn" href="' + naviUrl(pl.lat, pl.lon) + '" rel="noopener">Навигатор</a><a class="btn" href="' + gisUrl(pl.lat, pl.lon) + '" target="_blank" rel="noopener">2ГИС</a>';
-const taxiBtnHtml = (h, act) => { const pl = placeFor(h); return pl ? '<a class="btn" href="' + taxiUrl(pl.lat, pl.lon) + '" rel="noopener">' + ICO.taxi + 'Вызвать такси</a>' + naviBtnsHtml(pl) : '<button type="button" class="btn" data-a="' + act + '">' + ICO.taxi + 'Вызвать такси</button>'; };
+const taxiBtnHtml = (h, act, label) => { const pl = placeFor(h), t = label || 'Вызвать такси'; return pl ? '<a class="btn" href="' + taxiUrl(pl.lat, pl.lon) + '" rel="noopener">' + ICO.taxi + t + '</a>' + naviBtnsHtml(pl) : '<button type="button" class="btn" data-a="' + act + '">' + ICO.taxi + t + '</button>'; };
 async function taxiGo(h, after, say) {
   const addr = String(h.address || '').trim();
   let pl = placeFor(h);
@@ -4812,7 +4830,16 @@ async function dealFilesLoad(id) {
   DF.loaded = true; dealFilesPaint(); mbPaint();
   const d = curDeal(); const el = document.getElementById('docList'); if (d && el && d.id === id) el.innerHTML = docListHtml(d);
 }
+function smFilesPaint() {
+  const el = document.getElementById('smFiles'), d = curDeal();
+  if (!el || !d || S.tab !== 'deals' || DF.id !== d.id || !DF.loaded) return;
+  const l = DF.list.filter(f => f.tag === 'smeta');
+  el.innerHTML = l.map(f => '<div class="frow"><div style="min-width:0"><div style="overflow-wrap:anywhere">' + esc(f.name) + '</div><div class="small muted">' + esc(fmtSize(f.size || 0)) + ' · ' + esc(fmtDT(f.ts)) + '</div></div><div class="row" style="flex:none">' +
+    (DOC_OPEN.includes(f.ext) ? '<button type="button" class="btn" data-a="file-open" data-id="' + esc(f.id) + '">Открыть</button>' : '') +
+    '<button type="button" class="btn" data-a="file-save" data-id="' + esc(f.id) + '">Скачать</button><button type="button" class="btn danger" data-a="file-del" data-id="' + esc(f.id) + '" aria-label="Удалить файл">✕</button></div></div>').join('');
+}
 function dealFilesPaint() {
+  smFilesPaint();
   const el = document.getElementById('dealFiles');
   if (S.tab !== 'deals' || !el || !curDeal() || curDeal().id !== DF.id) return;
   if (DF.err) { el.innerHTML = '<p class="small muted" style="margin:12px 0 0">' + esc(DF.err) + '</p>'; return; }
@@ -4822,7 +4849,7 @@ function dealFilesPaint() {
     '<button type="button" class="btn" data-a="file-save" data-id="' + esc(f.id) + '">Скачать</button><button type="button" class="btn danger" data-a="file-del" data-id="' + esc(f.id) + '" aria-label="Удалить файл">✕</button></div></div>').join('')
     : '<p class="small muted" style="margin:12px 0 0">Файлов пока нет.</p>';
 }
-async function dealAttach(d, files) {
+async function dealAttach(d, files, forceTag) {
   const id = d.id;
   for (const f of files) {
     const ext = docExt(f.name);
@@ -4830,13 +4857,13 @@ async function dealAttach(d, files) {
     if (f.size > DOC_LIMIT) { toast('Файл «' + safeFileName(f.name) + '» больше 15 МБ'); continue; }
     if (!S.deals.some(x => x.id === id)) return;   // проект удалили, пока шла загрузка
     if (DF.id === id && DF.list.length >= DOC_MAX) { toast('К проекту можно прикрепить не больше ' + DOC_MAX + ' файлов'); break; }
-    const tagEl = document.getElementById('fileTag'), tag = tagEl && DOC_LIST.some(x => x[0] === tagEl.value) ? tagEl.value : '';
+    const tagEl = document.getElementById('fileTag'), tag = forceTag === 'smeta' ? 'smeta' : (tagEl && DOC_LIST.some(x => x[0] === tagEl.value) ? tagEl.value : '');
     const rec = {id: uid(), dealId: id, ts: Date.now(), name: safeFileName(f.name), ext, type: DOC_EXT[ext], size: f.size, tag, blob: new Blob([f], {type: DOC_EXT[ext]})};
     try { await phTx('readwrite', s => s.put(rec), 'docs'); }
     catch (e) { toast('Файл не сохранился: хранилище браузера недоступно или заполнено'); return; }
     const dd = S.deals.find(x => x.id === id);
     if (!dd) { phTx('readwrite', s => s.delete(rec.id), 'docs').catch(() => {}); return; }
-    if (dd && tag) { dd.docs = dd.docs || {}; if (dd.docs[tag] !== 'have') { dd.docs[tag] = 'have'; dd.updated = Date.now(); save(); } }
+    if (dd && tag && tag !== 'smeta') { dd.docs = dd.docs || {}; if (dd.docs[tag] !== 'have') { dd.docs[tag] = 'have'; dd.updated = Date.now(); save(); } }
     if (DF.id === id) DF.list.unshift(rec);
     toast('Файл прикреплён');
   }
@@ -4866,10 +4893,12 @@ function dealFilesPurge(id) {
 /* ===== Бланк нового объекта =====
    Открывается по «Новый проект»: название, адрес с геолокацией и фото. Проект и фото создаются кнопкой «Создать проект». */
 const NB_MAX = 8;
-const NB = {name: '', address: '', lat: null, lon: null, acc: null, geoMsg: '', geoBusy: false, photos: [], busy: false, creating: false, gen: 0, owner: {name: '', phone: ''}, resp: {name: '', phone: ''}, place: null};
+const NB = {name: '', address: '', lat: null, lon: null, acc: null, geoMsg: '', geoBusy: false, photos: [], busy: false, creating: false, gen: 0, owner: {name: '', phone: ''}, resp: {name: '', phone: ''}, place: null, smeta: null, smetaFiles: []};
 const newObjName = (name, address) => String(name || '').trim() || String(address || '').trim() || 'Новый объект';
-function nbReset() { NB.gen++; NB.name = ''; NB.owner = {name: '', phone: ''}; NB.resp = {name: '', phone: ''}; NB.place = null; NB.address = ''; NB.lat = NB.lon = NB.acc = null; NB.geoMsg = ''; NB.geoBusy = false; NB.photos = []; NB.busy = false; }
-const nbTaxiPaint = () => { const el = document.getElementById('nbTaxi'); if (el && S.tab === 'newobj') el.innerHTML = taxiBtnHtml(NB, 'nb-taxi'); };
+function nbReset() { NB.gen++; NB.name = ''; NB.owner = {name: '', phone: ''}; NB.resp = {name: '', phone: ''}; NB.place = null; NB.address = ''; NB.lat = NB.lon = NB.acc = null; NB.geoMsg = ''; NB.geoBusy = false; NB.photos = []; NB.busy = false; NB.smeta = null; NB.smetaFiles = []; }
+const nbSmFilesHtml = () => NB.smetaFiles.map((f, i) => '<div class="frow"><div style="min-width:0;overflow-wrap:anywhere">' + esc(safeFileName(f.name)) + ' <span class="small muted">· ' + esc(fmtSize(f.size || 0)) + '</span></div><button type="button" class="btn danger" data-a="nb-smfile-del" data-i="' + i + '" aria-label="Убрать файл">✕</button></div>').join('');
+const nbPaintSmFiles = () => { const el = document.getElementById('nbSmFiles'); if (el && S.tab === 'newobj') el.innerHTML = nbSmFilesHtml(); };
+const nbTaxiPaint = () => { const el = document.getElementById('nbTaxi'); if (el && S.tab === 'newobj') el.innerHTML = taxiBtnHtml(NB, 'nb-taxi', 'Яндекс'); };
 const nbPaintGeo = () => { geoPaint(NB, 'nbGeo', 'nbAddr', 'newobj'); nbTaxiPaint(); };
 function nbPaintPhotos() {
   const el = document.getElementById('nbPhotos');
@@ -4924,7 +4953,8 @@ async function nbCreate() {
       try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
     }
     // Проект создаём только после записи фото: при сбое не остаётся проекта без снимков
-    const nd = newDeal(name, null); nd.id = dealId; nd.address = addr; nd.owner = cleanOwner(NB.owner); nd.people = cleanPeople(NB.resp.name.trim() || NB.resp.phone.trim() ? [{role: ROLE_SUGGEST[0], name: NB.resp.name, phone: NB.resp.phone}] : []); nd.place = cleanPlace(placeFor(NB)); save();
+    const nd = newDeal(name, null); nd.id = dealId; nd.address = addr; nd.owner = cleanOwner(NB.owner); nd.people = cleanPeople(NB.resp.name.trim() || NB.resp.phone.trim() ? [{role: ROLE_SUGGEST[0], name: NB.resp.name, phone: NB.resp.phone}] : []); nd.place = cleanPlace(placeFor(NB)); nd.smeta = NB.smeta ? cleanSmetaObj(NB.smeta) : null; save();
+    const smFiles = NB.smetaFiles.slice();
     const n = recs.length;
     const here = S.tab === 'newobj';
     nbReset();
@@ -4932,10 +4962,14 @@ async function nbCreate() {
     toast('Проект создан' + (n ? ', фото: ' + n : ''));
     if (here) nbOpenDeal(dealId);
     if (n) phReload();
+    if (smFiles.length) dealAttach(nd, smFiles, 'smeta');
   } finally { NB.creating = false; }
 }
 function renderNewObj() {
   $('#view').innerHTML =
+    '<div class="card"><h3>Фото объекта</h3><div class="row"><label class="btn pri fbtn">' + ICO.cam + 'Сделать фото<input type="file" accept="image/*" capture="environment" data-nb="file" aria-label="Сделать фото"></label>' +
+    '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" multiple data-nb="file" aria-label="Выбрать фото из галереи"></label></div>' +
+    '<div id="nbPhotos"></div><p class="small muted" style="margin:10px 0 0">Адрес и дата вписываются в каждый снимок при создании проекта. До ' + NB_MAX + ' фото.</p></div>' +
     '<div class="card"><h3>Данные объекта</h3>' +
     '<label class="f"><span>Название</span><input type="text" data-nb="name" maxlength="80" autocomplete="off" placeholder="Например: однушка на Арбате" value="' + esc(NB.name) + '"></label>' +
     '<p class="small muted" style="margin:6px 0 12px">Если название не писать, проект назовётся по адресу.</p>' +
@@ -4947,16 +4981,15 @@ function renderNewObj() {
     '<div style="height:10px"></div><label class="f"><span>Телефон собственника</span><input type="tel" data-nb="ophone" maxlength="30" autocomplete="off" inputmode="tel" placeholder="+7 900 000-00-00" value="' + esc(NB.owner.phone) + '"></label>' +
     '<div style="height:12px"></div><label class="f"><span>Ответственный за проект</span><input type="text" data-nb="rname" maxlength="80" autocomplete="off" placeholder="Кто будет заниматься объектом" value="' + esc(NB.resp.name) + '"></label>' +
     '<div style="height:10px"></div><label class="f"><span>Телефон ответственного</span><input type="tel" data-nb="rphone" maxlength="30" autocomplete="off" inputmode="tel" placeholder="+7 900 000-00-00" value="' + esc(NB.resp.phone) + '"></label></div>' +
-    '<div class="card"><h3>Фото объекта</h3><div class="row"><label class="btn pri fbtn">' + ICO.cam + 'Снять фото<input type="file" accept="image/*" capture="environment" data-nb="file" aria-label="Снять фото"></label>' +
-    '<label class="btn fbtn">Выбрать из галереи<input type="file" accept="image/*" multiple data-nb="file" aria-label="Выбрать фото из галереи"></label></div>' +
-    '<div id="nbPhotos"></div><p class="small muted" style="margin:10px 0 0">Адрес и дата вписываются в каждый снимок при создании проекта. До ' + NB_MAX + ' фото.</p></div>' +
+    '<button class="btn block" data-a="nb-smeta" style="margin-bottom:8px">' + (NB.smeta ? 'Смета добавлена: ' + rub(smetaTotal(NB.smeta).total) + ' · изменить' : 'Добавить смету') + '</button>' +
+    '<label class="btn block fbtn" style="margin-bottom:8px">Добавить смету (документ)<input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.heic,image/*" data-nb="smfile" aria-label="Добавить смету документом"></label><div id="nbSmFiles" style="margin-bottom:8px">' + nbSmFilesHtml() + '</div>' +
     '<button class="btn pri block" data-a="nb-create">Создать проект</button>' +
     '<button class="btn block" data-a="nb-cancel" style="margin-top:8px">Отмена</button>';
   nbPaintGeo(); nbPaintPhotos();
 }
 
 /* ===== Навигация ===== */
-const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый объект', cal: 'Календарь', notes: 'Записная книжка', mat: 'Материалы', docs: 'Юридический справочник'};
+const TITLES = {home: 'Главная', calc: 'Калькулятор сделки', smeta: 'Смета ремонта', torgi: 'Торги и лоты', deals: 'Мои сделки', ref: 'Справочник', kursy: 'Курсы и ставки', tax: 'Налог при продаже', photo: 'Фото объекта', newobj: 'Новый проект', cal: 'Календарь', notes: 'Записная книжка', mat: 'Материалы', docs: 'Юридический справочник'};
 // Крупный заголовок раздела; он же появляется в шапке, когда при прокрутке ушёл вверх
 function setTitle(text, action, back, backAction, backLabel) {
   $('#lt').textContent = text; $('#sub').textContent = text; $('#ltAct').innerHTML = action || '';
@@ -4981,13 +5014,14 @@ function backupDot() {
   return stale;
 }
 function go(tab, cls, y) {
-  voiceStop(); BK.edit = ''; BK.etext = ''; if (tab !== 'docs') DS.open = '';
+  voiceStop(); BK.edit = ''; BK.etext = ''; if (tab !== 'docs') DS.open = ''; if (tab !== 'smeta') SM_CTX = '';
   S.tab = tab; save(); backupDot();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setTitle(TITLES[tab]);
   ({home: renderHome, calc: renderCalc, smeta: renderSmeta, torgi: renderTorgi, deals: renderDeals, ref: renderRef, kursy: renderKursy, tax: renderTax, photo: renderPhoto, newobj: renderNewObj, cal: renderCal, notes: renderNotes, mat: renderMat, docs: renderDocs})[tab]();
   // «Смета» и «Торги» открываются с главной: у них своя кнопка «назад»
-  if (tab === 'smeta' || tab === 'torgi' || tab === 'mat') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
+  if (tab === 'smeta' && SM_CTX) setTitle('Смета проекта', '', true, 'deal-close', '‹ Назад');
+  else if (tab === 'smeta' || tab === 'torgi' || tab === 'mat') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'kursy' || tab === 'tax' || tab === 'docs') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
   if (tab === 'photo' || tab === 'cal' || tab === 'notes') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Главная');
   if (tab === 'newobj') setTitle(TITLES[tab], '', true, 'deal-close', '‹ Назад');
@@ -5128,9 +5162,9 @@ view.addEventListener('input', e => {
     updateSmetaHint();
   } else if (t.dataset.sm) {
     let v = parseNum(t.value); if (t.dataset.sm !== 'area' && t.dataset.sm !== 'contingency') v = Math.max(0, Math.round(v));
-    S.smeta[t.dataset.sm] = v; save(); updateSmetaTableKeepFocus();
+    SM()[t.dataset.sm] = v; save(); updateSmetaTableKeepFocus();
   } else if (t.dataset.price) {
-    S.smeta.custom[t.dataset.price + '_' + S.smeta.level] = parseNum(t.value); save(); updateSmetaTableKeepFocus(t.dataset.price);
+    SM().custom[t.dataset.price + '_' + SM().level] = parseNum(t.value); save(); updateSmetaTableKeepFocus(t.dataset.price);
   } else if (t.dataset.tx) {
     if (!TX) txInit();
     if (t.type === 'checkbox') TX[t.dataset.tx] = t.checked;
@@ -5188,7 +5222,7 @@ function updateSmetaTableKeepFocus(priceKey) {
   const pos = document.activeElement && document.activeElement.selectionStart;
   updateSmetaTable();
   const inp = view.querySelector('[data-price="' + priceKey + '"]');
-  if (inp) { inp.value = num(S.smeta.custom[priceKey + '_' + S.smeta.level]); inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (e) {} }
+  if (inp) { inp.value = num(SM().custom[priceKey + '_' + SM().level]); inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (e) {} }
 }
 view.addEventListener('change', e => {
   const t = e.target;
@@ -5259,7 +5293,7 @@ view.addEventListener('click', e => {
   if (segBtn) {
     const seg = segBtn.parentElement.dataset.seg;
     if (seg === 'fin') { S.calc.fin = segBtn.dataset.v; $('#mortBox').classList.toggle('hide', S.calc.fin !== 'mortgage'); updateCalcResults(); }
-    if (seg === 'level') { S.smeta.level = Number(segBtn.dataset.v); updateSmetaTable(); }
+    if (seg === 'level') { SM().level = Number(segBtn.dataset.v); save(); updateSmetaTable(); }
     if (seg === 'tkind') { S.torgi.kind = segBtn.dataset.v; save(); renderTorgi(); return; }
     if (seg === 'rblock') { rayonBlock = segBtn.dataset.v; $('#rayonBlock').innerHTML = rayonBlockHtml(rayonById(rayonView), rayonBlock); }
     segBtn.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === segBtn));
@@ -5299,6 +5333,7 @@ view.addEventListener('click', e => {
       updateCalcResults(); updateSmetaHint();
       toast('Ремонт ' + rub(S.calc.repair) + ' и срок ' + S.calc.months + ' мес. — поправьте, если нужно'); break;
     }
+    case 'next-toggle': NEXT_OPEN = !NEXT_OPEN; document.querySelectorAll('.next').forEach(n => { n.classList.toggle('open', NEXT_OPEN); const nb = n.querySelector('.nx-btn'); if (nb) nb.setAttribute('aria-expanded', String(NEXT_OPEN)); }); break;
     case 'sample': {
       Object.assign(S.calc, DEMO_CALC, {torgiExtra: 0, torgiDelay: 0}); S.calcDeal = null; save();
       if (S.tab === 'home') renderHome(); else renderCalc();
@@ -5389,9 +5424,11 @@ view.addEventListener('click', e => {
         toast('Сделка по лоту создана'); break;
       }
     }
-    case 'smeta-to-calc': S.calc.repair = Math.round(smetaTotal().total); save(); navPush(navRoot('calc'), 'anim-up'); toast('Ремонт перенесён в расчёт'); break;
+    case 'smeta-to-calc':
+      if (SM_CTX && SM_CTX !== 'nb') { const sd = S.deals.find(x => x.id === SM_CTX); if (sd && sd.smeta) { sd.calc = Object.assign({}, DEFAULT_CALC, sd.calc || {}); sd.calc.repair = Math.round(smetaTotal(sd.smeta).total); sd.updated = Date.now(); save(); toast('Ремонт из сметы перенесён в расчёт сделки'); navBack(); } break; }
+      S.calc.repair = Math.round(smetaTotal().total); save(); navPush(navRoot('calc'), 'anim-up'); toast('Ремонт перенесён в расчёт'); break;
     case 'smeta-reset':
-      if (confirm('Вернуть ориентировочные цены вместо ваших?')) { S.smeta.custom = {}; save(); updateSmetaTable(); }
+      if (confirm('Вернуть ориентировочные цены вместо ваших?')) { SM().custom = {}; save(); updateSmetaTable(); }
       break;
     case 'go-tab': if (['calc', 'deals', 'ref'].includes(b.dataset.v)) navTab(b.dataset.v); break;
     case 'home-notes': BK.mode = 'notes'; navPush(navRoot('notes'), 'anim-right'); break;
@@ -5411,6 +5448,8 @@ view.addEventListener('click', e => {
     case 'home-parse': { navTab('calc'); const pb = $('#parseBox'); if (pb) { pb.open = true; pb.scrollIntoView({block: 'center'}); } break; }
     case 'home-rayony': navTab('ref'); navPush({tab: 'ref', deal: null, rayon: 'list', from: null}); break;
     case 'home-tax': txInit(); navPush(navRoot('tax'), 'anim-right'); break;
+    case 'nb-smeta': if (!NB.smeta) NB.smeta = smetaClone(); SM_CTX = 'nb'; navPush(navRoot('smeta'), 'anim-right'); break;
+    case 'deal-smeta': if (d) { if (!d.smeta) { d.smeta = smetaClone(); d.updated = Date.now(); save(); } SM_CTX = d.id; navPush(navRoot('smeta'), 'anim-right'); } break;
     case 'deal-new': navPush(navRoot('newobj'), 'anim-right'); break;
     case 'nb-geo': geoLocate(NB, nbPaintGeo); break;
     case 'nb-taxi': taxiGo(NB, nbTaxiPaint, m => { NB.geoMsg = m; nbPaintGeo(); }); break;
@@ -5453,6 +5492,7 @@ view.addEventListener('click', e => {
     case 'file-open': dealFileGet(b.dataset.id, false); break;
     case 'file-save': dealFileGet(b.dataset.id, true); break;
     case 'file-del': dealFileDel(b.dataset.id); break;
+    case 'nb-smfile-del': NB.smetaFiles.splice(Number(b.dataset.i) || 0, 1); nbPaintSmFiles(); break;
     case 'nb-del': NB.photos = NB.photos.filter(x => x.id !== b.dataset.id); nbPaintPhotos(); break;
     case 'nb-create': nbCreate(); break;
     case 'nb-cancel': nbReset(); navBack(); break;
@@ -5647,7 +5687,8 @@ view.addEventListener('change', e => {
   if (t.dataset.bk === 'f') { BK.f = t.value; bkPaint(); return; }
   if (t.dataset.ph === 'addr') phRestamp();
   else if (t.dataset.ph === 'file') { const f = t.files && t.files[0]; t.value = ''; phPick(f); }
-  else if (t.dataset.dfile) { const dd = curDeal(), fs2 = t.files ? Array.from(t.files) : []; t.value = ''; if (dd) dealAttach(dd, fs2); }
+  else if (t.dataset.dfile) { const dd = curDeal(), fs2 = t.files ? Array.from(t.files) : []; t.value = ''; if (dd) dealAttach(dd, fs2, t.dataset.dfile === 'smeta' ? 'smeta' : ''); }
+  else if (t.dataset.nb === 'smfile') { const fs3 = t.files ? Array.from(t.files) : []; t.value = ''; fs3.forEach(f => { if (NB.smetaFiles.length < 10 && !NB.smetaFiles.includes(f)) NB.smetaFiles.push(f); }); nbPaintSmFiles(); }
   else if (t.dataset.nb === 'file') { const fs = t.files ? Array.from(t.files) : []; t.value = ''; nbPick(fs); }
   else if (t.id === 'moodFile') { const dd = curDeal(), fs3 = t.files ? Array.from(t.files) : []; t.value = ''; if (dd) mbAdd(dd, fs3); }
 });

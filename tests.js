@@ -917,7 +917,7 @@ vm.runInContext(`
   const h = view.innerHTML;
   ctx.check('бланк: есть название, адрес, геолокация, съёмка, галерея, создание, отмена', /data-nb="name"/.test(h) && /id="nbAddr"/.test(h) && /data-a="nb-geo"/.test(h) && /capture="environment"/.test(h) && /Выбрать из галереи/.test(h) && /data-a="nb-create"/.test(h) && /data-a="nb-cancel"/.test(h), h.slice(0, 120));
   ctx.check('бланк: введённые название и адрес экранированы', !h.includes('<img src=x') && !h.includes('<b>адрес</b>') && h.includes('&lt;img') && h.includes('&lt;b&gt;'));
-  ctx.check('бланк: раздел зарегистрирован в навигации', run("NAV_TABS.includes('newobj') && TITLES.newobj === 'Новый объект'"));
+  ctx.check('бланк: раздел зарегистрирован в навигации', run("NAV_TABS.includes('newobj') && TITLES.newobj === 'Новый проект'"));
   run("nbReset();");
   ctx.check('бланк: сброс очищает всё', run("NB.name === '' && NB.address === '' && NB.lat === null && NB.photos.length === 0 && NB.geoMsg === ''"));
   ctx.check('бланк: «Новый проект» больше не создаёт пустой проект сразу', /case 'deal-new': navPush\(navRoot\('newobj'\)/.test(code) && !/newDeal\('Новая сделка'/.test(code));
